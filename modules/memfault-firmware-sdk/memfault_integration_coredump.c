@@ -1,31 +1,38 @@
 #include <zephyr/kernel.h>
 #include <memfault/components.h>
-#include <memfault/ports/zephyr/coredump.h>
+
 #include "memfault_etb_trace_capture.h"
+#include "memfault_ncs_coredump.h"
 
-static sMfltCoredumpRegion s_coredump_regions[MEMFAULT_ZEPHYR_COREDUMP_REGIONS + IS_ENABLED(CONFIG_MEMFAULT_NCS_ETB_CAPTURE)];
+#if defined(CONFIG_MEMFAULT_NCS_COREDUMP_REGIONS_CUSTOM)
+static sMfltCoredumpRegion s_coredump_regions[MEMFAULT_NCS_COREDUMP_REGIONS];
+#endif // CONFIG_MEMFAULT_NCS_COREDUMP_REGIONS_CUSTOM
 
-const sMfltCoredumpRegion
-*memfault_platform_coredump_get_regions(const sCoredumpCrashInfo *crash_info, size_t *num_regions)
+size_t memfault_ncs_coredump_get_regions(const sCoredumpCrashInfo *crash_info,
+					 sMfltCoredumpRegion *regions, size_t num_regions)
 {
-	size_t region_idx = 0;
-
 	// Capture Zephyr regions
-	region_idx += memfault_zephyr_coredump_get_regions(crash_info, s_coredump_regions,
-							   MEMFAULT_ARRAY_SIZE(s_coredump_regions));
+	size_t region_idx = memfault_zephyr_coredump_get_regions(crash_info, regions, num_regions);
 
 #if CONFIG_MEMFAULT_NCS_ETB_CAPTURE
-	region_idx += memfault_ncs_etb_get_regions(&s_coredump_regions[region_idx],
-							MEMFAULT_ARRAY_SIZE(s_coredump_regions) -
-								region_idx);
+	region_idx += memfault_ncs_etb_get_regions(regions[region_idx], num_regions - region_idx);
 #endif // CONFIG_MEMFAULT_NCS_ETB_CAPTURE
 
-	*num_regions = region_idx;
-	return s_coredump_regions;
+	return region_idx;
 }
 
-void memfault_platform_fault_handler(const sMfltRegState *regs,
-						   eMemfaultRebootReason reason)
+#if defined(CONFIG_MEMFAULT_NCS_COREDUMP_REGIONS_CUSTOM)
+const sMfltCoredumpRegion *
+memfault_platform_coredump_get_regions(const sCoredumpCrashInfo *crash_info, size_t *num_regions)
+{
+	*num_regions = memfault_ncs_coredump_get_regions(crash_info, s_coredump_regions,
+							 ARRAY_SIZE(s_coredump_regions));
+	return s_coredump_regions;
+}
+#endif // CONFIG_MEMFAULT_NCS_COREDUMP_REGIONS_CUSTOM
+
+#if defined(CONFIG_MEMFAULT_NCS_FAULT_HANDLER_CUSTOM)
+void memfault_platform_fault_handler(const sMfltRegState *regs, eMemfaultRebootReason reason)
 {
 	ARG_UNUSED(regs);
 	ARG_UNUSED(reason);
@@ -33,3 +40,4 @@ void memfault_platform_fault_handler(const sMfltRegState *regs,
 	memfault_ncs_etb_fault_handler();
 #endif
 }
+#endif // CONFIG_MEMFAULT_NCS_FAULT_HANDLER_CUSTOM

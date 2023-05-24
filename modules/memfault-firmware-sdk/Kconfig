@@ -189,6 +189,14 @@ config MEMFAULT_CDR_ENABLE
 	bool "Custom Data Recording"
 	default n
 
+config MEMFAULT_NCS_FAULT_HANDLER_CUSTOM
+	bool "Enable using a custom implementation of memfault_platform_fault_handler"
+	default n
+
+config CONFIG_MEMFAULT_NCS_COREDUMP_REGIONS_CUSTOM
+	bool "Enable using a custom implementation of memfault_platform_coredump_get_regions"
+	default n
+
 if MEMFAULT_NCS_INTERNAL_FLASH_BACKED_COREDUMP
 config MEMFAULT_NCS_FLASH_REGION_SIZE
 	hex
