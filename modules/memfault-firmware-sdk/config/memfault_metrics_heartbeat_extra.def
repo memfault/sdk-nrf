@@ -1,4 +1,7 @@
 /* Definitions for optional metrics. */
+#if defined(CONFIG_MODEM_INFO)
+#include <modem/modem_info.h>
+#endif
 
 #ifdef CONFIG_MEMFAULT_NCS_STACK_METRICS
 MEMFAULT_METRICS_KEY_DEFINE(Ncs_ConnectionPollUnusedStack, kMemfaultMetricType_Unsigned)
@@ -7,6 +10,9 @@ MEMFAULT_METRICS_KEY_DEFINE(NcsBtTxUnusedStack, kMemfaultMetricType_Unsigned)
 #endif /* CONFIG_MEMFAULT_NCS_STACK_METRICS */
 
 #ifdef CONFIG_MEMFAULT_NCS_LTE_METRICS
+#if defined(CONFIG_MODEM_INFO)
+MEMFAULT_METRICS_STRING_KEY_DEFINE(Ncs_LteFwVersion, MODEM_INFO_FWVER_SIZE)
+#endif
 MEMFAULT_METRICS_KEY_DEFINE(Ncs_LteTimeToConnect, kMemfaultMetricType_Timer)
 MEMFAULT_METRICS_KEY_DEFINE(Ncs_LteConnectionLossCount, kMemfaultMetricType_Unsigned)
 MEMFAULT_METRICS_KEY_DEFINE(Ncs_LtePsmTauSec, kMemfaultMetricType_Signed)
