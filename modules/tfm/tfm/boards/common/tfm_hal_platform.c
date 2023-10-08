@@ -21,6 +21,8 @@
 #include "tfm_spm_log.h"
 #include "hw_unique_key.h"
 #include "config_tfm.h"
+#include "exception_info.h"
+#include "tfm_arch.h"
 
 #if defined(TFM_PARTITION_CRYPTO)
 static enum tfm_hal_status_t crypto_platform_init(void)
@@ -111,4 +113,79 @@ enum tfm_hal_status_t tfm_hal_platform_init(void)
 #endif /* defined(NRF_PROVISIONING) */
 
 	return TFM_HAL_SUCCESS;
+}
+
+void tfm_hal_system_halt(void)
+{
+	/*
+	 * Disable IRQs to stop all threads, not just the thread that
+	 * halted the system.
+	 */
+	__disable_irq();
+
+	/*
+	 * Enter sleep to reduce power consumption and do it in a loop in
+	 * case a signal wakes up the CPU.
+	 */
+	while (1) {
+		__WFE();
+	}
+}
+
+#define SECUREFAULT_EXCEPTION_NUMBER 7
+#define HARDFAULT_EXCEPTION_NUMBER   3
+#define BUSFAULT_EXCEPTION_NUMBER    5
+
+void tfm_hal_system_reset(void)
+{
+#if defined(TFM_EXCEPTION_INFO_DUMP)
+	struct exception_info_t *exc_ctx = tfm_exception_info_get_context();
+
+#if defined(TRUSTZONE_PRESENT)
+	const uint8_t active_exception_number = (exc_ctx->xPSR & 0xff); 
+	const bool securefault_active = (active_exception_number == SECUREFAULT_EXCEPTION_NUMBER);
+	const bool busfault_active = (active_exception_number == BUSFAULT_EXCEPTION_NUMBER);
+
+	if ((exc_ctx == NULL) || is_return_secure_stack(exc_ctx->EXC_RETURN) ||
+		!(securefault_active || busfault_active)) {
+		NVIC_SystemReset();
+	}
+
+	/*
+	 * If we get here, we are taking a reset path where a fault was generated
+	 * from the NS firmware running on the device. If we just reset, it will be
+	 * impossible to extract the root cause of the error on the NS side.
+	 *
+	 * To allow for root cause analysis, let's call the NS HardFault handler.  Any error from
+	 * the NS fault handler will land us back in the Secure HardFault handler where we will not
+	 * enter this path and simply reset the device.
+	 */
+
+	uint32_t *vtor = (uint32_t *)tfm_hal_get_ns_VTOR();
+
+	uint32_t hardfault_handler_fn = vtor[HARDFAULT_EXCEPTION_NUMBER];
+
+	/* bit 0 needs to be cleared to transition to NS */
+	hardfault_handler_fn &= ~0x1;
+
+	/* Adjust EXC_RETURN value to emulate NS exception entry */
+	uint32_t ns_exc_return = exc_ctx->EXC_RETURN & ~EXC_RETURN_EXC_SECURE;
+	/* Update SPSEL to reflect correct CONTROL_NS.SPSEL setting */
+	ns_exc_return &= ~(EXC_RETURN_SPSEL);
+	CONTROL_Type ctrl_ns;
+	ctrl_ns.w = __TZ_get_CONTROL_NS();
+	if (ctrl_ns.b.SPSEL) {
+		ns_exc_return |= EXC_RETURN_SPSEL;
+	}
+
+	__asm volatile("mov lr, %[ns_exc_return]\n"
+			"bxns %[hardfault_handler_fn]\n"
+			: /* No outputs. */
+			: [ns_exc_return] "r"(ns_exc_return),
+			  [hardfault_handler_fn] "r"(hardfault_handler_fn));
+
+#endif /* defined(TRUSTZONE_PRESENT) */
+#endif /* defined(TFM_EXCEPTION_INFO_DUMP) */
+
+	NVIC_SystemReset();
 }
