@@ -136,13 +136,50 @@ void tfm_hal_system_halt(void)
 #define HARDFAULT_EXCEPTION_NUMBER   3
 #define BUSFAULT_EXCEPTION_NUMBER    5
 
+#if defined(TFM_EXCEPTION_INFO_DUMP) && defined(TRUSTZONE_PRESENT)
+
+__attribute__((naked)) static void handle_fault_from_ns(
+    uint32_t fault_handler_fn, uint32_t exc_return) {
+    __ASM volatile(
+	"mov  lr, r1 \n"
+	"movs r1, #0 \n"
+	"movs r2, #0 \n"
+#if (CONFIG_TFM_FLOAT_ABI >= 1)
+	"vmov	  d0, r1, r2 \n"
+	"vmov	  d1, r1, r2 \n"
+	"vmov	  d2, r1, r2 \n"
+	"vmov	  d3, r1, r2 \n"
+	"vmov	  d4, r1, r2 \n"
+	"vmov	  d5, r1, r2 \n"
+	"vmov	  d6, r1, r2 \n"
+	"vmov	  d7, r1, r2 \n"
+	"mrs	  r2, control \n"
+	"bic	  r2, r2, #4 \n"
+	"msr	  control, r2 \n"
+	"isb \n"
+#endif
+	"ldr  r1, ="M2S(STACK_SEAL_PATTERN)" \n"
+	"push {r1, r2} \n"
+	"movs r1, #0 \n"
+	"movs r3, #0 \n"
+	"movs r4, #0 \n"
+	"movs r5, #0 \n"
+	"movs r6, #0 \n"
+	"movs r7, #0 \n"
+	"movs r8, #0 \n"
+	"movs r9, #0 \n"
+	"movs r10, #0 \n"
+	"movs r11, #0 \n"
+	"movs r12, #0 \n"
+	"bic r0, r0, #1 \n"
+	"bxns r0 \n"
+    );
+}
+
 void tfm_hal_system_reset(void)
 {
-#if defined(TFM_EXCEPTION_INFO_DUMP)
 	struct exception_info_t *exc_ctx = tfm_exception_info_get_context();
-
-#if defined(TRUSTZONE_PRESENT)
-	const uint8_t active_exception_number = (exc_ctx->xPSR & 0xff); 
+	const uint8_t active_exception_number = (exc_ctx->xPSR & 0xff);
 	const bool securefault_active = (active_exception_number == SECUREFAULT_EXCEPTION_NUMBER);
 	const bool busfault_active = (active_exception_number == BUSFAULT_EXCEPTION_NUMBER);
 
@@ -178,14 +215,13 @@ void tfm_hal_system_reset(void)
 		ns_exc_return |= EXC_RETURN_SPSEL;
 	}
 
-	__asm volatile("mov lr, %[ns_exc_return]\n"
-			"bxns %[hardfault_handler_fn]\n"
-			: /* No outputs. */
-			: [ns_exc_return] "r"(ns_exc_return),
-			  [hardfault_handler_fn] "r"(hardfault_handler_fn));
-
-#endif /* defined(TRUSTZONE_PRESENT) */
-#endif /* defined(TFM_EXCEPTION_INFO_DUMP) */
+	handle_fault_from_ns(hardfault_handler_fn, ns_exc_return);
 
 	NVIC_SystemReset();
 }
+#else
+void tfm_hal_system_reset(void)
+{
+	NVIC_SystemReset();
+}
+#endif /* defined(TRUSTZONE_PRESENT) && defined(TFM_EXCEPTION_INFO_DUMP) */
