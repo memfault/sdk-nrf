@@ -106,6 +106,69 @@ static void lte_handler(const struct lte_lc_evt *const evt)
 		modem_params_get();
 	}
 
+#if defined(CONFIG_MODEM_INFO)
+	int rsrp;
+	err = modem_info_get_rsrp(&rsrp);
+	if (err) {
+		LOG_WRN("LTE RSRP value collection failed, error: %d", err);
+	} else {
+		err = MEMFAULT_METRIC_SET_SIGNED(ncs_lte_rsrp_dbm, rsrp);
+		if (err) {
+			LOG_ERR("Failed to set ncs_lte_rsrp_dbm");
+		}
+	};
+
+	int tx_kbytes;
+	int rx_kybtes;
+	err = modem_info_get_connectivity_stats(&tx_kbytes, &rx_kybtes);
+	if (err) {
+		LOG_WRN("LTE connectivity stats collections failed, error: %d", err);
+	} else {
+		err = MEMFAULT_METRIC_SET_UNSIGNED(ncs_lte_tx_kilobytes, tx_kbytes);
+		if (err) {
+			LOG_ERR("Failed to set ncs_lte_tx_kilobytes");
+		}
+
+		err = MEMFAULT_METRIC_SET_UNSIGNED(ncs_lte_rx_kilobytes, rx_kybtes);
+		if (err) {
+			LOG_ERR("Failed to set ncs_lte_rx_kilobytes");
+		}
+	}
+
+	uint8_t band;
+	err = modem_info_get_current_band(&band);
+	if (err != 0) {
+		LOG_WRN("Network band collection failed, error: %d", err);
+	} else {
+		err = MEMFAULT_METRIC_SET_UNSIGNED(ncs_lte_band, band);
+		if (err) {
+			LOG_ERR("Failed to set nce_lte_band");
+		}
+	}
+
+	char operator_name[MODEM_INFO_SHORT_OP_NAME_SIZE];
+	err = modem_info_get_operator(operator_name, sizeof(operator_name));
+	if (err != 0) {
+		LOG_WRN("Network operator collection failed, error: %d", err);
+	} else {
+		err = MEMFAULT_METRIC_SET_STRING(ncs_lte_operator, operator_name);
+		if (err) {
+			LOG_ERR("Failed to set ncs_lte_operator");
+		}
+	}
+
+	int snr;
+	err = modem_info_get_snr(&snr);
+	if (err != 0) {
+		LOG_WRN("SNR collection failed, error: %d", err);
+	} else {
+		err = MEMFAULT_METRIC_SET_SIGNED(ncs_lte_snr_decibels, snr);
+		if (err) {
+			LOG_ERR("Failed to set ncs_lte_snr_decibels");
+		}
+	}
+#endif
+
 	switch (evt->type) {
 	case LTE_LC_EVT_NW_REG_STATUS:
 		switch (evt->nw_reg_status) {

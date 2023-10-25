@@ -202,7 +202,6 @@ static int nrf_modem_at_scanf_custom_xmonitor_one_letter_success(const char *cmd
 				fmt);
 
 	char *buf = va_arg(args, char *);
-
 	strncpy(buf, EXAMPLE_ONE_LETTER_OPERATOR_NAME,
 		strlen(EXAMPLE_ONE_LETTER_OPERATOR_NAME) + 1);
 
@@ -221,7 +220,6 @@ static int nrf_modem_at_scanf_custom_xmonitor_shortname_success(const char *cmd,
 				fmt);
 
 	char *buf = va_arg(args, char *);
-
 	strncpy(buf, EXAMPLE_SHORT_OPERATOR_NAME, strlen(EXAMPLE_SHORT_OPERATOR_NAME) + 1);
 
 	return 1;
@@ -528,7 +526,6 @@ void test_modem_info_get_rsrp_success(void)
 void test_modem_info_get_current_band_null(void)
 {
 	int ret = modem_info_get_current_band(NULL);
-
 	TEST_ASSERT_EQUAL(-EINVAL, ret);
 	TEST_ASSERT_EQUAL(0, nrf_modem_at_scanf_fake.call_count);
 }
@@ -540,7 +537,6 @@ void test_modem_info_get_current_band_success(void)
 	nrf_modem_at_scanf_fake.custom_fake = nrf_modem_at_scanf_custom_xcband;
 
 	int ret = modem_info_get_current_band(&band);
-
 	TEST_ASSERT_EQUAL(0, ret);
 	TEST_ASSERT_EQUAL(EXAMPLE_BAND, band);
 	TEST_ASSERT_EQUAL(1, nrf_modem_at_scanf_fake.call_count);
@@ -553,7 +549,6 @@ void test_modem_info_get_current_band_success_max_val(void)
 	nrf_modem_at_scanf_fake.custom_fake = nrf_modem_at_scanf_custom_xcband_max_val;
 
 	int ret = modem_info_get_current_band(&band);
-
 	TEST_ASSERT_EQUAL(0, ret);
 	TEST_ASSERT_EQUAL(EXAMPLE_BAND_MAX_VAL, band);
 	TEST_ASSERT_EQUAL(1, nrf_modem_at_scanf_fake.call_count);
@@ -566,7 +561,6 @@ void test_modem_info_get_current_band_unavailable(void)
 	nrf_modem_at_scanf_fake.custom_fake = nrf_modem_at_scanf_custom_xcband_unavailable;
 
 	int ret = modem_info_get_current_band(&band);
-
 	TEST_ASSERT_EQUAL(-ENOENT, ret);
 	TEST_ASSERT_EQUAL(1, nrf_modem_at_scanf_fake.call_count);
 }
@@ -586,7 +580,6 @@ void test_modem_info_get_current_band_at_cmd_error(void)
 void test_modem_info_get_operator_invalid_null_buf(void)
 {
 	int ret = modem_info_get_operator(NULL, 0);
-
 	TEST_ASSERT_EQUAL(-EINVAL, ret);
 	TEST_ASSERT_EQUAL(0, nrf_modem_at_scanf_fake.call_count);
 }
@@ -595,7 +588,6 @@ void test_modem_info_get_operator_invalid_buffer_len(void)
 {
 	char buffer[MODEM_INFO_SHORT_OP_NAME_SIZE - 1];
 	int ret = modem_info_get_operator(buffer, sizeof(buffer));
-
 	TEST_ASSERT_EQUAL(-EINVAL, ret);
 	TEST_ASSERT_EQUAL(0, nrf_modem_at_scanf_fake.call_count);
 }
@@ -607,7 +599,6 @@ void test_modem_info_get_operator_none(void)
 	nrf_modem_at_scanf_fake.custom_fake = nrf_modem_at_scanf_custom_xmonitor_no_operator;
 
 	int ret = modem_info_get_operator(buffer, sizeof(buffer));
-
 	TEST_ASSERT_EQUAL(-EBADMSG, ret);
 	TEST_ASSERT_EQUAL(1, nrf_modem_at_scanf_fake.call_count);
 }
@@ -619,7 +610,6 @@ void test_modem_info_get_operator_one_letter(void)
 	nrf_modem_at_scanf_fake.custom_fake = nrf_modem_at_scanf_custom_xmonitor_one_letter_success;
 
 	int ret = modem_info_get_operator(buffer, sizeof(buffer));
-
 	TEST_ASSERT_EQUAL(0, ret);
 	TEST_ASSERT_EQUAL_STRING(EXAMPLE_ONE_LETTER_OPERATOR_NAME, buffer);
 	TEST_ASSERT_EQUAL(1, nrf_modem_at_scanf_fake.call_count);
@@ -632,7 +622,6 @@ void test_modem_info_get_operator_shortname_success(void)
 	nrf_modem_at_scanf_fake.custom_fake = nrf_modem_at_scanf_custom_xmonitor_shortname_success;
 
 	int ret = modem_info_get_operator(buffer, sizeof(buffer));
-
 	TEST_ASSERT_EQUAL(0, ret);
 	TEST_ASSERT_EQUAL_STRING(EXAMPLE_SHORT_OPERATOR_NAME, buffer);
 	TEST_ASSERT_EQUAL(1, nrf_modem_at_scanf_fake.call_count);
@@ -641,7 +630,6 @@ void test_modem_info_get_operator_shortname_success(void)
 void test_modem_info_get_snr_null(void)
 {
 	int ret = modem_info_get_snr(NULL);
-
 	TEST_ASSERT_EQUAL(-EINVAL, ret);
 	TEST_ASSERT_EQUAL(0, nrf_modem_at_scanf_fake.call_count);
 }
@@ -653,7 +641,6 @@ void test_modem_info_get_snr_invalid(void)
 	nrf_modem_at_scanf_fake.custom_fake = nrf_modem_at_scanf_custom_snr_unavailable;
 
 	int ret = modem_info_get_snr(&snr);
-
 	TEST_ASSERT_EQUAL(SNR_UNAVAILABLE, snr);
 	TEST_ASSERT_EQUAL(-ENOENT, ret);
 	TEST_ASSERT_EQUAL(1, nrf_modem_at_scanf_fake.call_count);
@@ -666,7 +653,6 @@ void test_modem_info_get_snr_at_cmd_error(void)
 	nrf_modem_at_scanf_fake.custom_fake = nrf_modem_at_scanf_custom_snr_at_cmd_error;
 
 	int ret = modem_info_get_snr(&snr);
-
 	TEST_ASSERT_EQUAL(-EBADMSG, ret);
 	TEST_ASSERT_EQUAL(1, nrf_modem_at_scanf_fake.call_count);
 }
@@ -678,7 +664,6 @@ void test_modem_info_get_snr_success(void)
 	nrf_modem_at_scanf_fake.custom_fake = nrf_modem_at_scanf_custom_snr;
 
 	int ret = modem_info_get_snr(&snr);
-
 	TEST_ASSERT_EQUAL(0, ret);
 	TEST_ASSERT_EQUAL(1, nrf_modem_at_scanf_fake.call_count);
 	TEST_ASSERT_EQUAL(EXAMPLE_SNR - SNR_OFFSET_VAL, snr);
