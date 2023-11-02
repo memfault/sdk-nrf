@@ -84,15 +84,15 @@ static void lte_handler(const struct lte_lc_evt *const evt)
 		LOG_WRN("LTE connectivity stats collections failed, error: %d", err);
   } else {
 		err = memfault_metrics_heartbeat_set_unsigned(
-			MEMFAULT_METRICS_KEY(ncs_lte_data_tx_kilobytes), tx_kbytes);
+			MEMFAULT_METRICS_KEY(ncs_lte_tx_kilobytes), tx_kbytes);
 		if (err) {
-			LOG_ERR("Failed to set ncs_lte_data_tx_kilobytes");
+			LOG_ERR("Failed to set ncs_lte_tx_kilobytes");
 		}
 
 		err = memfault_metrics_heartbeat_set_unsigned(
-			MEMFAULT_METRICS_KEY(ncs_lte_data_rx_kilobytes), rx_kybtes);
+			MEMFAULT_METRICS_KEY(ncs_lte_rx_kilobytes), rx_kybtes);
 		if (err) {
-			LOG_ERR("Failed to set ncs_lte_data_rx_kilobytes");
+			LOG_ERR("Failed to set ncs_lte_rx_kilobytes");
 		}
   }
 
@@ -234,15 +234,15 @@ void memfault_lte_metrics_update(void)
 		LOG_WRN("LTE connectivity stats collections failed, error: %d", err);
 	} else {
 		err = memfault_metrics_heartbeat_set_unsigned(
-			MEMFAULT_METRICS_KEY(ncs_lte_data_tx_kilobytes), tx_kbytes);
+			MEMFAULT_METRICS_KEY(ncs_lte_tx_kilobytes), tx_kbytes);
 		if (err) {
-			LOG_ERR("Failed to set ncs_lte_data_tx_kilobytes");
+			LOG_ERR("Failed to set ncs_lte_tx_kilobytes");
 		}
 
 		err = memfault_metrics_heartbeat_set_unsigned(
-			MEMFAULT_METRICS_KEY(ncs_lte_data_rx_kilobytes), rx_kybtes);
+			MEMFAULT_METRICS_KEY(ncs_lte_rx_kilobytes), rx_kybtes);
 		if (err) {
-			LOG_ERR("Failed to set ncs_lte_data_rx_kilobytes");
+			LOG_ERR("Failed to set ncs_lte_rx_kilobytes");
 		}
 	}
 
