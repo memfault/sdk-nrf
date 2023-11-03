@@ -94,6 +94,26 @@ static void lte_handler(const struct lte_lc_evt *const evt)
 	}
 #endif
 
+  // Get connectivity stats (data tx and rx)
+  int tx_kbytes;
+  int rx_kybtes;
+  err = modem_info_get_connectivity_stats(&tx_kbytes, &rx_kybtes);
+  if (err) {
+		LOG_WRN("LTE connectivity stats collections failed, error: %d", err);
+  } else {
+		err = memfault_metrics_heartbeat_set_unsigned(
+			MEMFAULT_METRICS_KEY(ncs_lte_tx_kilobytes), tx_kbytes);
+		if (err) {
+			LOG_ERR("Failed to set ncs_lte_tx_kilobytes");
+		}
+
+		err = memfault_metrics_heartbeat_set_unsigned(
+			MEMFAULT_METRICS_KEY(ncs_lte_rx_kilobytes), rx_kybtes);
+		if (err) {
+			LOG_ERR("Failed to set ncs_lte_rx_kilobytes");
+		}
+  }
+
 	switch (evt->type) {
 	case LTE_LC_EVT_NW_REG_STATUS:
 		switch (evt->nw_reg_status) {

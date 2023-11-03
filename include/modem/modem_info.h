@@ -176,9 +176,15 @@ int modem_info_params_init(struct modem_param_info *modem_param);
 int modem_info_rsrp_register(rsrp_cb_t cb);
 
 /**
+<<<<<<< HEAD
  * @brief Initialize collection of connectivity statistics
  *
  * @note The function will reset statistics if connectivity statistics
+=======
+ * @brief Initialize collection of connectivity stats
+ *
+ * @note The function will reset stats if connectivity stats
+>>>>>>> ed03ef609 (Add tx and rx bytes LTE metrics (#4))
  *       are already initialized/enabled.
  *
  * @return 0 If the operation was successful.
@@ -187,7 +193,11 @@ int modem_info_rsrp_register(rsrp_cb_t cb);
 int modem_info_connectivity_stats_init(void);
 
 /**
+<<<<<<< HEAD
  * @brief Disable collection of connectivity statistics
+=======
+ * @brief Disable collection of connectivity stats
+>>>>>>> ed03ef609 (Add tx and rx bytes LTE metrics (#4))
  *
  * @return 0 If the operation was successful.
  *           Otherwise, a (negative) error code is returned.
