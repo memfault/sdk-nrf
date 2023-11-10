@@ -75,6 +75,38 @@ tfm_platform_hal_fw_info_service(psa_invec  *in_vec, psa_outvec *out_vec)
 }
 #endif
 
+
+static enum tfm_platform_err_t
+tfm_platform_hal_ns_fault_service(const psa_invec *in_vec,
+					 const psa_outvec *out_vec)
+{
+	struct tfm_ns_fault_service_args *args;
+	struct tfm_ns_fault_service_out *out;
+
+	if (in_vec->len != sizeof(struct tfm_ns_fault_service_args) ||
+	    out_vec->len != sizeof(struct tfm_ns_fault_service_out)) {
+		return TFM_PLATFORM_ERR_INVALID_PARAM;
+	}
+
+	args = (struct tfm_ns_fault_service_args *)in_vec->base;
+	out = (struct tfm_ns_fault_service_out *)out_vec->base;
+	out->result = -1;
+
+	switch(args->type)
+	{
+	case TFM_NS_FAULT_SERVICE_TYPE_SET_HANDLER:
+		out->result = ns_fault_service_set_handler(args->set_handler.context, args->set_handler.callback);
+		break;
+	default:
+		return TFM_PLATFORM_ERR_NOT_SUPPORTED;
+	}
+
+
+	return TFM_PLATFORM_ERR_SUCCESS;
+}
+
+
+
 enum tfm_platform_err_t tfm_platform_hal_ioctl(tfm_platform_ioctl_req_t request,
                                                psa_invec  *in_vec,
                                                psa_outvec *out_vec)
@@ -93,6 +125,9 @@ enum tfm_platform_err_t tfm_platform_hal_ioctl(tfm_platform_ioctl_req_t request,
 	case TFM_PLATFORM_IOCTL_FW_INFO:
 		return tfm_platform_hal_fw_info_service(in_vec, out_vec);
 #endif
+	case TFM_PLATFORM_IOCTL_NS_FAULT:
+		return tfm_platform_hal_ns_fault_service(in_vec, out_vec);
+
 	/* Not a supported IOCTL service.*/
 	default:
 		return TFM_PLATFORM_ERR_NOT_SUPPORTED;

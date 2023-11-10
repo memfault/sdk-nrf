@@ -15,6 +15,7 @@
 #endif
 #include <pm_config.h>
 #include <hal/nrf_gpio.h>
+#include "hal/nrf_spim.h"
 
 #define HELLO_PATTERN "Hello World! %s"
 
@@ -62,6 +63,30 @@ static void print_hex_number(uint8_t *num, size_t len)
 	}
 	printk("\n");
 }
+
+static void spim_init(uint32_t sck_pin, uint32_t mosi_pin)
+{
+	nrf_spim_pins_set(NRF_SPIM3, sck_pin, mosi_pin, NRF_SPIM_PIN_NOT_CONNECTED);
+	nrf_spim_configure(NRF_SPIM3, NRF_SPIM_MODE_0, NRF_SPIM_BIT_ORDER_MSB_FIRST);
+#if SPIM0_FEATURE_HARDWARE_CSN_PRESENT
+	nrf_spim_csn_configure(NRF_SPIM3,
+		NRF_SPIM_PIN_NOT_CONNECTED,
+		NRF_SPIM_CSN_POL_LOW,
+		0);
+#endif
+	nrf_spim_frequency_set(NRF_SPIM3, NRF_SPIM_FREQ_2M);
+	nrf_spim_int_enable(NRF_SPIM3, NRF_SPIM_INT_ENDTX_MASK);
+	nrf_spim_enable(NRF_SPIM3);
+}
+
+static void spim_send(const uint8_t *buf, size_t len)
+{
+	nrf_spim_tx_buffer_set(NRF_SPIM3, buf, len);
+	nrf_spim_rx_buffer_set(NRF_SPIM3, buf, len);
+
+	nrf_spim_task_trigger(NRF_SPIM3, NRF_SPIM_TASK_START);
+}
+
 
 int main(void)
 {
@@ -150,5 +175,15 @@ int main(void)
 
 	printk("Finished\n");
 
+#if 1
+	spim_init(255, 255);
+	spim_send(0x20000000, 100);
+#endif
+
+#if 0
+	volatile uint32_t *null_ptr =(void *)0x0;
+	*null_ptr = 0xbadcafe;
+#endif
+	printk("Spim stuff\n");
 	return 0;
 }

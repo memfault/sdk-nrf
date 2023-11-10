@@ -263,6 +263,7 @@ config TFM_ALLOW_NON_SECURE_RESET
 config TFM_ALLOW_NON_SECURE_FAULT_HANDLING
 	bool "Handle faults originating from non-secure code in Zephyr"
 	default y
+	depends on TFM_EXCEPTION_INFO_DUMP
 	help
 	  When a BusFault or SecureFault originates from non-secure code,
 	  allow the Zephyr fault handler to handle the exception. This is

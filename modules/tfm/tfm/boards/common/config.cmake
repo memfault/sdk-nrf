@@ -4,8 +4,10 @@
 # SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
 #
 
-# Override the AEAD algorithm configuration
+# Override the platform crypto key handling
 set(PLATFORM_DEFAULT_CRYPTO_KEYS        FALSE       CACHE BOOL      "Use default crypto keys implementation.")
+
+set(PLATFORM_DEFAULT_SYSTEM_RESET_HALT  OFF         CACHE BOOL      "Use default system reset/halt implementation")
 
 # Disable crypto regression tests that are not supported
 set(TFM_CRYPTO_TEST_ALG_CFB             OFF         CACHE BOOL      "Test CFB cryptography mode")
@@ -17,6 +19,7 @@ set(NRF_NS_STORAGE                      ON          CACHE BOOL      "Enable non-
 set(PLATFORM_DEFAULT_ATTEST_HAL         OFF         CACHE BOOL      "Use default attest hal implementation.")
 
 set(NRF_ALLOW_NON_SECURE_RESET          OFF         CACHE BOOL      "Allow system reset calls from Non-Secure")
+set(NRF_ALLOW_NON_SECURE_FAULT_HANDLING OFF         CACHE BOOL      "Allow Non-Secure to handle Secure faults triggered by Non-Secure")
 
 set(TFM_DUMMY_PROVISIONING              OFF         CACHE BOOL      "Provision with dummy values. NOT to be used in production")
 set(PLATFORM_DEFAULT_PROVISIONING       OFF         CACHE BOOL      "Use default provisioning implementation")

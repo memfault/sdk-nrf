@@ -85,7 +85,7 @@ enum tfm_plat_err_t tfm_plat_provisioning_perform(void)
     }
 
     /* Perform a mandatory reset since we switch to an attestable LCS state */
-    tfm_hal_system_reset();
+    tfm_platform_hal_system_reset();
 
     /*
      * We should never return from this function, a reset should be triggered
