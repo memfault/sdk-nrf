@@ -154,6 +154,18 @@ void ns_fault_handling(void)
 		return;
 	}
 
+	/* Adjust EXC_RETURN value to emulate NS exception entry */
+	exc_ctx.EXC_RETURN &= ~EXC_RETURN_ES;
+
+	/* Update SPSEL to reflect correct CONTROL_NS.SPSEL setting */
+	exc_ctx.EXC_RETURN &= ~(EXC_RETURN_SPSEL);
+	CONTROL_Type ctrl_ns;
+	ctrl_ns.w = __TZ_get_CONTROL_NS();
+	if (ctrl_ns.b.SPSEL) {
+		exc_ctx.EXC_RETURN |= EXC_RETURN_SPSEL;
+	}
+
+
 	if (ns_callback) {
 		call_ns_callback(&exc_ctx);
 	}
