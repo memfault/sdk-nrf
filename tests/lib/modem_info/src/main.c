@@ -34,7 +34,7 @@ FAKE_VALUE_FUNC_VARARG(int, nrf_modem_at_scanf, const char *, const char *, ...)
 #define EXAMPLE_RSRP_INVALID 255
 #define EXAMPLE_RSRP_VALID 160
 #define RSRP_OFFSET 140
-#define EXAMPLE_BAND	     13
+#define EXAMPLE_BAND 13
 #define EXAMPLE_BAND_MAX_VAL 71
 
 struct at_param at_params[10] = {};
@@ -488,7 +488,7 @@ void test_modem_info_get_current_band_unavailable(void)
 	nrf_modem_at_scanf_fake.custom_fake = nrf_modem_at_scanf_custom_xcband_unavailable;
 
 	int ret = modem_info_get_current_band(&band);
-	TEST_ASSERT_EQUAL(-1, ret);
+	TEST_ASSERT_EQUAL(-ENOMSG, ret);
 	TEST_ASSERT_EQUAL(1, nrf_modem_at_scanf_fake.call_count);
 }
 

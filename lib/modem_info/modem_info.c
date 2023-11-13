@@ -944,7 +944,7 @@ int modem_info_get_current_band(uint8_t *band)
 	}
 
 	if (*band == BAND_UNAVAILABLE) {
-		return -1;
+		return -ENOMSG;
 	}
 
 	return 0;

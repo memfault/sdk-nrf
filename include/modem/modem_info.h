@@ -358,7 +358,7 @@ int modem_info_get_connectivity_stats(int *tx_kbytes, int *rx_kbytes);
  * @brief Obtain the current band
  *
  * @param band_id id of the current band
- * @return int 0 if operation was sucessful.
+ * @return 0 if operation was sucessful.
  *          Otherwise, a (negative) error code is returned
  */
 int modem_info_get_current_band(uint8_t *band_id);
