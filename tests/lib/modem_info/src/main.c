@@ -544,7 +544,10 @@ void test_modem_info_get_rsrp_success(void)
 void test_modem_info_get_current_band_null(void)
 {
 	int ret = modem_info_get_current_band(NULL);
+<<<<<<< HEAD
 
+=======
+>>>>>>> a2e98b7c1 (Add LTE frequency band metric (#7))
 	TEST_ASSERT_EQUAL(-EINVAL, ret);
 	TEST_ASSERT_EQUAL(0, nrf_modem_at_scanf_fake.call_count);
 }
@@ -556,7 +559,10 @@ void test_modem_info_get_current_band_success(void)
 	nrf_modem_at_scanf_fake.custom_fake = nrf_modem_at_scanf_custom_xcband;
 
 	int ret = modem_info_get_current_band(&band);
+<<<<<<< HEAD
 
+=======
+>>>>>>> a2e98b7c1 (Add LTE frequency band metric (#7))
 	TEST_ASSERT_EQUAL(0, ret);
 	TEST_ASSERT_EQUAL(EXAMPLE_BAND, band);
 	TEST_ASSERT_EQUAL(1, nrf_modem_at_scanf_fake.call_count);
@@ -569,7 +575,6 @@ void test_modem_info_get_current_band_success_max_val(void)
 	nrf_modem_at_scanf_fake.custom_fake = nrf_modem_at_scanf_custom_xcband_max_val;
 
 	int ret = modem_info_get_current_band(&band);
-
 	TEST_ASSERT_EQUAL(0, ret);
 	TEST_ASSERT_EQUAL(EXAMPLE_BAND_MAX_VAL, band);
 	TEST_ASSERT_EQUAL(1, nrf_modem_at_scanf_fake.call_count);
