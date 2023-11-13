@@ -104,6 +104,19 @@ static void lte_handler(const struct lte_lc_evt *const evt)
 	  err = memfault_metrics_heartbeat_set_unsigned(MEMFAULT_METRICS_KEY(ncs_lte_band), band);
 	  if (err) {
 			LOG_ERR("Failed to set nce_lte_band");
+    }
+  }
+  
+  // Get the operator
+  char operator_name[MODEM_INFO_MAX_SHORT_OP_NAME_SIZE];
+  err = modem_info_get_operator(operator_name, sizeof(operator_name));
+  if (err != 0) {
+	  LOG_WRN("Network operator collection failed, error: %d", err);
+  } else {
+	  err = memfault_metrics_heartbeat_set_string(MEMFAULT_METRICS_KEY(ncs_lte_operator),
+						      operator_name);
+	  if (err) {
+		  LOG_ERR("Failed to set ncs_lte_operator");
 	  }
   }
 

@@ -46,6 +46,7 @@ LOG_MODULE_REGISTER(modem_info);
 #define AT_CMD_XCONNSTAT	"AT%XCONNSTAT?"
 #define AT_CMD_XCONNSTAT_ON	"AT%%XCONNSTAT=1"
 #define AT_CMD_XCONNSTAT_OFF	"AT%%XCONNSTAT=0"
+#define AT_CMD_XMONITOR		"AT%%XMONITOR"
 #define AT_CMD_SUCCESS_SIZE	5
 
 #define RSRP_DATA_NAME		"rsrp"
@@ -146,6 +147,11 @@ LOG_MODULE_REGISTER(modem_info);
 
 #define HWVER_CMD_STR "HWVERSION"
 #define HWVER_FMT_STR "%%%%" HWVER_CMD_STR ": %%%d[^" AT_CMD_RSP_DELIM "]"
+
+// TODO: Confirm - these are educated guesses at the moment, based upon various
+// #define values in the library. Get input from Nordic on these later.
+#define XMONITOR_CMD_MAX_RESPONSE_LEN		300
+#define XMONITOR_CMD_MIN_RESPONSE_WITH_OPERATOR 10
 
 struct modem_info_data {
 	const char *cmd;
@@ -946,6 +952,42 @@ int modem_info_get_current_band(uint8_t *band)
 	if (*band == BAND_UNAVAILABLE) {
 		return -ENOMSG;
 	}
+
+	return 0;
+}
+
+int modem_info_get_operator(char *buf, size_t len)
+{
+	if (buf == NULL || len < MODEM_INFO_MAX_SHORT_OP_NAME_SIZE) {
+		return -EINVAL;
+	}
+
+	char response[XMONITOR_CMD_MAX_RESPONSE_LEN];
+	int ret = nrf_modem_at_cmd(response, sizeof(response), AT_CMD_XMONITOR);
+
+	if (ret) {
+		return map_nrf_modem_at_scanf_error(ret);
+	}
+
+	// Return if no operator has been reported
+	if (strlen(response) < XMONITOR_CMD_MIN_RESPONSE_WITH_OPERATOR) {
+		return -ENOMSG;
+	}
+
+	// To get to the start of the short operator name, jump to the second comma
+	// then move forward two chars (skip comma + quote). To get to the end, jump to the comma
+	// after the start, then move back two chars (skip comma + quote).
+	// See below for an illustration:
+	//         %XMONITOR: 1,"LONG_OPERATOR_NAME","SHORT_OP_NAME",...
+	//                                            ^           ^
+	//                                            |           |
+	//                                          start        end
+	const char comma = ',';
+	char *start = strchr(response, comma) + 1;
+	start = strchr(start, comma) + 2;
+	char *end = strchr(start, comma) - 2;
+	memcpy(buf, start, (end - start) + 1);
+	buf[(end - start) + 1] = '\0'; // Null terminate
 
 	return 0;
 }
