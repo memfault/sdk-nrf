@@ -128,6 +128,7 @@ struct tfm_ns_fault_service_handler_context_status {
 };
 
 struct tfm_ns_fault_service_handler_context {
+	bool valid;
 	struct tfm_ns_fault_service_handler_context_registers registers;
 	struct tfm_ns_fault_service_handler_context_frame frame;
 	struct tfm_ns_fault_service_handler_context_status status;

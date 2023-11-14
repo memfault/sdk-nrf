@@ -72,6 +72,7 @@ void call_ns_callback(struct exception_info_t *exc_info)
 	ns_callback_context->status.psp = __TZ_get_PSP_NS();
 
 	ns_callback_context->status.exc_return = exc_info->EXC_RETURN;
+	ns_callback_context->valid = true;
 
 
 	/* Already saved */

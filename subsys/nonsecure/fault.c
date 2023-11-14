@@ -40,6 +40,13 @@ void tfm_ns_fault_handler_callback(void)
 	z_arm_fatal_error(K_ERR_CPU_EXCEPTION, &esf);
 }
 
+struct tfm_ns_fault_service_handler_context *tfm_ns_fault_get_context(void) {
+	if (!g_context.valid) {
+		return NULL;
+	}
+	return &g_context;
+}
+
 static int nonsecure_init(void)
 {
 	int err = 0;
