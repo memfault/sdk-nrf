@@ -14,6 +14,7 @@ MEMFAULT_METRICS_KEY_DEFINE(NcsBtTxUnusedStack, kMemfaultMetricType_Unsigned)
 
 #if defined(CONFIG_MODEM_INFO)
 MEMFAULT_METRICS_STRING_KEY_DEFINE(Ncs_LteModemFwVersion, MODEM_INFO_FWVER_SIZE)
+MEMFAULT_METRICS_STRING_KEY_DEFINE(ncs_lte_operator, MODEM_INFO_MAX_SHORT_OP_NAME_SIZE)
 #endif /* defined(CONFIG_MODEM_INFO) */
 
 MEMFAULT_METRICS_KEY_DEFINE(Ncs_LteTimeToConnect, kMemfaultMetricType_Timer)
@@ -28,7 +29,6 @@ MEMFAULT_METRICS_KEY_DEFINE(ncs_lte_tx_kilobytes, kMemfaultMetricType_Unsigned)
 MEMFAULT_METRICS_KEY_DEFINE(ncs_lte_rx_kilobytes, kMemfaultMetricType_Unsigned)
 MEMFAULT_METRICS_KEY_DEFINE(ncs_lte_reset_loop_detected_count, kMemfaultMetricType_Unsigned)
 MEMFAULT_METRICS_KEY_DEFINE(ncs_lte_band, kMemfaultMetricType_Unsigned)
-MEMFAULT_METRICS_STRING_KEY_DEFINE(ncs_lte_operator, MODEM_INFO_MAX_SHORT_OP_NAME_SIZE)
 #endif /* CONFIG_MEMFAULT_NCS_LTE_METRICS */
 
 #ifdef CONFIG_MEMFAULT_NCS_BT_METRICS
