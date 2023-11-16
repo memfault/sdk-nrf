@@ -13,6 +13,7 @@
 #include <modem/modem_info.h>
 #include <nrf_errno.h>
 #include <zephyr/net/socket.h>
+#include <zephyr/toolchain.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -152,6 +153,9 @@ LOG_MODULE_REGISTER(modem_info);
 // #define values in the library. Get input from Nordic on these later.
 #define XMONITOR_CMD_MAX_RESPONSE_LEN		300
 #define XMONITOR_CMD_SHORT_OPERATOR_IDX		2
+#define MAX_SHORT_OP_NAME_SIZE_WITHOUT_NULL_TERM 15
+BUILD_ASSERT(MAX_SHORT_OP_NAME_SIZE_WITHOUT_NULL_TERM == (MODEM_INFO_MAX_SHORT_OP_NAME_SIZE - 1),
+	     "Short operator size macros must match");
 
 struct modem_info_data {
 	const char *cmd;
@@ -968,39 +972,14 @@ int modem_info_get_operator(char *buf, size_t len)
 	if (ret) {
 		return map_nrf_modem_at_scanf_error(ret);
 	}
+	int result =
+		sscanf(response, "%%XMONITOR: %*[^,],%*[^,],\"%" STRINGIFY(MAX_SHORT_OP_NAME_SIZE_WITHOUT_NULL_TERM) "[^\"]\",", buf);
 
-	// To get to the start of the short operator name, jump to the second comma
-	// then move forward two chars (skip comma + quote). To get to the end, jump to the comma
-	// after the start, then move back two chars (skip comma + quote).
-	// See below for an illustration:
-	//         %XMONITOR: 1,"LONG_OPERATOR_NAME","SHORT_OP_NAME",...
-	//                                            ^           ^
-	//                                            |           |
-	//                                          start        end
-	const char comma = ',';
-	char *start = response;
-	for (size_t i = 0; i < XMONITOR_CMD_SHORT_OPERATOR_IDX; ++i) {
-		start = strchr(start, comma);
-		if (start == NULL) {
-			return -ENOMSG; // operator not reported
-		}
-		start += 2;
+	if (result != 1) {
+		return -ENOMSG;
 	}
 
-	char *end = strchr(start, comma);
-	if (end == NULL) {
-		return -ENOMSG; // unexpected format
-	}
-	end -= 2;
-
-	if (end < start) {
-		return -ENOMSG; // empty operator name
-	} else if (((end - start) + 1) > (MODEM_INFO_MAX_SHORT_OP_NAME_SIZE - 1)) {
-		return -ERANGE; // operator name is too large
-	}
-
-	memcpy(buf, start, (end - start) + 1);
-	buf[(end - start) + 1] = '\0'; // Null terminate
+	buf[len - 1] = '\0'; // Null terminate
 
 	return 0;
 }

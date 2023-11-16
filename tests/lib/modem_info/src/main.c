@@ -39,6 +39,7 @@ FAKE_VALUE_FUNC_VARARG(int, nrf_modem_at_cmd, void *, size_t, const char *, ...)
 #define EXAMPLE_BAND_MAX_VAL 71
 #define EXAMPLE_ONE_LETTER_OPERATOR_NAME "O"
 #define EXAMPLE_SHORT_OPERATOR_NAME "OP"
+#define EXAMPLE_TOO_LARGE_OPERATOR_NAME "TOO_LARGE_OPERATOR_NAME"
 
 // TODO: Confirm - this is an educated guess at the moment, based upon various
 // #define values in the library. Get input from Nordic on this later.
@@ -211,11 +212,8 @@ static int nrf_modem_at_cmd_custom_xmonitor_too_large_operator(void *buf, size_t
 	TEST_ASSERT_EQUAL_STRING("AT%%XMONITOR", fmt);
 
 	// Construct the response
-	char operator_name[MODEM_INFO_MAX_SHORT_OP_NAME_SIZE + 1];
-	memset(operator_name, 'S', sizeof(operator_name));
-	operator_name[sizeof(operator_name) - 1] = '\0';
 	char xmonitor_resp[XMONITOR_CMD_MAX_RESPONSE_LEN] = "%XMONITOR: 1,\"Operator\",\"";
-	strcat(xmonitor_resp, operator_name);
+	strcat(xmonitor_resp, EXAMPLE_TOO_LARGE_OPERATOR_NAME);
 	strcat(xmonitor_resp, "\",\"20065\",\"4321\",7,20,\"12345678\",334,6200,66,44,\"\","
 			      "\"11100000\",\"00010011\",\"01001001\"");
 
@@ -624,11 +622,16 @@ void test_modem_info_get_operator_empty(void)
 void test_modem_info_get_operator_too_large(void)
 {
 	char buffer[MODEM_INFO_MAX_SHORT_OP_NAME_SIZE];
+	char at_cmd_response[] = EXAMPLE_TOO_LARGE_OPERATOR_NAME;
+	char expected_substr[MODEM_INFO_MAX_SHORT_OP_NAME_SIZE];
+	strncpy(expected_substr, at_cmd_response, MODEM_INFO_MAX_SHORT_OP_NAME_SIZE - 1);
+	expected_substr[MODEM_INFO_MAX_SHORT_OP_NAME_SIZE - 1] = '\0';
 
 	nrf_modem_at_cmd_fake.custom_fake = nrf_modem_at_cmd_custom_xmonitor_too_large_operator;
 
 	int ret = modem_info_get_operator(buffer, sizeof(buffer));
-	TEST_ASSERT_EQUAL(-ERANGE, ret);
+	TEST_ASSERT_EQUAL(0, ret);
+	TEST_ASSERT_EQUAL_STRING(expected_substr, buffer);
 	TEST_ASSERT_EQUAL(1, nrf_modem_at_cmd_fake.call_count);
 }
 
