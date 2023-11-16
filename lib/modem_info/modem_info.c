@@ -151,7 +151,7 @@ LOG_MODULE_REGISTER(modem_info);
 // TODO: Confirm - these are educated guesses at the moment, based upon various
 // #define values in the library. Get input from Nordic on these later.
 #define XMONITOR_CMD_MAX_RESPONSE_LEN		300
-#define XMONITOR_CMD_MIN_RESPONSE_WITH_OPERATOR 10
+#define XMONITOR_CMD_SHORT_OPERATOR_IDX		2
 
 struct modem_info_data {
 	const char *cmd;
@@ -969,11 +969,6 @@ int modem_info_get_operator(char *buf, size_t len)
 		return map_nrf_modem_at_scanf_error(ret);
 	}
 
-	// Return if no operator has been reported
-	if (strlen(response) < XMONITOR_CMD_MIN_RESPONSE_WITH_OPERATOR) {
-		return -ENOMSG;
-	}
-
 	// To get to the start of the short operator name, jump to the second comma
 	// then move forward two chars (skip comma + quote). To get to the end, jump to the comma
 	// after the start, then move back two chars (skip comma + quote).
@@ -983,9 +978,27 @@ int modem_info_get_operator(char *buf, size_t len)
 	//                                            |           |
 	//                                          start        end
 	const char comma = ',';
-	char *start = strchr(response, comma) + 1;
-	start = strchr(start, comma) + 2;
-	char *end = strchr(start, comma) - 2;
+	char *start = response;
+	for (size_t i = 0; i < XMONITOR_CMD_SHORT_OPERATOR_IDX; ++i) {
+		start = strchr(start, comma);
+		if (start == NULL) {
+			return -ENOMSG; // operator not reported
+		}
+		start += 2;
+	}
+
+	char *end = strchr(start, comma);
+	if (end == NULL) {
+		return -ENOMSG; // unexpected format
+	}
+	end -= 2;
+
+	if (end < start) {
+		return -ENOMSG; // empty operator name
+	} else if (((end - start) + 1) > (MODEM_INFO_MAX_SHORT_OP_NAME_SIZE - 1)) {
+		return -ERANGE; // operator name is too large
+	}
+
 	memcpy(buf, start, (end - start) + 1);
 	buf[(end - start) + 1] = '\0'; // Null terminate
 
