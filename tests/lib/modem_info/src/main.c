@@ -39,11 +39,19 @@ FAKE_VALUE_FUNC_VARARG(int, nrf_modem_at_cmd, void *, size_t, const char *, ...)
 #define EXAMPLE_BAND_MAX_VAL 71
 #define EXAMPLE_ONE_LETTER_OPERATOR_NAME "O"
 #define EXAMPLE_SHORT_OPERATOR_NAME "OP"
+<<<<<<< HEAD
 #define EXAMPLE_SNR 47
 
 #define SHORT_OP_NAME_SIZE_WITHOUT_NULL_TERM 64
 BUILD_ASSERT(SHORT_OP_NAME_SIZE_WITHOUT_NULL_TERM == (MODEM_INFO_SHORT_OP_NAME_SIZE - 1),
 	     "Short operator size macros must match");
+=======
+#define EXAMPLE_TOO_LARGE_OPERATOR_NAME "TOO_LARGE_OPERATOR_NAME"
+
+// TODO: Confirm - this is an educated guess at the moment, based upon various
+// #define values in the library. Get input from Nordic on this later.
+#define XMONITOR_CMD_MAX_RESPONSE_LEN 300
+>>>>>>> 30385fc7f (Add operator name to LTE metrics (#5))
 
 struct at_param at_params[10] = {};
 static struct at_param_list m_param_list = {
@@ -265,11 +273,83 @@ static int nrf_modem_at_scanf_custom_snr(const char *cmd, const char *fmt, va_li
 	return 1;
 }
 
+static int nrf_modem_at_cmd_custom_xmonitor_no_operator(void *buf, size_t len, const char *fmt,
+							va_list args)
+{
+	TEST_ASSERT_EQUAL_STRING("AT%%XMONITOR", fmt);
+	char xmonitor_resp[XMONITOR_CMD_MAX_RESPONSE_LEN] = "%XMONITOR: 2\r\nOK\r\n";
+	char *response = (char *)buf;
+	memcpy(response, xmonitor_resp, sizeof(xmonitor_resp));
+	return 0;
+}
+
+static int nrf_modem_at_cmd_custom_xmonitor_empty_operator(void *buf, size_t len, const char *fmt,
+							   va_list args)
+{
+	TEST_ASSERT_EQUAL_STRING("AT%%XMONITOR", fmt);
+	char xmonitor_resp[XMONITOR_CMD_MAX_RESPONSE_LEN] =
+		"%XMONITOR: 1,\"Operator\",\""
+		"\",\"20065\",\"4321\",7,20,\"12345678\",334,6200,66,44,\"\","
+		"\"11100000\",\"00010011\",\"01001001\"";
+	char *response = (char *)buf;
+	memcpy(response, xmonitor_resp, sizeof(xmonitor_resp));
+	return 0;
+}
+
+static int nrf_modem_at_cmd_custom_xmonitor_too_large_operator(void *buf, size_t len,
+							       const char *fmt, va_list args)
+{
+	TEST_ASSERT_EQUAL_STRING("AT%%XMONITOR", fmt);
+
+	// Construct the response
+	char xmonitor_resp[XMONITOR_CMD_MAX_RESPONSE_LEN] = "%XMONITOR: 1,\"Operator\",\"";
+	strcat(xmonitor_resp, EXAMPLE_TOO_LARGE_OPERATOR_NAME);
+	strcat(xmonitor_resp, "\",\"20065\",\"4321\",7,20,\"12345678\",334,6200,66,44,\"\","
+			      "\"11100000\",\"00010011\",\"01001001\"");
+
+	char *response = (char *)buf;
+	memcpy(response, xmonitor_resp, sizeof(xmonitor_resp));
+	return 0;
+}
+
+static int nrf_modem_at_cmd_custom_xmonitor_one_letter_success(void *buf, size_t len,
+							       const char *fmt, va_list args)
+{
+	TEST_ASSERT_EQUAL_STRING("AT%%XMONITOR", fmt);
+
+	// Construct the response
+	char xmonitor_resp[XMONITOR_CMD_MAX_RESPONSE_LEN] = "%XMONITOR: 1,\"Operator\",\"";
+	strcat(xmonitor_resp, EXAMPLE_ONE_LETTER_OPERATOR_NAME);
+	strcat(xmonitor_resp, "\",\"20065\",\"4321\",7,20,\"12345678\",334,6200,66,44,\"\","
+			      "\"11100000\",\"00010011\",\"01001001\"");
+
+	char *response = (char *)buf;
+	memcpy(response, xmonitor_resp, sizeof(xmonitor_resp));
+	return 0;
+}
+
+static int nrf_modem_at_cmd_custom_xmonitor_shortname_success(void *buf, size_t len,
+							      const char *fmt, va_list args)
+{
+	TEST_ASSERT_EQUAL_STRING("AT%%XMONITOR", fmt);
+
+	// Construct the response
+	char xmonitor_resp[XMONITOR_CMD_MAX_RESPONSE_LEN] = "%XMONITOR: 1,\"Operator\",\"";
+	strcat(xmonitor_resp, EXAMPLE_SHORT_OPERATOR_NAME);
+	strcat(xmonitor_resp, "\",\"20065\",\"4321\",7,20,\"12345678\",334,6200,66,44,\"\","
+			      "\"11100000\",\"00010011\",\"01001001\"");
+
+	char *response = (char *)buf;
+	memcpy(response, xmonitor_resp, sizeof(xmonitor_resp));
+	return 0;
+}
+
 void setUp(void)
 {
 	RESET_FAKE(nrf_modem_at_notif_handler_set);
 	RESET_FAKE(at_params_list_init);
 	RESET_FAKE(nrf_modem_at_scanf);
+	RESET_FAKE(nrf_modem_at_cmd);
 }
 
 void tearDown(void)
@@ -544,10 +624,6 @@ void test_modem_info_get_rsrp_success(void)
 void test_modem_info_get_current_band_null(void)
 {
 	int ret = modem_info_get_current_band(NULL);
-<<<<<<< HEAD
-
-=======
->>>>>>> a2e98b7c1 (Add LTE frequency band metric (#7))
 	TEST_ASSERT_EQUAL(-EINVAL, ret);
 	TEST_ASSERT_EQUAL(0, nrf_modem_at_scanf_fake.call_count);
 }
@@ -559,10 +635,6 @@ void test_modem_info_get_current_band_success(void)
 	nrf_modem_at_scanf_fake.custom_fake = nrf_modem_at_scanf_custom_xcband;
 
 	int ret = modem_info_get_current_band(&band);
-<<<<<<< HEAD
-
-=======
->>>>>>> a2e98b7c1 (Add LTE frequency band metric (#7))
 	TEST_ASSERT_EQUAL(0, ret);
 	TEST_ASSERT_EQUAL(EXAMPLE_BAND, band);
 	TEST_ASSERT_EQUAL(1, nrf_modem_at_scanf_fake.call_count);
