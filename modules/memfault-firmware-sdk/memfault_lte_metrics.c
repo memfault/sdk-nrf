@@ -28,7 +28,7 @@ static bool connect_timer_started;
 #if CONFIG_MEMFAULT_NCS_STACK_METRICS
 static struct memfault_ncs_metrics_thread lte_metrics_thread = {
 	.thread_name = "connection_poll_thread",
-	.key = MEMFAULT_METRICS_KEY(Ncs_ConnectionPollUnusedStack)
+	.key = MEMFAULT_METRICS_KEY(ncs_connection_poll_unused_stack)
 };
 #endif /* CONFIG_MEMFAULT_NCS_STACK_METRICS */
 
@@ -46,7 +46,7 @@ static void lte_trace_cb(enum lte_lc_trace_type type)
 		}
 
 		err = memfault_metrics_heartbeat_timer_start(
-			MEMFAULT_METRICS_KEY(Ncs_LteTimeToConnect));
+			MEMFAULT_METRICS_KEY(ncs_lte_time_to_connect_ms));
 		if (err) {
 			LOG_WRN("LTE connection time tracking was not started, error: %d", err);
 		} else {
@@ -70,9 +70,9 @@ static void lte_handler(const struct lte_lc_evt *const evt)
     LOG_WRN("LTE RSRP value collection failed, error: %d", err);
   } else {
     err = memfault_metrics_heartbeat_set_signed(
-			MEMFAULT_METRICS_KEY(Ncs_LteRsrp), rsrp);
+			MEMFAULT_METRICS_KEY(ncs_lte_rsrp_dbm), rsrp);
 		if (err) {
-			LOG_ERR("Failed to set Ncs_LteRsrp");
+			LOG_ERR("Failed to set ncs_lte_rsrp_dbm");
 		}
   };
 
@@ -146,16 +146,16 @@ static void lte_handler(const struct lte_lc_evt *const evt)
 			connected = true;
 
 			if (!connect_timer_started) {
-				LOG_WRN("Ncs_LteTimeToConnect was not started");
+				LOG_WRN("ncs_lte_time_to_connect_ms was not started");
 				break;
 			}
 
 			err = memfault_metrics_heartbeat_timer_stop(
-				MEMFAULT_METRICS_KEY(Ncs_LteTimeToConnect));
+				MEMFAULT_METRICS_KEY(ncs_lte_time_to_connect_ms));
 			if (err) {
 				LOG_WRN("Failed to stop LTE connection timer, error: %d", err);
 			} else {
-				LOG_DBG("Ncs_LteTimeToConnect stopped");
+				LOG_DBG("ncs_lte_time_to_connect_ms stopped");
 				connect_timer_started = false;
 			}
 
@@ -167,9 +167,9 @@ static void lte_handler(const struct lte_lc_evt *const evt)
 		case LTE_LC_NW_REG_UICC_FAIL:
 			if (connected) {
 				err = memfault_metrics_heartbeat_add(
-					MEMFAULT_METRICS_KEY(Ncs_LteConnectionLossCount), 1);
+					MEMFAULT_METRICS_KEY(ncs_lte_connection_loss_count), 1);
 				if (err) {
-					LOG_ERR("Failed to increment Ncs_LteConnectionLossCount");
+					LOG_ERR("Failed to increment ncs_lte_connection_loss_count");
 				}
 
 				if (connect_timer_started) {
@@ -177,12 +177,12 @@ static void lte_handler(const struct lte_lc_evt *const evt)
 				}
 
 				err = memfault_metrics_heartbeat_timer_start(
-					MEMFAULT_METRICS_KEY(Ncs_LteTimeToConnect));
+					MEMFAULT_METRICS_KEY(ncs_lte_time_to_connect_ms));
 				if (err) {
 					LOG_WRN("Failed to start LTE connection timer, error: %d",
 						err);
 				} else {
-					LOG_DBG("Ncs_LteTimeToConnect started");
+					LOG_DBG("ncs_lte_time_to_connect_ms started");
 					connect_timer_started = true;
 				}
 			}
@@ -194,13 +194,13 @@ static void lte_handler(const struct lte_lc_evt *const evt)
 		}
 	case LTE_LC_EVT_PSM_UPDATE:
 		err = memfault_metrics_heartbeat_set_signed(
-			MEMFAULT_METRICS_KEY(Ncs_LtePsmTauSec), evt->psm_cfg.tau);
+			MEMFAULT_METRICS_KEY(ncs_lte_psm_tau_seconds), evt->psm_cfg.tau);
 		if (err) {
 			LOG_ERR("Failed to set Ncs_LtePsmTau");
 		}
 
 		err = memfault_metrics_heartbeat_set_signed(
-			MEMFAULT_METRICS_KEY(Ncs_LtePsmActiveTimeSec), evt->psm_cfg.active_time);
+			MEMFAULT_METRICS_KEY(ncs_lte_psm_active_time_seconds), evt->psm_cfg.active_time);
 		if (err) {
 			LOG_ERR("Failed to set Ncs_LtePsmActiveTime");
 		}
@@ -208,14 +208,14 @@ static void lte_handler(const struct lte_lc_evt *const evt)
 		break;
 	case LTE_LC_EVT_EDRX_UPDATE:
 		err = memfault_metrics_heartbeat_set_unsigned(
-			MEMFAULT_METRICS_KEY(Ncs_LteEdrxIntervalMsec),
+			MEMFAULT_METRICS_KEY(ncs_lte_edrx_interval_ms),
 					     (uint32_t)(evt->edrx_cfg.edrx * MSEC_PER_SEC));
 		if (err) {
 			LOG_ERR("Failed to set Ncs_LteEdrxInterval");
 		}
 
 		err = memfault_metrics_heartbeat_set_unsigned(
-			MEMFAULT_METRICS_KEY(Ncs_LteEdrxPtwMsec),
+			MEMFAULT_METRICS_KEY(ncs_lte_edrx_ptw_ms),
 					     (uint32_t)(evt->edrx_cfg.ptw * MSEC_PER_SEC));
 		if (err) {
 			LOG_ERR("Failed to set Ncs_LteEdrxPtw");
@@ -224,9 +224,9 @@ static void lte_handler(const struct lte_lc_evt *const evt)
 		break;
 	case LTE_LC_EVT_LTE_MODE_UPDATE:
 		err = memfault_metrics_heartbeat_set_unsigned(
-			MEMFAULT_METRICS_KEY(Ncs_LteMode), evt->lte_mode);
+			MEMFAULT_METRICS_KEY(ncs_lte_mode), evt->lte_mode);
 		if (err) {
-			LOG_ERR("Failed to set Ncs_LteMode");
+			LOG_ERR("Failed to set ncs_lte_mode");
 		}
 
 		break;
@@ -253,7 +253,7 @@ void memfault_lte_metrics_init(void)
 	/* Ensure null-termination */
 	buf[sizeof(buf) - 1] = '\0';
 
-	memfault_metrics_heartbeat_set_string(MEMFAULT_METRICS_KEY(Ncs_LteModemFwVersion), buf);
+	memfault_metrics_heartbeat_set_string(MEMFAULT_METRICS_KEY(ncs_lte_modem_fw_version), buf);
 
 	int err = modem_info_connectivity_stats_init();
 	if (err) {

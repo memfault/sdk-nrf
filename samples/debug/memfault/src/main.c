@@ -87,7 +87,7 @@ static void on_connect(void)
 	uint32_t time_to_lte_connection;
 
 	/* Retrieve the LTE time to connect metric. */
-	memfault_metrics_heartbeat_timer_read(MEMFAULT_METRICS_KEY(Ncs_LteTimeToConnect),
+	memfault_metrics_heartbeat_timer_read(MEMFAULT_METRICS_KEY(ncs_lte_time_to_connect_ms),
 					      &time_to_lte_connection);
 
 	LOG_INF("Time to connect: %d ms", time_to_lte_connection);
