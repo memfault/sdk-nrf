@@ -57,6 +57,12 @@ extern "C" {
 /** SNR offset value. */
 #define SNR_OFFSET_VAL 24
 
+/** SNR unavailable value. */
+#define SNR_UNAVAILABLE	 127
+
+/** SNR offset value. */
+#define SNR_OFFSET_VAL 24
+
 /** Modem returns RSRP and RSRQ as index values which require
  * a conversion to dBm and dB respectively. See modem AT
  * command reference guide for more information.
@@ -412,6 +418,15 @@ int modem_info_get_snr(int *val);
  *          Otherwise, a (negative) error code is returned
  */
 int modem_info_get_operator(char *buf, size_t len);
+
+/**
+ * @brief Obtain the signal-to-noise ratio
+ *
+ * @param snr current SNR
+ * @return 0 if operation was sucessful.
+ *          Otherwise, a (negative) error code is returned
+ */
+int modem_info_get_snr(int *snr);
 
 /** @} */
 

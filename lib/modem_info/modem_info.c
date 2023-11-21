@@ -1008,6 +1008,27 @@ int modem_info_get_snr(int *val)
 	return 0;
 }
 
+int modem_info_get_snr(int *snr)
+{
+	if (snr == NULL) {
+		return -EINVAL;
+	}
+
+	int ret = nrf_modem_at_scanf("AT%XSNRSQ?", "%%XSNRSQ: %d,%*d,%*d", snr);
+
+	if (ret != 1) {
+		return map_nrf_modem_at_scanf_error(ret);
+	}
+
+	if (*snr == SNR_UNAVAILABLE) {
+		return -ENOENT;
+	}
+
+	*snr -= SNR_OFFSET_VAL;
+
+	return 0;
+}
+
 int modem_info_init(void)
 {
 	int err = 0;
