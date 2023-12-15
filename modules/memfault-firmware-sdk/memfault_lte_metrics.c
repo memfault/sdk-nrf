@@ -243,7 +243,7 @@ void memfault_lte_metrics_init(void)
 
 	int err = modem_info_connectivity_stats_init();
 	if (err) {
-		LOG_ERR("Failed to init connectivity stats, err: %d", err);
+		LOG_WRN("Failed to init connectivity stats, err: %d", err);
 	}
 #endif
 
@@ -263,23 +263,23 @@ void memfault_lte_metrics_update(void)
 	int rx_kybtes;
 	int err = modem_info_get_connectivity_stats(&tx_kbytes, &rx_kybtes);
 	if (err) {
-		LOG_WRN("LTE connectivity stats collections failed, error: %d", err);
+		LOG_WRN("Failed to collect connectivity stats, error: %d", err);
 	} else {
 		err = MEMFAULT_METRIC_SET_UNSIGNED(ncs_lte_tx_kilobytes, tx_kbytes);
 		if (err) {
-			LOG_ERR("Failed to set ncs_lte_tx_kilobytes");
+			LOG_WRN("Failed to set ncs_lte_tx_kilobytes");
 		}
 
 		err = MEMFAULT_METRIC_SET_UNSIGNED(ncs_lte_rx_kilobytes, rx_kybtes);
 		if (err) {
-			LOG_ERR("Failed to set ncs_lte_rx_kilobytes");
+			LOG_WRN("Failed to set ncs_lte_rx_kilobytes");
 		}
 	}
 
 	// Reset stats
 	err = modem_info_connectivity_stats_init();
 	if (err) {
-		LOG_ERR("Failed to reset connectivity stats, err: %d", err);
+		LOG_WRN("Failed to reset connectivity stats, err: %d", err);
 	}
 #endif
 }
