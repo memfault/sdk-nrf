@@ -23,7 +23,6 @@ DEFINE_FFF_GLOBALS;
 FAKE_VALUE_FUNC(int, nrf_modem_at_notif_handler_set, nrf_modem_at_notif_handler_t);
 FAKE_VALUE_FUNC(int, at_params_list_init, struct at_param_list *, size_t);
 FAKE_VALUE_FUNC_VARARG(int, nrf_modem_at_scanf, const char *, const char *, ...);
-FAKE_VALUE_FUNC_VARARG(int, nrf_modem_at_cmd, void *, size_t, const char *, ...);
 
 #define FW_UUID_SIZE 37
 #define SVN_SIZE 3
@@ -38,8 +37,7 @@ FAKE_VALUE_FUNC_VARARG(int, nrf_modem_at_cmd, void *, size_t, const char *, ...)
 #define EXAMPLE_BAND 13
 #define EXAMPLE_BAND_MAX_VAL 71
 #define EXAMPLE_ONE_LETTER_OPERATOR_NAME "O"
-#define EXAMPLE_SHORT_OPERATOR_NAME "OP"
-#define EXAMPLE_TOO_LARGE_OPERATOR_NAME "TOO_LARGE_OPERATOR_NAME"
+#define EXAMPLE_SHORT_OPERATOR_NAME	 "OP"
 
 // TODO: Confirm - this is an educated guess at the moment, based upon various
 // #define values in the library. Get input from Nordic on this later.
@@ -184,75 +182,36 @@ static int nrf_modem_at_scanf_custom_xcband_at_cmd_error(const char *cmd, const 
 	return -NRF_EBADMSG; // no arguments matched
 }
 
-static int nrf_modem_at_cmd_custom_xmonitor_no_operator(void *buf, size_t len, const char *fmt,
-							va_list args)
+static int nrf_modem_at_scanf_custom_xmonitor_no_operator(const char *cmd, const char *fmt,
+							  va_list args)
 {
-	TEST_ASSERT_EQUAL_STRING("AT%%XMONITOR", fmt);
-	char xmonitor_resp[XMONITOR_CMD_MAX_RESPONSE_LEN] = "%XMONITOR: 2\r\nOK\r\n";
-	char *response = (char *)buf;
-	memcpy(response, xmonitor_resp, sizeof(xmonitor_resp));
-	return 0;
+	TEST_ASSERT_EQUAL_STRING("AT%XMONITOR", cmd);
+	return -NRF_EBADMSG;
 }
 
-static int nrf_modem_at_cmd_custom_xmonitor_empty_operator(void *buf, size_t len, const char *fmt,
-							   va_list args)
+static int nrf_modem_at_scanf_custom_xmonitor_empty_operator(const char *cmd, const char *fmt,
+							     va_list args)
 {
-	TEST_ASSERT_EQUAL_STRING("AT%%XMONITOR", fmt);
-	char xmonitor_resp[XMONITOR_CMD_MAX_RESPONSE_LEN] =
-		"%XMONITOR: 1,\"Operator\",\""
-		"\",\"20065\",\"4321\",7,20,\"12345678\",334,6200,66,44,\"\","
-		"\"11100000\",\"00010011\",\"01001001\"";
-	char *response = (char *)buf;
-	memcpy(response, xmonitor_resp, sizeof(xmonitor_resp));
-	return 0;
+	TEST_ASSERT_EQUAL_STRING("AT%XMONITOR", cmd);
+	return -NRF_EBADMSG;
 }
 
-static int nrf_modem_at_cmd_custom_xmonitor_too_large_operator(void *buf, size_t len,
-							       const char *fmt, va_list args)
+static int nrf_modem_at_scanf_custom_xmonitor_one_letter_success(const char *cmd, const char *fmt,
+								 va_list args)
 {
-	TEST_ASSERT_EQUAL_STRING("AT%%XMONITOR", fmt);
-
-	// Construct the response
-	char xmonitor_resp[XMONITOR_CMD_MAX_RESPONSE_LEN] = "%XMONITOR: 1,\"Operator\",\"";
-	strcat(xmonitor_resp, EXAMPLE_TOO_LARGE_OPERATOR_NAME);
-	strcat(xmonitor_resp, "\",\"20065\",\"4321\",7,20,\"12345678\",334,6200,66,44,\"\","
-			      "\"11100000\",\"00010011\",\"01001001\"");
-
-	char *response = (char *)buf;
-	memcpy(response, xmonitor_resp, sizeof(xmonitor_resp));
-	return 0;
+	TEST_ASSERT_EQUAL_STRING("AT%XMONITOR", cmd);
+	char *response = va_arg(args, char *);
+	strncpy(response, EXAMPLE_ONE_LETTER_OPERATOR_NAME, MODEM_INFO_MAX_SHORT_OP_NAME_SIZE);
+	return 1;
 }
 
-static int nrf_modem_at_cmd_custom_xmonitor_one_letter_success(void *buf, size_t len,
-							       const char *fmt, va_list args)
+static int nrf_modem_at_scanf_custom_xmonitor_shortname_success(const char *cmd, const char *fmt,
+								va_list args)
 {
-	TEST_ASSERT_EQUAL_STRING("AT%%XMONITOR", fmt);
-
-	// Construct the response
-	char xmonitor_resp[XMONITOR_CMD_MAX_RESPONSE_LEN] = "%XMONITOR: 1,\"Operator\",\"";
-	strcat(xmonitor_resp, EXAMPLE_ONE_LETTER_OPERATOR_NAME);
-	strcat(xmonitor_resp, "\",\"20065\",\"4321\",7,20,\"12345678\",334,6200,66,44,\"\","
-			      "\"11100000\",\"00010011\",\"01001001\"");
-
-	char *response = (char *)buf;
-	memcpy(response, xmonitor_resp, sizeof(xmonitor_resp));
-	return 0;
-}
-
-static int nrf_modem_at_cmd_custom_xmonitor_shortname_success(void *buf, size_t len,
-							      const char *fmt, va_list args)
-{
-	TEST_ASSERT_EQUAL_STRING("AT%%XMONITOR", fmt);
-
-	// Construct the response
-	char xmonitor_resp[XMONITOR_CMD_MAX_RESPONSE_LEN] = "%XMONITOR: 1,\"Operator\",\"";
-	strcat(xmonitor_resp, EXAMPLE_SHORT_OPERATOR_NAME);
-	strcat(xmonitor_resp, "\",\"20065\",\"4321\",7,20,\"12345678\",334,6200,66,44,\"\","
-			      "\"11100000\",\"00010011\",\"01001001\"");
-
-	char *response = (char *)buf;
-	memcpy(response, xmonitor_resp, sizeof(xmonitor_resp));
-	return 0;
+	TEST_ASSERT_EQUAL_STRING("AT%XMONITOR", cmd);
+	char *response = va_arg(args, char *);
+	strncpy(response, EXAMPLE_SHORT_OPERATOR_NAME, MODEM_INFO_MAX_SHORT_OP_NAME_SIZE);
+	return 1;
 }
 
 static int nrf_modem_at_scanf_custom_snr_at_cmd_error(const char *cmd, const char *fmt,
@@ -291,7 +250,6 @@ void setUp(void)
 	RESET_FAKE(nrf_modem_at_notif_handler_set);
 	RESET_FAKE(at_params_list_init);
 	RESET_FAKE(nrf_modem_at_scanf);
-	RESET_FAKE(nrf_modem_at_cmd);
 }
 
 void tearDown(void)
@@ -618,7 +576,7 @@ void test_modem_info_get_operator_invalid_null_buf(void)
 {
 	int ret = modem_info_get_operator(NULL, 0);
 	TEST_ASSERT_EQUAL(-EINVAL, ret);
-	TEST_ASSERT_EQUAL(0, nrf_modem_at_cmd_fake.call_count);
+	TEST_ASSERT_EQUAL(0, nrf_modem_at_scanf_fake.call_count);
 }
 
 void test_modem_info_get_operator_invalid_buffer_len(void)
@@ -626,69 +584,53 @@ void test_modem_info_get_operator_invalid_buffer_len(void)
 	char buffer[MODEM_INFO_MAX_SHORT_OP_NAME_SIZE - 1];
 	int ret = modem_info_get_operator(buffer, sizeof(buffer));
 	TEST_ASSERT_EQUAL(-EINVAL, ret);
-	TEST_ASSERT_EQUAL(0, nrf_modem_at_cmd_fake.call_count);
+	TEST_ASSERT_EQUAL(0, nrf_modem_at_scanf_fake.call_count);
 }
 
 void test_modem_info_get_operator_none(void)
 {
 	char buffer[MODEM_INFO_MAX_SHORT_OP_NAME_SIZE];
 
-	nrf_modem_at_cmd_fake.custom_fake = nrf_modem_at_cmd_custom_xmonitor_no_operator;
+	nrf_modem_at_scanf_fake.custom_fake = nrf_modem_at_scanf_custom_xmonitor_no_operator;
 
 	int ret = modem_info_get_operator(buffer, sizeof(buffer));
 	TEST_ASSERT_EQUAL(-ENOMSG, ret);
-	TEST_ASSERT_EQUAL(1, nrf_modem_at_cmd_fake.call_count);
+	TEST_ASSERT_EQUAL(1, nrf_modem_at_scanf_fake.call_count);
 }
 
 void test_modem_info_get_operator_empty(void)
 {
 	char buffer[MODEM_INFO_MAX_SHORT_OP_NAME_SIZE];
 
-	nrf_modem_at_cmd_fake.custom_fake = nrf_modem_at_cmd_custom_xmonitor_empty_operator;
+	nrf_modem_at_scanf_fake.custom_fake = nrf_modem_at_scanf_custom_xmonitor_empty_operator;
 
 	int ret = modem_info_get_operator(buffer, sizeof(buffer));
 	TEST_ASSERT_EQUAL(-ENOMSG, ret);
-	TEST_ASSERT_EQUAL(1, nrf_modem_at_cmd_fake.call_count);
-}
-
-void test_modem_info_get_operator_too_large(void)
-{
-	char buffer[MODEM_INFO_MAX_SHORT_OP_NAME_SIZE];
-	char at_cmd_response[] = EXAMPLE_TOO_LARGE_OPERATOR_NAME;
-	char expected_substr[MODEM_INFO_MAX_SHORT_OP_NAME_SIZE];
-	strncpy(expected_substr, at_cmd_response, MODEM_INFO_MAX_SHORT_OP_NAME_SIZE - 1);
-	expected_substr[MODEM_INFO_MAX_SHORT_OP_NAME_SIZE - 1] = '\0';
-
-	nrf_modem_at_cmd_fake.custom_fake = nrf_modem_at_cmd_custom_xmonitor_too_large_operator;
-
-	int ret = modem_info_get_operator(buffer, sizeof(buffer));
-	TEST_ASSERT_EQUAL(0, ret);
-	TEST_ASSERT_EQUAL_STRING(expected_substr, buffer);
-	TEST_ASSERT_EQUAL(1, nrf_modem_at_cmd_fake.call_count);
+	TEST_ASSERT_EQUAL(1, nrf_modem_at_scanf_fake.call_count);
 }
 
 void test_modem_info_get_operator_one_letter(void)
 {
 	char buffer[MODEM_INFO_MAX_SHORT_OP_NAME_SIZE];
 
-	nrf_modem_at_cmd_fake.custom_fake = nrf_modem_at_cmd_custom_xmonitor_one_letter_success;
+	nrf_modem_at_scanf_fake.custom_fake = nrf_modem_at_scanf_custom_xmonitor_one_letter_success;
 
 	int ret = modem_info_get_operator(buffer, sizeof(buffer));
 	TEST_ASSERT_EQUAL(0, ret);
 	TEST_ASSERT_EQUAL_STRING(EXAMPLE_ONE_LETTER_OPERATOR_NAME, buffer);
-	TEST_ASSERT_EQUAL(1, nrf_modem_at_cmd_fake.call_count);
+	TEST_ASSERT_EQUAL(1, nrf_modem_at_scanf_fake.call_count);
 }
 
 void test_modem_info_get_operator_shortname_success(void)
 {
 	char buffer[MODEM_INFO_MAX_SHORT_OP_NAME_SIZE];
 
-	nrf_modem_at_cmd_fake.custom_fake = nrf_modem_at_cmd_custom_xmonitor_shortname_success;
+	nrf_modem_at_scanf_fake.custom_fake = nrf_modem_at_scanf_custom_xmonitor_shortname_success;
 
 	int ret = modem_info_get_operator(buffer, sizeof(buffer));
 	TEST_ASSERT_EQUAL(0, ret);
 	TEST_ASSERT_EQUAL_STRING(EXAMPLE_SHORT_OPERATOR_NAME, buffer);
-	TEST_ASSERT_EQUAL(1, nrf_modem_at_cmd_fake.call_count);
+	TEST_ASSERT_EQUAL(1, nrf_modem_at_scanf_fake.call_count);
 }
 
 void test_modem_info_get_snr_null(void)

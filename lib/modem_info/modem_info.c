@@ -969,17 +969,10 @@ int modem_info_get_operator(char *buf, size_t len)
 		return -EINVAL;
 	}
 
-	char response[XMONITOR_CMD_MAX_RESPONSE_LEN];
-	int ret = nrf_modem_at_cmd(response, sizeof(response), AT_CMD_XMONITOR);
+	int ret = nrf_modem_at_scanf(
+		"AT%XMONITOR", "%%XMONITOR: %*[^,],%*[^,],\"%" STRINGIFY(MAX_SHORT_OP_NAME_SIZE_WITHOUT_NULL_TERM) "s[^\"]\",", buf);
 
-	if (ret) {
-		LOG_ERR("Could not get modem parameters, err %d", ret);
-		return map_nrf_modem_at_scanf_error(ret);
-	}
-	int result =
-		sscanf(response, "%%XMONITOR: %*[^,],%*[^,],\"%" STRINGIFY(MAX_SHORT_OP_NAME_SIZE_WITHOUT_NULL_TERM) "[^\"]\",", buf);
-
-	if (result != 1) {
+	if (ret != 1) {
 		LOG_ERR("Operator collection failed, error %d", ret);
 		return -ENOMSG;
 	}
