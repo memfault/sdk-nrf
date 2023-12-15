@@ -49,17 +49,17 @@ The following metrics are enabled by default in this sample:
 
 * Bluetooth metrics, enabled and disabled using the :kconfig:option:`CONFIG_MEMFAULT_NCS_BT_METRICS` Kconfig option.
 
-  * ``Ncs_BtConnectionCount`` - Number of Bluetooth connections.
-  * ``Ncs_BtConnectionTime`` - Bluetooth connection time.
+  * ``ncs_bt_connection_count`` - Number of Bluetooth connections.
+  * ``ncs_bt_connection_time_ms`` - Bluetooth connection time.
 
     Time with at least one live Bluetooth connection.
-  * ``Ncs_BtBondCount`` - Number of Bluetooth bonds.
+  * ``ncs_bt_bond_count`` - Number of Bluetooth bonds.
 
 * Stack usage metrics shows the free stack space in bytes.
   Configurable by the :kconfig:option:`CONFIG_MEMFAULT_NCS_STACK_METRICS` Kconfig option.
 
-  * ``NcsBtRxUnusedStack`` - HCI RX thread stack.
-  * ``NcsBtTxUnusedStack`` - HCI TX thread stack.
+  * ``ncs_bt_rx_unused_stack`` - HCI RX thread stack.
+  * ``ncs_bt_tx_unused_stack`` - HCI TX thread stack.
 
 Error tracking with trace events
 ================================

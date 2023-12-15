@@ -42,14 +42,14 @@ There are also some metrics, which are specific to |NCS| that are enabled by def
 * LTE metrics:
 
   * Enabled and disabled using :kconfig:option:`CONFIG_MEMFAULT_NCS_LTE_METRICS`.
-  * ``Ncs_LteTimeToConnect`` - Time from the point when the device starts to search for an LTE network until the time when it gets registered with the network.
-  *  ``Ncs_LteConnectionLossCount`` - The number of times that the device has lost the LTE network connection after the initial network registration.
+  * ``ncs_lte_time_to_connect_ms`` - Time from the point when the device starts to search for an LTE network until the time when it gets registered with the network.
+  *  ``ncs_lte_connection_loss_count`` - The number of times that the device has lost the LTE network connection after the initial network registration.
 
 * Stack usage metrics:
 
   * Shows how many bytes of unused space is left in a stack.
   * Configurable using :kconfig:option:`CONFIG_MEMFAULT_NCS_STACK_METRICS`.
-  * ``Ncs_ConnectionPollUnusedStack``- Stack used by the cloud libraries for :ref:`lib_nrf_cloud`, :ref:`lib_aws_iot` and :ref:`lib_azure_iot_hub`.
+  * ``ncs_connection_poll_unused_stack``- Stack used by the cloud libraries for :ref:`lib_nrf_cloud`, :ref:`lib_aws_iot` and :ref:`lib_azure_iot_hub`.
 
 In addition to showing the capturing of metrics provided by the Memfault SDK integration layer in |NCS|, the sample also shows how to capture an application-specific metric.
 This metric is defined in :file:`samples/debug/memfault/config/memfault_metrics_heartbeat_config.h`:
@@ -178,7 +178,7 @@ Before testing, ensure that your device is configured with the project key of yo
 
         <inf> memfault_sample: Connected to network.
 
-#. If LTE is used, the sample displays the captured LTE time-to-connect metric (``Ncs_LteTimeToConnect``) in the terminal:
+#. If LTE is used, the sample displays the captured LTE time-to-connect metric (``ncs_lte_time_to_connect_ms``) in the terminal:
 
    .. code-block:: console
 
