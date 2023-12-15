@@ -270,7 +270,7 @@ static void add_location_metrics(uint8_t satellites, uint32_t search_time,
 		}
 		break;
 	case LOCATION_MODULE_EVT_TIMEOUT:
-		err = MEMFAULT_HEARTBEAT_SET_UNSIGNED(LocationTimeoutSearchTime, search_time);
+		err = MEMFAULT_METRIC_SET_UNSIGNED(LocationTimeoutSearchTime, search_time);
 		if (err) {
 			LOG_ERR("Failed updating LocationTimeoutSearchTime metric, error: %d", err);
 		}
