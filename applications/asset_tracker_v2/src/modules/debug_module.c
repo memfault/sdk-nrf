@@ -280,7 +280,7 @@ static void add_location_metrics(uint8_t satellites, uint32_t search_time,
 		return;
 	}
 
-	err = MEMFAULT_HEARTBEAT_SET_UNSIGNED(GnssSatellitesTracked, satellites);
+	err = MEMFAULT_METRIC_SET_UNSIGNED(GnssSatellitesTracked, satellites);
 	if (err) {
 		LOG_ERR("Failed updating GnssSatellitesTracked metric, error: %d", err);
 	}
