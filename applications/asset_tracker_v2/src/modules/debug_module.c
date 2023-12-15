@@ -264,7 +264,7 @@ static void add_location_metrics(uint8_t satellites, uint32_t search_time,
 
 	switch (event) {
 	case LOCATION_MODULE_EVT_GNSS_DATA_READY:
-		err = MEMFAULT_HEARTBEAT_SET_UNSIGNED(GnssTimeToFix, search_time);
+		err = MEMFAULT_METRIC_SET_UNSIGNED(GnssTimeToFix, search_time);
 		if (err) {
 			LOG_ERR("Failed updating GnssTimeToFix metric, error: %d", err);
 		}
