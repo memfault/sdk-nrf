@@ -94,65 +94,61 @@ static void lte_handler(const struct lte_lc_evt *const evt)
 	}
 #endif
 
-  // Get connectivity stats (data tx and rx)
-  int tx_kbytes;
-  int rx_kybtes;
-  err = modem_info_get_connectivity_stats(&tx_kbytes, &rx_kybtes);
-  if (err) {
+	// Get connectivity stats (data tx and rx)
+	int tx_kbytes;
+	int rx_kybtes;
+	err = modem_info_get_connectivity_stats(&tx_kbytes, &rx_kybtes);
+	if (err) {
 		LOG_WRN("LTE connectivity stats collections failed, error: %d", err);
-  } else {
-		err = memfault_metrics_heartbeat_set_unsigned(
-			MEMFAULT_METRICS_KEY(ncs_lte_tx_kilobytes), tx_kbytes);
+	} else {
+		err = MEMFAULT_METRIC_SET_UNSIGNED(ncs_lte_tx_kilobytes, tx_kbytes);
 		if (err) {
 			LOG_ERR("Failed to set ncs_lte_tx_kilobytes");
 		}
 
-		err = memfault_metrics_heartbeat_set_unsigned(
-			MEMFAULT_METRICS_KEY(ncs_lte_rx_kilobytes), rx_kybtes);
+		err = MEMFAULT_METRIC_SET_UNSIGNED(ncs_lte_rx_kilobytes, rx_kybtes);
 		if (err) {
 			LOG_ERR("Failed to set ncs_lte_rx_kilobytes");
 		}
-  }
+	}
 
-  uint8_t band;
-  err = modem_info_get_current_band(&band);
-  if (err != 0) {
+	uint8_t band;
+	err = modem_info_get_current_band(&band);
+	if (err != 0) {
 		LOG_WRN("Network band collection failed, error: %d", err);
-  } else {
-	  err = memfault_metrics_heartbeat_set_unsigned(MEMFAULT_METRICS_KEY(ncs_lte_band), band);
-	  if (err) {
+	} else {
+		err = MEMFAULT_METRIC_SET_UNSIGNED(ncs_lte_band, band);
+		if (err) {
 			LOG_ERR("Failed to set nce_lte_band");
-    }
-  }
-  
+		}
+	}
+
 #if defined(CONFIG_MODEM_INFO)
-  // Get the operator
-  char operator_name[MODEM_INFO_MAX_SHORT_OP_NAME_SIZE];
-  err = modem_info_get_operator(operator_name, sizeof(operator_name));
-  if (err != 0) {
-	  LOG_WRN("Network operator collection failed, error: %d", err);
-  } else {
-	  err = memfault_metrics_heartbeat_set_string(MEMFAULT_METRICS_KEY(ncs_lte_operator),
-						      operator_name);
-	  if (err) {
-		  LOG_ERR("Failed to set ncs_lte_operator");
+	// Get the operator
+	char operator_name[MODEM_INFO_MAX_SHORT_OP_NAME_SIZE];
+	err = modem_info_get_operator(operator_name, sizeof(operator_name));
+	if (err != 0) {
+		LOG_WRN("Network operator collection failed, error: %d", err);
+	} else {
+		err = MEMFAULT_METRIC_SET_STRING(ncs_lte_operator, operator_name);
+		if (err) {
+			LOG_ERR("Failed to set ncs_lte_operator");
 			LOG_ERR("Failed to set ncs_lte_band");
-	  }
-  }
+		}
+	}
 #endif
 
 #if defined(CONFIG_MODEM_INFO)
-  int snr;
-  err = modem_info_get_snr(&snr);
-  if (err != 0) {
-	  LOG_WRN("SNR collection failed, error: %d", err);
-  } else {
-	  err = memfault_metrics_heartbeat_set_signed(MEMFAULT_METRICS_KEY(ncs_lte_snr_decibels),
-						      snr);
-	  if (err) {
+	int snr;
+	err = modem_info_get_snr(&snr);
+	if (err != 0) {
+		LOG_WRN("SNR collection failed, error: %d", err);
+	} else {
+		err = MEMFAULT_METRIC_SET_SIGNED(ncs_lte_snr_decibels, snr);
+		if (err) {
 			LOG_ERR("Failed to set ncs_lte_snr_decibels");
-	  }
-  }
+		}
+	}
 #endif
 
 	switch (evt->type) {
