@@ -36,9 +36,9 @@ Metrics
 The sample shows how to capture user-specific metrics.
 It defines the following metrics:
 
-* ``Button3PressCount`` - The number of **Button 3** presses.
-* ``BatteryLvl`` - The simulated battery level.
-* ``Button1TimeMeasure`` - The time measured between two **Button 1** presses.
+* ``button_3_press_count`` - The number of **Button 3** presses.
+* ``battery_soc_percent`` - The simulated battery level.
+* ``button_1_elapsed_time_ms`` - The time measured between two **Button 1** presses.
 
 These metrics are defined in the :file:`samples/bluetooth/peripheral_mds/memfault_config/memfault_metrics_heartbeat_config.def` file.
 For more details about the metrics, see `Memfault: Collecting Device Metrics`_.
@@ -116,7 +116,7 @@ Button 2:
    During the pairing procedure, press this button to reject pairing.
 
 Button 3:
-   Every press of this button is counted under the ``Button3PressCount`` metric.
+   Every press of this button is counted under the ``button_3_press_count`` metric.
 
 Button 4:
    Simulate a development kit crash by triggering a hardfault exception by division by zero.

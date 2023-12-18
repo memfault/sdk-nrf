@@ -54,13 +54,13 @@ There are also some metrics, which are specific to |NCS| that are enabled by def
 In addition to showing the capturing of metrics provided by the Memfault SDK integration layer in |NCS|, the sample also shows how to capture an application-specific metric.
 This metric is defined in :file:`samples/debug/memfault/config/memfault_metrics_heartbeat_config.h`:
 
-*  ``Switch1ToggleCount`` - The number of times **Switch 1** has been toggled on an nRF9160 DK.
+*  ``switch_1_toggle_count`` - The number of times **Switch 1** has been toggled on an nRF9160 DK.
 
 Error Tracking with trace events
 ================================
 
 The sample implements a user-defined trace reason for demonstration purposes.
-The trace reason is called ``Switch2Toggled``, and is collected every time **Switch 2** is toggled on an nRF9160 DK.
+The trace reason is called ``switch_2_toggled``, and is collected every time **Switch 2** is toggled on an nRF9160 DK.
 In addition to detection of the event, the trace includes the current switch state.
 See `Memfault: Error Tracking with Trace Events`_ for information on how to configure and use trace events.
 

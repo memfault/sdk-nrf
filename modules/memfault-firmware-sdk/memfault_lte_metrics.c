@@ -186,12 +186,12 @@ static void lte_handler(const struct lte_lc_evt *const evt)
 	case LTE_LC_EVT_PSM_UPDATE:
 		err = MEMFAULT_METRIC_SET_SIGNED(ncs_lte_psm_tau_seconds, evt->psm_cfg.tau);
 		if (err) {
-			LOG_ERR("Failed to set Ncs_LtePsmTau");
+			LOG_ERR("Failed to set ncs_lte_psm_tau_seconds");
 		}
 
 		err = MEMFAULT_METRIC_SET_SIGNED(ncs_lte_psm_active_time_seconds, evt->psm_cfg.active_time);
 		if (err) {
-			LOG_ERR("Failed to set Ncs_LtePsmActiveTime");
+			LOG_ERR("Failed to set ncs_lte_psm_active_time_seconds");
 		}
 
 		break;
@@ -199,13 +199,13 @@ static void lte_handler(const struct lte_lc_evt *const evt)
 		err = MEMFAULT_METRIC_SET_UNSIGNED(ncs_lte_edrx_interval_ms,
 						   (uint32_t)(evt->edrx_cfg.edrx * MSEC_PER_SEC));
 		if (err) {
-			LOG_ERR("Failed to set Ncs_LteEdrxInterval");
+			LOG_ERR("Failed to set ncs_lte_edrx_interval_ms");
 		}
 
 		err = MEMFAULT_METRIC_SET_UNSIGNED(ncs_lte_edrx_ptw_ms,
 						   (uint32_t)(evt->edrx_cfg.ptw * MSEC_PER_SEC));
 		if (err) {
-			LOG_ERR("Failed to set Ncs_LteEdrxPtw");
+			LOG_ERR("Failed to set ncs_lte_edrx_ptw_ms");
 		}
 
 		break;

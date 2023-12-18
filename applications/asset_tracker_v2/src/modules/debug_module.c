@@ -264,15 +264,16 @@ static void add_location_metrics(uint8_t satellites, uint32_t search_time,
 
 	switch (event) {
 	case LOCATION_MODULE_EVT_GNSS_DATA_READY:
-		err = MEMFAULT_METRIC_SET_UNSIGNED(GnssTimeToFix, search_time);
+		err = MEMFAULT_METRIC_SET_UNSIGNED(gnss_time_to_fix_ms), search_time);
 		if (err) {
-			LOG_ERR("Failed updating GnssTimeToFix metric, error: %d", err);
+			LOG_ERR("Failed updating gnss_time_to_fix_ms metric, error: %d", err);
 		}
 		break;
 	case LOCATION_MODULE_EVT_TIMEOUT:
-		err = MEMFAULT_METRIC_SET_UNSIGNED(LocationTimeoutSearchTime, search_time);
+		err = MEMFAULT_METRIC_SET_UNSIGNED(location_timeout_search_time_ms, search_time);
 		if (err) {
-			LOG_ERR("Failed updating LocationTimeoutSearchTime metric, error: %d", err);
+			LOG_ERR("Failed updating ocation_timeout_search_time_ms metric, error: %d",
+				err);
 		}
 		break;
 	default:
@@ -280,9 +281,9 @@ static void add_location_metrics(uint8_t satellites, uint32_t search_time,
 		return;
 	}
 
-	err = MEMFAULT_METRIC_SET_UNSIGNED(GnssSatellitesTracked, satellites);
+	err = MEMFAULT_METRIC_SET_UNSIGNED(gnss_satellites_tracked_count, satellites);
 	if (err) {
-		LOG_ERR("Failed updating GnssSatellitesTracked metric, error: %d", err);
+		LOG_ERR("Failed updating gnss_satellites_tracked_count metric, error: %d", err);
 	}
 
 	memfault_metrics_heartbeat_debug_trigger();
