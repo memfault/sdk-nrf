@@ -204,10 +204,10 @@ static void button_handler(uint32_t button_state, uint32_t has_changed)
 	if ((has_changed & DK_BTN2_MSK) && !pairing_confirmation_conn) {
 		bool button_state = (buttons & DK_BTN2_MSK) ? 1 : 0;
 
-		MEMFAULT_TRACE_EVENT_WITH_LOG(button_2_state_change, "Button state: %u",
+		MEMFAULT_TRACE_EVENT_WITH_LOG(button_2_state_changed, "Button state: %u",
 					      button_state);
 
-		printk("button_2_state_change event has been tracked, button state: %u\n",
+		printk("button_2_state_changed event has been tracked, button state: %u\n",
 		       button_state);
 	}
 

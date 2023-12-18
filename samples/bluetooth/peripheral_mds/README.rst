@@ -37,7 +37,7 @@ The sample shows how to capture user-specific metrics.
 It defines the following metrics:
 
 * ``button_3_press_count`` - The number of **Button 3** presses.
-* ``battery_soc_percent`` - The simulated battery level.
+* ``battery_soc_pct`` - The simulated battery level.
 * ``button_1_elapsed_time_ms`` - The time measured between two **Button 1** presses.
 
 These metrics are defined in the :file:`samples/bluetooth/peripheral_mds/memfault_config/memfault_metrics_heartbeat_config.def` file.
