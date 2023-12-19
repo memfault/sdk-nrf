@@ -152,7 +152,6 @@ LOG_MODULE_REGISTER(modem_info);
 // TODO: Confirm - these are educated guesses at the moment, based upon various
 // #define values in the library. Get input from Nordic on these later.
 #define XMONITOR_CMD_MAX_RESPONSE_LEN		300
-#define XMONITOR_CMD_SHORT_OPERATOR_IDX		2
 #define MAX_SHORT_OP_NAME_SIZE_WITHOUT_NULL_TERM 15
 BUILD_ASSERT(MAX_SHORT_OP_NAME_SIZE_WITHOUT_NULL_TERM == (MODEM_INFO_MAX_SHORT_OP_NAME_SIZE - 1),
 	     "Short operator size macros must match");
