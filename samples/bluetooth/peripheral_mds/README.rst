@@ -66,7 +66,7 @@ Error tracking with trace events
 
 The sample implements the following user-defined trace reason for demonstration purposes:
 
-``Button2StateChanged`` - Collected every time when **Button 2** changes its state.
+``button_2_state_changed`` - Collected every time when **Button 2** changes its state.
 
 The trace events are defined in the file :file:`samples/bluetooth/peripheral_mds/memfault_config/memfault_trace_reason_user_config.def` file.
 See `Memfault: Error Tracking with Trace Events`_ for more details about trace events.
@@ -111,7 +111,7 @@ Button 1:
    During the pairing procedure, press this button to accept pairing.
 
 Button 2:
-   Triggers the ``Button2StateChanged`` trace event.
+   Triggers the ``button_2_state_changed`` trace event.
 
    During the pairing procedure, press this button to reject pairing.
 
