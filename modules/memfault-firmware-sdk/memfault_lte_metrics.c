@@ -133,7 +133,6 @@ static void lte_handler(const struct lte_lc_evt *const evt)
 		err = MEMFAULT_METRIC_SET_STRING(ncs_lte_operator, operator_name);
 		if (err) {
 			LOG_ERR("Failed to set ncs_lte_operator");
-			LOG_ERR("Failed to set ncs_lte_band");
 		}
 	}
 #endif
@@ -158,24 +157,7 @@ static void lte_handler(const struct lte_lc_evt *const evt)
 		case LTE_LC_NW_REG_REGISTERED_HOME:
 		case LTE_LC_NW_REG_REGISTERED_ROAMING:
 			connected = true;
-<<<<<<< HEAD
 			MEMFAULT_METRIC_TIMER_STOP(ncs_lte_time_to_connect_ms);
-=======
-
-			if (!connect_timer_started) {
-				LOG_WRN("ncs_lte_time_to_connect_ms was not started");
-				break;
-			}
-
-			err = MEMFAULT_METRIC_TIMER_STOP(ncs_lte_time_to_connect_ms);
-			if (err) {
-				LOG_WRN("Failed to stop LTE connection timer, error: %d", err);
-			} else {
-				LOG_DBG("ncs_lte_time_to_connect_ms stopped");
-				connect_timer_started = false;
-			}
-
->>>>>>> d61a84001 (Align ncs built-in metrics with metric naming conventions (#14))
 			break;
 		case LTE_LC_NW_REG_NOT_REGISTERED:
 		case LTE_LC_NW_REG_SEARCHING:
@@ -185,28 +167,10 @@ static void lte_handler(const struct lte_lc_evt *const evt)
 			if (connected) {
 				err = MEMFAULT_METRIC_ADD(ncs_lte_connection_loss_count, 1);
 				if (err) {
-<<<<<<< HEAD
 					LOG_ERR("Fail to increment ncs_lte_connection_loss_count");
 				}
 
 				MEMFAULT_METRIC_TIMER_START(ncs_lte_time_to_connect_ms);
-=======
-					LOG_ERR("Failed to increment ncs_lte_connection_loss_count");
-				}
-
-				if (connect_timer_started) {
-					break;
-				}
-
-				err = MEMFAULT_METRIC_TIMER_START(ncs_lte_time_to_connect_ms);
-				if (err) {
-					LOG_WRN("Failed to start LTE connection timer, error: %d",
-						err);
-				} else {
-					LOG_DBG("ncs_lte_time_to_connect_ms started");
-					connect_timer_started = true;
-				}
->>>>>>> d61a84001 (Align ncs built-in metrics with metric naming conventions (#14))
 			}
 
 			connected = false;
@@ -220,12 +184,8 @@ static void lte_handler(const struct lte_lc_evt *const evt)
 			LOG_ERR("Failed to set ncs_lte_psm_tau_seconds");
 		}
 
-<<<<<<< HEAD
 		err = MEMFAULT_METRIC_SET_SIGNED(ncs_lte_psm_active_time_seconds,
 						 evt->psm_cfg.active_time);
-=======
-		err = MEMFAULT_METRIC_SET_SIGNED(ncs_lte_psm_active_time_seconds, evt->psm_cfg.active_time);
->>>>>>> d61a84001 (Align ncs built-in metrics with metric naming conventions (#14))
 		if (err) {
 			LOG_ERR("Failed to set ncs_lte_psm_active_time_seconds");
 		}

@@ -1017,10 +1017,12 @@ int modem_info_get_snr(int *snr)
 	int ret = nrf_modem_at_scanf("AT%XSNRSQ?", "%%XSNRSQ: %d,%*d,%*d", snr);
 
 	if (ret != 1) {
+		LOG_ERR("Could not get SNR, error: %d", ret);
 		return map_nrf_modem_at_scanf_error(ret);
 	}
 
 	if (*snr == SNR_UNAVAILABLE) {
+		LOG_WRN("No valid SNR");
 		return -ENOENT;
 	}
 
