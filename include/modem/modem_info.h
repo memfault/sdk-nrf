@@ -46,12 +46,11 @@ extern "C" {
 /** Band unavailable value. */
 #define BAND_UNAVAILABLE 0
 
-// TODO: Confirm - there is no clear guidance in nrf9160 AT command
-// guide - 3GPP gives an upper limit on the full name size but the
-// short name is not specified. This may be a Nordic-defined limit,
-// so for now guess a medium length to give some room.
-/** Short operator size can be up to 15 characters long. */
-#define MODEM_INFO_MAX_SHORT_OP_NAME_SIZE 16
+/** Short operator size can be up to 64 characters long.
+ * Matches value in nrf/samples/cellular/modem_shell/src/link/link_api.h.
+ */
+
+#define MODEM_INFO_MAX_SHORT_OP_NAME_SIZE 64
 
 /** SNR unavailable value. */
 #define SNR_UNAVAILABLE	 127
@@ -359,40 +358,40 @@ int modem_info_get_rsrp(int *val);
  * @brief Obtain the connectivity statistics.
  *
  * @note Will return bytes = 0 until connectivity stats collection
- * has been enabled via AT%XCONNSTAT=1
+ * has been enabled via AT%XCONNSTAT=1.
  *
- * @param tx_kbytes total amount of data (in kilobytes) transmitted during the collection period
- * @param rx_kbytes total amount of data (in kilobytes) received during the collection period
+ * @param tx_kbytes total amount of data (in kilobytes) transmitted during the collection period.
+ * @param rx_kbytes total amount of data (in kilobytes) received during the collection period.
  *
  * @return 0 if operation was successful
  */
 int modem_info_get_connectivity_stats(int *tx_kbytes, int *rx_kbytes);
 
 /**
- * @brief Obtain the current band
+ * @brief Obtain the current band.
  *
- * @param band_id id of the current band
- * @return 0 if operation was sucessful.
- *          Otherwise, a (negative) error code is returned
+ * @param band_id id of the current band.
+ * @return 0 if operation was successful.
+ *          Otherwise, a (negative) error code is returned.
  */
 int modem_info_get_current_band(uint8_t *band_id);
 
 /**
  * @brief Obtain the operator name.
  *
- * @param buf Buffer to store operator name in
- * @param len Length of the buffer
+ * @param buf Buffer to store operator name in.
+ * @param len Length of the buffer.
  * @return 0 if operation was successful.
- *          Otherwise, a (negative) error code is returned
+ *          Otherwise, a (negative) error code is returned.
  */
 int modem_info_get_operator(char *buf, size_t len);
 
 /**
- * @brief Obtain the signal-to-noise ratio
+ * @brief Obtain the signal-to-noise ratio.
  *
- * @param snr current SNR
- * @return 0 if operation was sucessful.
- *          Otherwise, a (negative) error code is returned
+ * @param snr current SNR.
+ * @return 0 if operation was successful.
+ *          Otherwise, a (negative) error code is returned.
  */
 int modem_info_get_snr(int *snr);
 
