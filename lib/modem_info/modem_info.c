@@ -149,13 +149,6 @@ LOG_MODULE_REGISTER(modem_info);
 #define HWVER_CMD_STR "HWVERSION"
 #define HWVER_FMT_STR "%%%%" HWVER_CMD_STR ": %%%d[^" AT_CMD_RSP_DELIM "]"
 
-// TODO: Confirm - these are educated guesses at the moment, based upon various
-// #define values in the library. Get input from Nordic on these later.
-#define XMONITOR_CMD_MAX_RESPONSE_LEN		300
-#define MAX_SHORT_OP_NAME_SIZE_WITHOUT_NULL_TERM 15
-BUILD_ASSERT(MAX_SHORT_OP_NAME_SIZE_WITHOUT_NULL_TERM == (MODEM_INFO_MAX_SHORT_OP_NAME_SIZE - 1),
-	     "Short operator size macros must match");
-
 struct modem_info_data {
 	const char *cmd;
 	const char *data_name;
@@ -968,20 +961,18 @@ int modem_info_get_operator(char *buf, size_t len)
 		return -EINVAL;
 	}
 
-	char response[XMONITOR_CMD_MAX_RESPONSE_LEN];
-	int ret = nrf_modem_at_cmd(response, sizeof(response), AT_CMD_XMONITOR);
+	int ret = nrf_modem_at_scanf(
+		"AT%XMONITOR",
+		"%%XMONITOR: "
+		"%*u,"	  /* <reg_status> ignored */
+		"%*[^,]," /* <full_name> ignored */
+		"\"%" STRINGIFY(MODEM_INFO_MAX_SHORT_OP_NAME_SIZE) "[^\"]\",", /* <short_name> */
+				buf);
 
-	if (ret) {
-		LOG_ERR("Could not get modem parameters, error: %d", ret);
-		return map_nrf_modem_at_scanf_error(ret);
-	}
-	int result =
-		sscanf(response, "%%XMONITOR: %*[^,],%*[^,],\"%" STRINGIFY(MAX_SHORT_OP_NAME_SIZE_WITHOUT_NULL_TERM) "[^\"]\",", buf);
-
-	if (result != 1) {
+	if (ret != 1) {
 		// Warning instead of error because it is not always reported
-		LOG_WRN("Operator collection failed, error: %d", ret);
-		return -ENOMSG;
+		LOG_WRN("No valid operator");
+		return map_nrf_modem_at_scanf_error(ret);
 	}
 
 	buf[len - 1] = '\0'; // Null terminate
