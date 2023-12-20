@@ -49,7 +49,7 @@ extern "C" {
 /** Short operator size can be up to 64 characters long.
  * Matches value in nrf/samples/cellular/modem_shell/src/link/link_api.h.
  */
-#define MODEM_INFO_MAX_SHORT_OP_NAME_SIZE 64
+#define MODEM_INFO_SHORT_OP_NAME_SIZE 65
 
 /** SNR unavailable value. */
 #define SNR_UNAVAILABLE	 127

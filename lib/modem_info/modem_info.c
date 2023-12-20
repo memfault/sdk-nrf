@@ -149,6 +149,10 @@ LOG_MODULE_REGISTER(modem_info);
 #define HWVER_CMD_STR "HWVERSION"
 #define HWVER_FMT_STR "%%%%" HWVER_CMD_STR ": %%%d[^" AT_CMD_RSP_DELIM "]"
 
+#define SHORT_OP_NAME_SIZE_WITHOUT_NULL_TERM 64
+BUILD_ASSERT(SHORT_OP_NAME_SIZE_WITHOUT_NULL_TERM == (MODEM_INFO_SHORT_OP_NAME_SIZE - 1),
+	     "Short operator size macros must match");
+
 struct modem_info_data {
 	const char *cmd;
 	const char *data_name;
@@ -957,7 +961,7 @@ int modem_info_get_current_band(uint8_t *val)
 
 int modem_info_get_operator(char *buf, size_t buf_size)
 {
-	if (buf == NULL || buf_size < MODEM_INFO_MAX_SHORT_OP_NAME_SIZE) {
+	if (buf == NULL || buf_size < MODEM_INFO_SHORT_OP_NAME_SIZE) {
 		return -EINVAL;
 	}
 
@@ -966,7 +970,7 @@ int modem_info_get_operator(char *buf, size_t buf_size)
 		"%%XMONITOR: "
 		"%*u,"	  /* <reg_status> ignored */
 		"%*[^,]," /* <full_name> ignored */
-		"\"%" STRINGIFY(MODEM_INFO_MAX_SHORT_OP_NAME_SIZE) "[^\"]\",", /* <short_name> */
+		"\"%" STRINGIFY(SHORT_OP_NAME_SIZE_WITHOUT_NULL_TERM) "[^\"]\",", /* <short_name> */
 				buf);
 
 	if (ret != 1) {

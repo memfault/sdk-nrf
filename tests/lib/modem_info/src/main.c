@@ -41,6 +41,10 @@ FAKE_VALUE_FUNC_VARARG(int, nrf_modem_at_cmd, void *, size_t, const char *, ...)
 #define EXAMPLE_SHORT_OPERATOR_NAME "OP"
 #define EXAMPLE_SNR 47
 
+#define SHORT_OP_NAME_SIZE_WITHOUT_NULL_TERM 64
+BUILD_ASSERT(SHORT_OP_NAME_SIZE_WITHOUT_NULL_TERM == (MODEM_INFO_SHORT_OP_NAME_SIZE - 1),
+	     "Short operator size macros must match");
+
 struct at_param at_params[10] = {};
 static struct at_param_list m_param_list = {
 	.param_count = 0,
@@ -187,7 +191,7 @@ static int nrf_modem_at_scanf_custom_xmonitor_no_operator(const char *cmd, const
 		"%%XMONITOR: "
 		"%*u,"	  /* <reg_status> ignored */
 		"%*[^,]," /* <full_name> ignored */
-		"\"%" STRINGIFY(MODEM_INFO_MAX_SHORT_OP_NAME_SIZE) "[^\"]\",", /* <short_name> */
+		"\"%" STRINGIFY(SHORT_OP_NAME_SIZE_WITHOUT_NULL_TERM) "[^\"]\",", /* <short_name> */
 				fmt);
 
 	return -NRF_EBADMSG; // no arguments matched
@@ -201,7 +205,7 @@ static int nrf_modem_at_scanf_custom_xmonitor_one_letter_success(const char *cmd
 		"%%XMONITOR: "
 		"%*u,"	  /* <reg_status> ignored */
 		"%*[^,]," /* <full_name> ignored */
-		"\"%" STRINGIFY(MODEM_INFO_MAX_SHORT_OP_NAME_SIZE) "[^\"]\",", /* <short_name> */
+		"\"%" STRINGIFY(SHORT_OP_NAME_SIZE_WITHOUT_NULL_TERM) "[^\"]\",", /* <short_name> */
 				fmt);
 
 	char *buf = va_arg(args, char *);
@@ -219,7 +223,7 @@ static int nrf_modem_at_scanf_custom_xmonitor_shortname_success(const char *cmd,
 		"%%XMONITOR: "
 		"%*u,"	  /* <reg_status> ignored */
 		"%*[^,]," /* <full_name> ignored */
-		"\"%" STRINGIFY(MODEM_INFO_MAX_SHORT_OP_NAME_SIZE) "[^\"]\",", /* <short_name> */
+		"\"%" STRINGIFY(SHORT_OP_NAME_SIZE_WITHOUT_NULL_TERM) "[^\"]\",", /* <short_name> */
 				fmt);
 
 	char *buf = va_arg(args, char *);
@@ -597,7 +601,7 @@ void test_modem_info_get_operator_invalid_null_buf(void)
 
 void test_modem_info_get_operator_invalid_buffer_len(void)
 {
-	char buffer[MODEM_INFO_MAX_SHORT_OP_NAME_SIZE - 1];
+	char buffer[MODEM_INFO_SHORT_OP_NAME_SIZE - 1];
 	int ret = modem_info_get_operator(buffer, sizeof(buffer));
 	TEST_ASSERT_EQUAL(-EINVAL, ret);
 	TEST_ASSERT_EQUAL(0, nrf_modem_at_scanf_fake.call_count);
@@ -605,7 +609,7 @@ void test_modem_info_get_operator_invalid_buffer_len(void)
 
 void test_modem_info_get_operator_none(void)
 {
-	char buffer[MODEM_INFO_MAX_SHORT_OP_NAME_SIZE];
+	char buffer[MODEM_INFO_SHORT_OP_NAME_SIZE];
 
 	nrf_modem_at_scanf_fake.custom_fake = nrf_modem_at_scanf_custom_xmonitor_no_operator;
 
@@ -616,7 +620,7 @@ void test_modem_info_get_operator_none(void)
 
 void test_modem_info_get_operator_one_letter(void)
 {
-	char buffer[MODEM_INFO_MAX_SHORT_OP_NAME_SIZE];
+	char buffer[MODEM_INFO_SHORT_OP_NAME_SIZE];
 
 	nrf_modem_at_scanf_fake.custom_fake = nrf_modem_at_scanf_custom_xmonitor_one_letter_success;
 
@@ -628,7 +632,7 @@ void test_modem_info_get_operator_one_letter(void)
 
 void test_modem_info_get_operator_shortname_success(void)
 {
-	char buffer[MODEM_INFO_MAX_SHORT_OP_NAME_SIZE];
+	char buffer[MODEM_INFO_SHORT_OP_NAME_SIZE];
 
 	nrf_modem_at_scanf_fake.custom_fake = nrf_modem_at_scanf_custom_xmonitor_shortname_success;
 

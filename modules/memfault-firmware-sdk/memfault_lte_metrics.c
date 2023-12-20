@@ -102,7 +102,7 @@ static void lte_handler(const struct lte_lc_evt *const evt)
 		}
 	}
 
-	char operator_name[MODEM_INFO_MAX_SHORT_OP_NAME_SIZE];
+	char operator_name[MODEM_INFO_SHORT_OP_NAME_SIZE];
 	err = modem_info_get_operator(operator_name, sizeof(operator_name));
 	if (err != 0) {
 		LOG_WRN("Network operator collection failed, error: %d", err);
