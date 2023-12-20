@@ -356,43 +356,52 @@ int modem_info_get_rsrp(int *val);
 /**
  * @brief Obtain the connectivity statistics.
  *
- * @note Will return bytes = 0 until connectivity stats collection
- * has been enabled via AT%XCONNSTAT=1.
+ * Get the total amount of data transmitted and receievd during the collection
+ * period.
  *
- * @param tx_kbytes total amount of data (in kilobytes) transmitted during the collection period.
- * @param rx_kbytes total amount of data (in kilobytes) received during the collection period.
+ * @note Will return bytes = 0 until connectivity stats collection has been
+ * enabled via AT%XCONNSTAT=1, or with modem_info_connectivity_stats_init().
  *
- * @return 0 if operation was successful
+ * @param tx_kbytes Pointer to the target variable.
+ * @param rx_kbytes Pointer to the target variable.
+ *
+ * @return 0 if the operation was successful.
+ *         Otherwise, a (negative) error code is returned.
  */
 int modem_info_get_connectivity_stats(int *tx_kbytes, int *rx_kbytes);
 
 /**
  * @brief Obtain the current band.
  *
- * @param band_id id of the current band.
- * @return 0 if operation was successful.
+ * @param val Pointer to the target variable.
+ *
+ * @return 0 if the operation was successful.
+ * @return -ENOENT if there is no valid band.
  *          Otherwise, a (negative) error code is returned.
  */
-int modem_info_get_current_band(uint8_t *band_id);
+int modem_info_get_current_band(uint8_t *val);
 
 /**
  * @brief Obtain the operator name.
  *
- * @param buf Buffer to store operator name in.
- * @param len Length of the buffer.
- * @return 0 if operation was successful.
+ * @param buf Pointer to the target buffer.
+ * @param buf_size Size of target buffer.
+ *
+ * @return 0 if  the operation was successful.
  *          Otherwise, a (negative) error code is returned.
  */
-int modem_info_get_operator(char *buf, size_t len);
+int modem_info_get_operator(char *buf, size_t buf_size);
 
 /**
  * @brief Obtain the signal-to-noise ratio.
  *
- * @param snr current SNR.
- * @return 0 if operation was successful.
+ * @param val Pointer to the target variable.
+ *
+ * @return 0 if the operation was successful.
+ * @return -ENOENT if there is no valid SNR.
  *          Otherwise, a (negative) error code is returned.
  */
-int modem_info_get_snr(int *snr);
+int modem_info_get_snr(int *val);
 
 /** @} */
 

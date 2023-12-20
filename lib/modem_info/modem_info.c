@@ -934,20 +934,20 @@ int modem_info_get_connectivity_stats(int *tx_kbytes, int *rx_kbytes)
 	return 0;
 }
 
-int modem_info_get_current_band(uint8_t *band)
+int modem_info_get_current_band(uint8_t *val)
 {
-	if (band == NULL) {
+	if (val == NULL) {
 		return -EINVAL;
 	}
 
-	int ret = nrf_modem_at_scanf("AT%XCBAND", "%%XCBAND: %u", band);
+	int ret = nrf_modem_at_scanf("AT%XCBAND", "%%XCBAND: %u", val);
 
 	if (ret != 1) {
 		LOG_ERR("Could not get band, error: %d", ret);
 		return map_nrf_modem_at_scanf_error(ret);
 	}
 
-	if (*band == BAND_UNAVAILABLE) {
+	if (*val == BAND_UNAVAILABLE) {
 		LOG_WRN("No valid band");
 		return -ENOENT;
 	}
@@ -955,9 +955,9 @@ int modem_info_get_current_band(uint8_t *band)
 	return 0;
 }
 
-int modem_info_get_operator(char *buf, size_t len)
+int modem_info_get_operator(char *buf, size_t buf_size)
 {
-	if (buf == NULL || len < MODEM_INFO_MAX_SHORT_OP_NAME_SIZE) {
+	if (buf == NULL || buf_size < MODEM_INFO_MAX_SHORT_OP_NAME_SIZE) {
 		return -EINVAL;
 	}
 
@@ -975,30 +975,30 @@ int modem_info_get_operator(char *buf, size_t len)
 		return map_nrf_modem_at_scanf_error(ret);
 	}
 
-	buf[len - 1] = '\0'; // Null terminate
+	buf[buf_size - 1] = '\0'; // Null terminate
 
 	return 0;
 }
 
-int modem_info_get_snr(int *snr)
+int modem_info_get_snr(int *val)
 {
-	if (snr == NULL) {
+	if (val == NULL) {
 		return -EINVAL;
 	}
 
-	int ret = nrf_modem_at_scanf("AT%XSNRSQ?", "%%XSNRSQ: %d,%*d,%*d", snr);
+	int ret = nrf_modem_at_scanf("AT%XSNRSQ?", "%%XSNRSQ: %d,%*d,%*d", val);
 
 	if (ret != 1) {
 		LOG_ERR("Could not get SNR, error: %d", ret);
 		return map_nrf_modem_at_scanf_error(ret);
 	}
 
-	if (*snr == SNR_UNAVAILABLE) {
+	if (*val == SNR_UNAVAILABLE) {
 		LOG_WRN("No valid SNR");
 		return -ENOENT;
 	}
 
-	*snr -= SNR_OFFSET_VAL;
+	*val -= SNR_OFFSET_VAL;
 
 	return 0;
 }
