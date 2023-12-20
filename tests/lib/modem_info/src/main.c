@@ -189,7 +189,7 @@ static int nrf_modem_at_scanf_custom_xmonitor_no_operator(const char *cmd, const
 		"%*[^,]," /* <full_name> ignored */
 		"\"%" STRINGIFY(MODEM_INFO_MAX_SHORT_OP_NAME_SIZE) "[^\"]\",", /* <short_name> */
 				fmt);
-	return -NRF_EBADMSG;
+	return -NRF_EBADMSG; // no arguments matched
 }
 
 static int nrf_modem_at_scanf_custom_xmonitor_one_letter_success(const char *cmd, const char *fmt,
