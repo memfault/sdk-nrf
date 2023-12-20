@@ -189,6 +189,7 @@ static int nrf_modem_at_scanf_custom_xmonitor_no_operator(const char *cmd, const
 		"%*[^,]," /* <full_name> ignored */
 		"\"%" STRINGIFY(MODEM_INFO_MAX_SHORT_OP_NAME_SIZE) "[^\"]\",", /* <short_name> */
 				fmt);
+
 	return -NRF_EBADMSG; // no arguments matched
 }
 
@@ -206,6 +207,7 @@ static int nrf_modem_at_scanf_custom_xmonitor_one_letter_success(const char *cmd
 	char *buf = va_arg(args, char *);
 	strncpy(buf, EXAMPLE_ONE_LETTER_OPERATOR_NAME,
 		strlen(EXAMPLE_ONE_LETTER_OPERATOR_NAME) + 1);
+
 	return 1;
 }
 
@@ -222,6 +224,7 @@ static int nrf_modem_at_scanf_custom_xmonitor_shortname_success(const char *cmd,
 
 	char *buf = va_arg(args, char *);
 	strncpy(buf, EXAMPLE_SHORT_OPERATOR_NAME, strlen(EXAMPLE_SHORT_OPERATOR_NAME) + 1);
+
 	return 1;
 }
 
@@ -566,6 +569,7 @@ void test_modem_info_get_current_band_success_max_val(void)
 void test_modem_info_get_current_band_unavailable(void)
 {
 	uint8_t band;
+
 	nrf_modem_at_scanf_fake.custom_fake = nrf_modem_at_scanf_custom_xcband_unavailable;
 
 	int ret = modem_info_get_current_band(&band);
@@ -576,6 +580,7 @@ void test_modem_info_get_current_band_unavailable(void)
 void test_modem_info_get_current_band_at_cmd_error(void)
 {
 	uint8_t band;
+
 	nrf_modem_at_scanf_fake.custom_fake = nrf_modem_at_scanf_custom_xcband_at_cmd_error;
 
 	int ret = modem_info_get_current_band(&band);
@@ -643,6 +648,7 @@ void test_modem_info_get_snr_null(void)
 void test_modem_info_get_snr_invalid(void)
 {
 	int snr;
+
 	nrf_modem_at_scanf_fake.custom_fake = nrf_modem_at_scanf_custom_snr_unavailable;
 
 	int ret = modem_info_get_snr(&snr);
@@ -654,6 +660,7 @@ void test_modem_info_get_snr_invalid(void)
 void test_modem_info_get_snr_at_cmd_error(void)
 {
 	int snr;
+
 	nrf_modem_at_scanf_fake.custom_fake = nrf_modem_at_scanf_custom_snr_at_cmd_error;
 
 	int ret = modem_info_get_snr(&snr);
@@ -664,6 +671,7 @@ void test_modem_info_get_snr_at_cmd_error(void)
 void test_modem_info_get_snr_success(void)
 {
 	int snr;
+
 	nrf_modem_at_scanf_fake.custom_fake = nrf_modem_at_scanf_custom_snr;
 
 	int ret = modem_info_get_snr(&snr);
