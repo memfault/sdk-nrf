@@ -46,12 +46,10 @@ extern "C" {
 /** Band unavailable value. */
 #define BAND_UNAVAILABLE 0
 
-// TODO: Confirm - there is no clear guidance in nrf9160 AT command
-// guide - 3GPP gives an upper limit on the full name size but the
-// short name is not specified. This may be a Nordic-defined limit,
-// so for now guess a medium length to give some room.
-/** Short operator size can be up to 15 characters long. */
-#define MODEM_INFO_MAX_SHORT_OP_NAME_SIZE 16
+/** Short operator size can be up to 64 characters long.
+ * Matches value in nrf/samples/cellular/modem_shell/src/link/link_api.h.
+ */
+#define MODEM_INFO_SHORT_OP_NAME_SIZE 65
 
 /** SNR unavailable value. */
 #define SNR_UNAVAILABLE	 127
@@ -358,43 +356,52 @@ int modem_info_get_rsrp(int *val);
 /**
  * @brief Obtain the connectivity statistics.
  *
- * @note Will return bytes = 0 until connectivity stats collection
- * has been enabled via AT%XCONNSTAT=1
+ * Get the total amount of data transmitted and receievd during the collection
+ * period.
  *
- * @param tx_kbytes total amount of data (in kilobytes) transmitted during the collection period
- * @param rx_kbytes total amount of data (in kilobytes) received during the collection period
+ * @note Will return bytes = 0 until connectivity stats collection has been
+ * enabled via AT%XCONNSTAT=1, or with modem_info_connectivity_stats_init().
  *
- * @return 0 if operation was successful
+ * @param tx_kbytes Pointer to the target variable.
+ * @param rx_kbytes Pointer to the target variable.
+ *
+ * @return 0 if the operation was successful.
+ *         Otherwise, a (negative) error code is returned.
  */
 int modem_info_get_connectivity_stats(int *tx_kbytes, int *rx_kbytes);
 
 /**
- * @brief Obtain the current band
+ * @brief Obtain the current band.
  *
- * @param band_id id of the current band
- * @return 0 if operation was sucessful.
- *          Otherwise, a (negative) error code is returned
+ * @param val Pointer to the target variable.
+ *
+ * @return 0 if the operation was successful.
+ * @return -ENOENT if there is no valid band.
+ *          Otherwise, a (negative) error code is returned.
  */
-int modem_info_get_current_band(uint8_t *band_id);
+int modem_info_get_current_band(uint8_t *val);
 
 /**
  * @brief Obtain the operator name.
  *
- * @param buf Buffer to store operator name in
- * @param len Length of the buffer
- * @return 0 if operation was successful.
- *          Otherwise, a (negative) error code is returned
+ * @param buf Pointer to the target buffer.
+ * @param buf_size Size of target buffer.
+ *
+ * @return 0 if  the operation was successful.
+ *          Otherwise, a (negative) error code is returned.
  */
-int modem_info_get_operator(char *buf, size_t len);
+int modem_info_get_operator(char *buf, size_t buf_size);
 
 /**
- * @brief Obtain the signal-to-noise ratio
+ * @brief Obtain the signal-to-noise ratio.
  *
- * @param snr current SNR
- * @return 0 if operation was sucessful.
- *          Otherwise, a (negative) error code is returned
+ * @param val Pointer to the target variable.
+ *
+ * @return 0 if the operation was successful.
+ * @return -ENOENT if there is no valid SNR.
+ *          Otherwise, a (negative) error code is returned.
  */
-int modem_info_get_snr(int *snr);
+int modem_info_get_snr(int *val);
 
 /** @} */
 
