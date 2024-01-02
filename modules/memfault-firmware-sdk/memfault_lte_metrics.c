@@ -123,9 +123,7 @@ static void lte_handler(const struct lte_lc_evt *const evt)
 		}
 	}
 
-#if defined(CONFIG_MODEM_INFO)
-	// Get the operator
-	char operator_name[MODEM_INFO_MAX_SHORT_OP_NAME_SIZE];
+	char operator_name[MODEM_INFO_SHORT_OP_NAME_SIZE];
 	err = modem_info_get_operator(operator_name, sizeof(operator_name));
 	if (err != 0) {
 		LOG_WRN("Network operator collection failed, error: %d", err);
@@ -135,9 +133,7 @@ static void lte_handler(const struct lte_lc_evt *const evt)
 			LOG_ERR("Failed to set ncs_lte_operator");
 		}
 	}
-#endif
 
-#if defined(CONFIG_MODEM_INFO)
 	int snr;
 	err = modem_info_get_snr(&snr);
 	if (err != 0) {
