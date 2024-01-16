@@ -23,6 +23,19 @@ zephyr_library_sources_ifdef(
 )
 
 zephyr_library_sources_ifdef(
+        CONFIG_MEMFAULT_NCS_GNSS_METRICS
+        memfault_gnss_metrics.c
+)
+
+zephyr_ld_option_ifdef(
+        CONFIG_MEMFAULT_NCS_GNSS_METRICS
+        -Wl,--wrap=location_init)
+
+zephyr_ld_option_ifdef(
+        CONFIG_MEMFAULT_NCS_GNSS_METRICS
+        -Wl,--wrap=location_request)
+
+zephyr_library_sources_ifdef(
         CONFIG_MEMFAULT_NCS_BT_METRICS
         memfault_bt_metrics.c)
 

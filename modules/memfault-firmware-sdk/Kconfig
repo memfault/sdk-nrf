@@ -164,10 +164,17 @@ config MEMFAULT_NCS_BT_METRICS
 	help
 	  Collect metrics related to the Bluetooth stack in background while application is running.
 
+config MEMFAULT_NCS_GNSS_METRICS
+	bool "Collect GNSS metrics"
+	depends on LOCATION
+	depends on LOCATION_DATA_DETAILS
+	help
+	  Collect metrics related to GNSS fixes while the application is running.
+
 config MEMFAULT_NCS_USE_DEFAULT_METRICS
 	bool
 	select MEMFAULT_METRICS_EXTRA_DEFS_FILE
-	default y if (MEMFAULT_NCS_STACK_METRICS || MEMFAULT_NCS_LTE_METRICS || MEMFAULT_NCS_BT_METRICS)
+	default y if (MEMFAULT_NCS_STACK_METRICS || MEMFAULT_NCS_LTE_METRICS || MEMFAULT_NCS_BT_METRICS || MEMFAULT_NCS_GNSS_METRICS)
 
 config MEMFAULT_NCS_ETB_CAPTURE
 	bool "Enable ETB trace capture"
