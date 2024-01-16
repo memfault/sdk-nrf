@@ -23,7 +23,6 @@
 LOG_MODULE_DECLARE(memfault_ncs_metrics, CONFIG_MEMFAULT_NCS_LOG_LEVEL);
 
 static bool connected;
-static bool connect_timer_started;
 
 #if CONFIG_MEMFAULT_NCS_STACK_METRICS
 static struct memfault_ncs_metrics_thread lte_metrics_thread = {
@@ -34,24 +33,21 @@ static struct memfault_ncs_metrics_thread lte_metrics_thread = {
 
 static void lte_trace_cb(enum lte_lc_trace_type type)
 {
-	int err;
-
 	LOG_DBG("LTE trace: %d", type);
 
 	switch (type) {
 	case LTE_LC_TRACE_FUNC_MODE_NORMAL:
+		// Intentional fall-through
 	case LTE_LC_TRACE_FUNC_MODE_ACTIVATE_LTE:
-		if (connect_timer_started) {
-			break;
-		}
-
-		err = MEMFAULT_METRIC_TIMER_START(ncs_lte_time_to_connect_ms);
-		if (err) {
-			LOG_ERR("LTE connection time tracking was not started, error: %d", err);
-		} else {
-			connect_timer_started = true;
-		}
-
+		MEMFAULT_METRIC_TIMER_START(ncs_lte_on_time_ms);
+		MEMFAULT_METRIC_TIMER_START(ncs_lte_time_to_connect_ms);
+		break;
+	case LTE_LC_TRACE_FUNC_MODE_POWER_OFF:
+		// Intentional fall-through
+	case LTE_LC_TRACE_FUNC_MODE_OFFLINE:
+		// Intentional fall-through
+	case LTE_LC_TRACE_FUNC_MODE_DEACTIVATE_LTE:
+		MEMFAULT_METRIC_TIMER_STOP(ncs_lte_on_time_ms);
 		break;
 	default:
 		break;
@@ -132,20 +128,7 @@ static void lte_handler(const struct lte_lc_evt *const evt)
 		case LTE_LC_NW_REG_REGISTERED_HOME:
 		case LTE_LC_NW_REG_REGISTERED_ROAMING:
 			connected = true;
-
-			if (!connect_timer_started) {
-				LOG_WRN("ncs_lte_time_to_connect_ms was not started");
-				break;
-			}
-
-			err = MEMFAULT_METRIC_TIMER_STOP(ncs_lte_time_to_connect_ms);
-			if (err) {
-				LOG_WRN("Failed to stop LTE connection timer, error: %d", err);
-			} else {
-				LOG_DBG("ncs_lte_time_to_connect_ms stopped");
-				connect_timer_started = false;
-			}
-
+			MEMFAULT_METRIC_TIMER_STOP(ncs_lte_time_to_connect_ms);
 			break;
 		case LTE_LC_NW_REG_NOT_REGISTERED:
 		case LTE_LC_NW_REG_SEARCHING:
@@ -157,19 +140,7 @@ static void lte_handler(const struct lte_lc_evt *const evt)
 				if (err) {
 					LOG_ERR("Failed to increment ncs_lte_connection_loss_count");
 				}
-
-				if (connect_timer_started) {
-					break;
-				}
-
-				err = MEMFAULT_METRIC_TIMER_START(ncs_lte_time_to_connect_ms);
-				if (err) {
-					LOG_ERR("Failed to start LTE connection timer, error: %d",
-						err);
-				} else {
-					LOG_DBG("ncs_lte_time_to_connect_ms started");
-					connect_timer_started = true;
-				}
+				MEMFAULT_METRIC_TIMER_START(ncs_lte_time_to_connect_ms);
 			}
 
 			connected = false;
