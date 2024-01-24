@@ -1,0 +1,29 @@
+/*
+ * Copyright (c) 2019 Nordic Semiconductor ASA
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/* Default shared SRAM planning when building for nRF9160.
+ * This file is included by the thinyg91_nrf9160.
+ * - 64 kB SRAM allocated as Shared memory (sram0_shared)
+ * - Region defined after the image SRAM of Application MCU
+ */
+
+/ {
+	chosen {
+		/* shared memory reserved for the inter-processor communication */
+		zephyr,ipc_shm = &sram0_shared;
+	};
+
+	reserved-memory {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+
+		sram0_shared: memory@20030000 {
+			/* SRAM allocated to shared memory */
+			reg = <0x20030000 0x10000>;
+		};
+	};
+};
