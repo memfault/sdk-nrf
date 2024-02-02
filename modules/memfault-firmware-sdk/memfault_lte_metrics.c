@@ -16,6 +16,7 @@
 #endif
 
 #include <memfault/metrics/metrics.h>
+#include <memfault/metrics/connectivity.h>
 #include <memfault/core/platform/overrides.h>
 
 #include "memfault_ncs_metrics.h"
@@ -41,6 +42,10 @@ static void lte_trace_cb(enum lte_lc_trace_type type)
 	case LTE_LC_TRACE_FUNC_MODE_ACTIVATE_LTE:
 		MEMFAULT_METRIC_TIMER_START(ncs_lte_on_time_ms);
 		MEMFAULT_METRIC_TIMER_START(ncs_lte_time_to_connect_ms);
+#if MEMFAULT_METRICS_CONNECTIVITY_CONNECTED_TIME
+		memfault_metrics_connectivity_connected_state_change(
+			kMemfaultMetricsConnectivityState_Started);
+#endif
 		break;
 	case LTE_LC_TRACE_FUNC_MODE_POWER_OFF:
 		__fallthrough;
@@ -48,6 +53,10 @@ static void lte_trace_cb(enum lte_lc_trace_type type)
 		__fallthrough;
 	case LTE_LC_TRACE_FUNC_MODE_DEACTIVATE_LTE:
 		MEMFAULT_METRIC_TIMER_STOP(ncs_lte_on_time_ms);
+#if MEMFAULT_METRICS_CONNECTIVITY_CONNECTED_TIME
+		memfault_metrics_connectivity_connected_state_change(
+			kMemfaultMetricsConnectivityState_Stopped);
+#endif
 		break;
 	default:
 		break;
@@ -102,6 +111,10 @@ static void lte_handler(const struct lte_lc_evt *const evt)
 		case LTE_LC_NW_REG_REGISTERED_ROAMING:
 			connected = true;
 			MEMFAULT_METRIC_TIMER_STOP(ncs_lte_time_to_connect_ms);
+#if MEMFAULT_METRICS_CONNECTIVITY_CONNECTED_TIME
+			memfault_metrics_connectivity_connected_state_change(
+				kMemfaultMetricsConnectivityState_Connected);
+#endif
 			break;
 		case LTE_LC_NW_REG_NOT_REGISTERED:
 		case LTE_LC_NW_REG_SEARCHING:
@@ -115,6 +128,11 @@ static void lte_handler(const struct lte_lc_evt *const evt)
 				}
 
 				MEMFAULT_METRIC_TIMER_START(ncs_lte_time_to_connect_ms);
+
+#if MEMFAULT_METRICS_CONNECTIVITY_CONNECTED_TIME
+				memfault_metrics_connectivity_connected_state_change(
+					kMemfaultMetricsConnectivityState_ConnectionLost);
+#endif
 			}
 
 			connected = false;
