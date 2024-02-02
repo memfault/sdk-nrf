@@ -409,28 +409,6 @@ int modem_info_get_operator(char *buf, size_t buf_size);
  */
 int modem_info_get_snr(int *val);
 
-/**
- * @brief Obtain the operator name.
- *
- * @param buf Pointer to the target buffer.
- * @param buf_size Size of target buffer.
- *
- * @return 0 if  the operation was successful.
- *          Otherwise, a (negative) error code is returned.
- */
-int modem_info_get_operator(char *buf, size_t buf_size);
-
-/**
- * @brief Obtain the signal-to-noise ratio.
- *
- * @param val Pointer to the target variable.
- *
- * @return 0 if the operation was successful.
- * @return -ENOENT if there is no valid SNR.
- *          Otherwise, a (negative) error code is returned.
- */
-int modem_info_get_snr(int *val);
-
 /** @} */
 
 #ifdef __cplusplus
