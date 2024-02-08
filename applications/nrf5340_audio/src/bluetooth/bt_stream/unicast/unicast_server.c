@@ -78,13 +78,15 @@ static uint8_t unicast_server_adv_data[] = {
 	0x00, /* Metadata length */
 };
 
-static void le_audio_event_publish(enum le_audio_evt_type event, struct bt_conn *conn)
+static void le_audio_event_publish(enum le_audio_evt_type event, struct bt_conn *conn,
+				   enum bt_audio_dir dir)
 {
 	int ret;
 	struct le_audio_msg msg;
 
 	msg.event = event;
 	msg.conn = conn;
+	msg.dir = dir;
 
 	ret = zbus_chan_pub(&le_audio_chan, &msg, LE_AUDIO_ZBUS_EVENT_WAIT_TIME);
 	ERR_CHK(ret);
@@ -166,7 +168,45 @@ static void print_codec(const struct bt_audio_codec_cfg *codec, enum bt_audio_di
 {
 	if (codec->id == BT_HCI_CODING_FORMAT_LC3) {
 		/* LC3 uses the generic LTV format - other codecs might do as well */
+		int ret;
 		enum bt_audio_location chan_allocation;
+		int freq_hz;
+		int dur_us;
+		uint32_t octets_per_sdu;
+		int frame_blks_per_sdu;
+		uint32_t bitrate;
+
+		ret = le_audio_freq_hz_get(codec, &freq_hz);
+		if (ret) {
+			LOG_ERR("Error retrieving sampling frequency: %d", ret);
+			return;
+		}
+
+		ret = le_audio_duration_us_get(codec, &dur_us);
+		if (ret) {
+			LOG_ERR("Error retrieving frame duration: %d", ret);
+			return;
+		}
+
+		ret = le_audio_octets_per_frame_get(codec, &octets_per_sdu);
+		if (ret) {
+			LOG_ERR("Error retrieving octets per frame: %d", ret);
+			return;
+		}
+
+		ret = le_audio_frame_blocks_per_sdu_get(codec, &frame_blks_per_sdu);
+		if (ret) {
+			LOG_ERR("Error retrieving frame blocks per SDU: %d", ret);
+			return;
+		}
+
+		ret = bt_audio_codec_cfg_get_chan_allocation(codec, &chan_allocation);
+		if (ret) {
+			LOG_ERR("Error retrieving channel allocation: %d", ret);
+			return;
+		}
+
+		bitrate = octets_per_sdu * 8 * (1000000 / dur_us);
 
 		if (dir == BT_AUDIO_DIR_SINK) {
 			LOG_INF("LC3 codec config for sink:");
@@ -176,19 +216,11 @@ static void print_codec(const struct bt_audio_codec_cfg *codec, enum bt_audio_di
 			LOG_INF("LC3 codec config for <unknown dir>:");
 		}
 
-		LOG_INF("\tFrequency: %d Hz", bt_audio_codec_cfg_get_freq(codec));
-		LOG_INF("\tFrame Duration: %d us", bt_audio_codec_cfg_get_frame_dur(codec));
-		if (bt_audio_codec_cfg_get_chan_allocation(codec, &chan_allocation) == 0) {
-			LOG_INF("\tChannel allocation: 0x%x", chan_allocation);
-		}
-
-		uint32_t octets_per_sdu = bt_audio_codec_cfg_get_octets_per_frame(codec);
-		uint32_t bitrate =
-			octets_per_sdu * 8 * (1000000 / bt_audio_codec_cfg_get_frame_dur(codec));
-
+		LOG_INF("\tFrequency: %d Hz", freq_hz);
+		LOG_INF("\tDuration: %d us", dur_us);
+		LOG_INF("\tChannel allocation: 0x%x", chan_allocation);
 		LOG_INF("\tOctets per frame: %d (%d bps)", octets_per_sdu, bitrate);
-		LOG_INF("\tFrames per SDU: %d",
-			bt_audio_codec_cfg_get_frame_blocks_per_sdu(codec, true));
+		LOG_INF("\tFrames per SDU: %d", frame_blks_per_sdu);
 	} else {
 		LOG_WRN("Codec is not LC3, codec_id: 0x%2x", codec->id);
 	}
@@ -206,27 +238,34 @@ static int lc3_config_cb(struct bt_conn *conn, const struct bt_bap_ep *ep, enum 
 		if (!audio_stream->conn) {
 			LOG_DBG("ASE Codec Config stream %p", (void *)audio_stream);
 
-			uint32_t octets_per_sdu = bt_audio_codec_cfg_get_octets_per_frame(codec);
+			int ret;
+			uint32_t octets_per_sdu;
+
+			ret = le_audio_octets_per_frame_get(codec, &octets_per_sdu);
+			if (ret) {
+				LOG_ERR("Error retrieving octets frame:, %d", ret);
+				return ret;
+			}
 
 			if (octets_per_sdu > LE_AUDIO_SDU_SIZE_OCTETS(CONFIG_LC3_BITRATE_MAX)) {
-				LOG_WRN("Too high bitrate");
+				LOG_ERR("Too high bitrate");
 				return -EINVAL;
 			} else if (octets_per_sdu <
 				   LE_AUDIO_SDU_SIZE_OCTETS(CONFIG_LC3_BITRATE_MIN)) {
-				LOG_WRN("Too low bitrate");
+				LOG_ERR("Too low bitrate");
 				return -EINVAL;
 			}
 
 			if (dir == BT_AUDIO_DIR_SINK) {
 				LOG_DBG("BT_AUDIO_DIR_SINK");
 				print_codec(codec, dir);
-				le_audio_event_publish(LE_AUDIO_EVT_CONFIG_RECEIVED, conn);
+				le_audio_event_publish(LE_AUDIO_EVT_CONFIG_RECEIVED, conn, dir);
 			}
 #if (CONFIG_BT_AUDIO_TX)
 			else if (dir == BT_AUDIO_DIR_SOURCE) {
 				LOG_DBG("BT_AUDIO_DIR_SOURCE");
 				print_codec(codec, dir);
-				le_audio_event_publish(LE_AUDIO_EVT_CONFIG_RECEIVED, conn);
+				le_audio_event_publish(LE_AUDIO_EVT_CONFIG_RECEIVED, conn, dir);
 
 				/* CIS headset only supports one source stream for now */
 				bap_tx_streams[0] = audio_stream;
@@ -260,7 +299,15 @@ static int lc3_reconfig_cb(struct bt_bap_stream *stream, enum bt_audio_dir dir,
 static int lc3_qos_cb(struct bt_bap_stream *stream, const struct bt_audio_codec_qos *qos,
 		      struct bt_bap_ascs_rsp *rsp)
 {
-	le_audio_event_publish(LE_AUDIO_EVT_PRES_DELAY_SET, stream->conn);
+	enum bt_audio_dir dir;
+
+	dir = le_audio_stream_dir_get(stream);
+	if (dir <= 0) {
+		LOG_ERR("Failed to get dir of stream %p", stream);
+		return -EIO;
+	}
+
+	le_audio_event_publish(LE_AUDIO_EVT_PRES_DELAY_SET, stream->conn, dir);
 
 	LOG_DBG("QoS: stream %p qos %p", (void *)stream, (void *)qos);
 
@@ -290,27 +337,51 @@ static int lc3_metadata_cb(struct bt_bap_stream *stream, const uint8_t *meta, si
 
 static int lc3_disable_cb(struct bt_bap_stream *stream, struct bt_bap_ascs_rsp *rsp)
 {
+	enum bt_audio_dir dir;
+
+	dir = le_audio_stream_dir_get(stream);
+	if (dir <= 0) {
+		LOG_ERR("Failed to get dir of stream %p", stream);
+		return -EIO;
+	}
+
 	LOG_DBG("Disable: stream %p", (void *)stream);
 
-	le_audio_event_publish(LE_AUDIO_EVT_NOT_STREAMING, stream->conn);
+	le_audio_event_publish(LE_AUDIO_EVT_NOT_STREAMING, stream->conn, dir);
 
 	return 0;
 }
 
 static int lc3_stop_cb(struct bt_bap_stream *stream, struct bt_bap_ascs_rsp *rsp)
 {
+	enum bt_audio_dir dir;
+
+	dir = le_audio_stream_dir_get(stream);
+	if (dir <= 0) {
+		LOG_ERR("Failed to get dir of stream %p", stream);
+		return -EIO;
+	}
+
 	LOG_DBG("Stop: stream %p", (void *)stream);
 
-	le_audio_event_publish(LE_AUDIO_EVT_NOT_STREAMING, stream->conn);
+	le_audio_event_publish(LE_AUDIO_EVT_NOT_STREAMING, stream->conn, dir);
 
 	return 0;
 }
 
 static int lc3_release_cb(struct bt_bap_stream *stream, struct bt_bap_ascs_rsp *rsp)
 {
+	enum bt_audio_dir dir;
+
+	dir = le_audio_stream_dir_get(stream);
+	if (dir <= 0) {
+		LOG_ERR("Failed to get dir of stream %p", stream);
+		return -EIO;
+	}
+
 	LOG_DBG("Release: stream %p", (void *)stream);
 
-	le_audio_event_publish(LE_AUDIO_EVT_NOT_STREAMING, stream->conn);
+	le_audio_event_publish(LE_AUDIO_EVT_NOT_STREAMING, stream->conn, dir);
 
 	return 0;
 }
@@ -358,16 +429,17 @@ static void stream_sent_cb(struct bt_bap_stream *stream)
 static void stream_enabled_cb(struct bt_bap_stream *stream)
 {
 	int ret;
-	struct bt_bap_ep_info ep_info;
+	enum bt_audio_dir dir;
 
-	ret = bt_bap_ep_get_info(stream->ep, &ep_info);
-	if (ret) {
-		LOG_WRN("Failed to get ep_info");
+	dir = le_audio_stream_dir_get(stream);
+	if (dir <= 0) {
+		LOG_ERR("Failed to get dir of stream %p", stream);
+		return;
 	}
 
 	LOG_DBG("Stream %p enabled", stream);
 
-	if (ep_info.dir == BT_AUDIO_DIR_SINK) {
+	if (dir == BT_AUDIO_DIR_SINK) {
 		/* Automatically do the receiver start ready operation */
 		ret = bt_bap_stream_start(stream);
 		if (ret != 0) {
@@ -384,40 +456,40 @@ static void stream_disabled_cb(struct bt_bap_stream *stream)
 
 static void stream_started_cb(struct bt_bap_stream *stream)
 {
-	int ret;
-	struct bt_bap_ep_info ep_info;
+	enum bt_audio_dir dir;
 
-	ret = bt_bap_ep_get_info(stream->ep, &ep_info);
-	if (ret) {
-		LOG_WRN("Failed to get ep_info");
+	dir = le_audio_stream_dir_get(stream);
+	if (dir <= 0) {
+		LOG_ERR("Failed to get dir of stream %p", stream);
+		return;
 	}
 
 	LOG_INF("Stream %p started", stream);
 
-	if (ep_info.dir == BT_AUDIO_DIR_SOURCE) {
+	if (dir == BT_AUDIO_DIR_SOURCE) {
 		ERR_CHK(bt_le_audio_tx_stream_started(0));
 	}
 
-	le_audio_event_publish(LE_AUDIO_EVT_STREAMING, stream->conn);
+	le_audio_event_publish(LE_AUDIO_EVT_STREAMING, stream->conn, dir);
 }
 
 static void stream_stopped_cb(struct bt_bap_stream *stream, uint8_t reason)
 {
-	int ret;
-	struct bt_bap_ep_info ep_info;
+	enum bt_audio_dir dir;
 
-	ret = bt_bap_ep_get_info(stream->ep, &ep_info);
-	if (ret) {
-		LOG_WRN("Failed to get ep_info");
+	dir = le_audio_stream_dir_get(stream);
+	if (dir <= 0) {
+		LOG_ERR("Failed to get dir of stream %p", stream);
+		return;
 	}
 
 	LOG_DBG("Stream %p stopped. Reason: %d", stream, reason);
 
-	if (ep_info.dir == BT_AUDIO_DIR_SOURCE) {
+	if (dir == BT_AUDIO_DIR_SOURCE) {
 		ERR_CHK(bt_le_audio_tx_stream_stopped(0));
 	}
 
-	le_audio_event_publish(LE_AUDIO_EVT_NOT_STREAMING, stream->conn);
+	le_audio_event_publish(LE_AUDIO_EVT_NOT_STREAMING, stream->conn, dir);
 }
 
 static void stream_released_cb(struct bt_bap_stream *stream)
@@ -458,6 +530,8 @@ static int adv_buf_put(struct bt_data *adv_buf, uint8_t adv_buf_vacant, int *ind
 int unicast_server_config_get(uint32_t *bitrate, uint32_t *sampling_rate_hz,
 			      uint32_t *pres_delay_us)
 {
+	int ret;
+
 	if (bitrate == NULL && sampling_rate_hz == NULL && pres_delay_us == NULL) {
 		LOG_ERR("No valid pointers received");
 		return -ENXIO;
@@ -469,17 +543,33 @@ int unicast_server_config_get(uint32_t *bitrate, uint32_t *sampling_rate_hz,
 	}
 
 	if (sampling_rate_hz != NULL) {
-		*sampling_rate_hz = bt_audio_codec_cfg_get_freq(audio_streams[0].codec_cfg);
+		ret = le_audio_freq_hz_get(audio_streams[0].codec_cfg, sampling_rate_hz);
+		if (ret) {
+			LOG_ERR("Invalid sampling frequency: %d", ret);
+			return -ENXIO;
+		}
 	}
 
 	if (bitrate != NULL) {
-		/* Get the configuration for the sink stream */
-		int frames_per_sec =
-			1000000 / bt_audio_codec_cfg_get_frame_dur(audio_streams[0].codec_cfg);
-		int bits_per_frame =
-			bt_audio_codec_cfg_get_octets_per_frame(audio_streams[0].codec_cfg) * 8;
+		int dur_us;
 
-		*bitrate = frames_per_sec * bits_per_frame;
+		ret = le_audio_duration_us_get(audio_streams[0].codec_cfg, &dur_us);
+		if (ret) {
+			LOG_ERR("Invalid frame duration: %d", ret);
+			return -ENXIO;
+		}
+
+		/* Get the configuration for the sink stream */
+		int frames_per_sec = 1000000 / dur_us;
+		int octets_per_sdu;
+
+		ret = le_audio_octets_per_frame_get(audio_streams[0].codec_cfg, &octets_per_sdu);
+		if (ret) {
+			LOG_ERR("Invalid octets per frame: %d", ret);
+			return -ENXIO;
+		}
+
+		*bitrate = frames_per_sec * (octets_per_sdu * 8);
 	}
 
 	if (pres_delay_us != NULL) {

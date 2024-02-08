@@ -37,15 +37,15 @@ static void lte_trace_cb(enum lte_lc_trace_type type)
 
 	switch (type) {
 	case LTE_LC_TRACE_FUNC_MODE_NORMAL:
-		// Intentional fall-through
+		__fallthrough;
 	case LTE_LC_TRACE_FUNC_MODE_ACTIVATE_LTE:
 		MEMFAULT_METRIC_TIMER_START(ncs_lte_on_time_ms);
 		MEMFAULT_METRIC_TIMER_START(ncs_lte_time_to_connect_ms);
 		break;
 	case LTE_LC_TRACE_FUNC_MODE_POWER_OFF:
-		// Intentional fall-through
+		__fallthrough;
 	case LTE_LC_TRACE_FUNC_MODE_OFFLINE:
-		// Intentional fall-through
+		__fallthrough;
 	case LTE_LC_TRACE_FUNC_MODE_DEACTIVATE_LTE:
 		MEMFAULT_METRIC_TIMER_STOP(ncs_lte_on_time_ms);
 		break;
@@ -60,6 +60,9 @@ static void lte_handler(const struct lte_lc_evt *const evt)
 
 #if defined(CONFIG_MODEM_INFO)
 	int rsrp;
+	uint8_t band;
+	int snr;
+
 	err = modem_info_get_rsrp(&rsrp);
 	if (err) {
 		LOG_WRN("LTE RSRP value collection failed, error: %d", err);
@@ -70,24 +73,6 @@ static void lte_handler(const struct lte_lc_evt *const evt)
 		}
 	};
 
-	int tx_kbytes;
-	int rx_kybtes;
-	err = modem_info_get_connectivity_stats(&tx_kbytes, &rx_kybtes);
-	if (err) {
-		LOG_WRN("LTE connectivity stats collections failed, error: %d", err);
-	} else {
-		err = MEMFAULT_METRIC_SET_UNSIGNED(ncs_lte_tx_kilobytes, tx_kbytes);
-		if (err) {
-			LOG_ERR("Failed to set ncs_lte_tx_kilobytes");
-		}
-
-		err = MEMFAULT_METRIC_SET_UNSIGNED(ncs_lte_rx_kilobytes, rx_kybtes);
-		if (err) {
-			LOG_ERR("Failed to set ncs_lte_rx_kilobytes");
-		}
-	}
-
-	uint8_t band;
 	err = modem_info_get_current_band(&band);
 	if (err != 0) {
 		LOG_WRN("Network band collection failed, error: %d", err);
@@ -98,18 +83,6 @@ static void lte_handler(const struct lte_lc_evt *const evt)
 		}
 	}
 
-	char operator_name[MODEM_INFO_SHORT_OP_NAME_SIZE];
-	err = modem_info_get_operator(operator_name, sizeof(operator_name));
-	if (err != 0) {
-		LOG_WRN("Network operator collection failed, error: %d", err);
-	} else {
-		err = MEMFAULT_METRIC_SET_STRING(ncs_lte_operator, operator_name);
-		if (err) {
-			LOG_ERR("Failed to set ncs_lte_operator");
-		}
-	}
-
-	int snr;
 	err = modem_info_get_snr(&snr);
 	if (err != 0) {
 		LOG_WRN("SNR collection failed, error: %d", err);
@@ -138,8 +111,9 @@ static void lte_handler(const struct lte_lc_evt *const evt)
 			if (connected) {
 				err = MEMFAULT_METRIC_ADD(ncs_lte_connection_loss_count, 1);
 				if (err) {
-					LOG_ERR("Failed to increment ncs_lte_connection_loss_count");
+					LOG_ERR("Fail to increment ncs_lte_connection_loss_count");
 				}
+
 				MEMFAULT_METRIC_TIMER_START(ncs_lte_time_to_connect_ms);
 			}
 
@@ -154,7 +128,8 @@ static void lte_handler(const struct lte_lc_evt *const evt)
 			LOG_ERR("Failed to set ncs_lte_psm_tau_seconds");
 		}
 
-		err = MEMFAULT_METRIC_SET_SIGNED(ncs_lte_psm_active_time_seconds, evt->psm_cfg.active_time);
+		err = MEMFAULT_METRIC_SET_SIGNED(ncs_lte_psm_active_time_seconds,
+						 evt->psm_cfg.active_time);
 		if (err) {
 			LOG_ERR("Failed to set ncs_lte_psm_active_time_seconds");
 		}
@@ -197,6 +172,7 @@ void memfault_lte_metrics_init(void)
 	lte_lc_register_handler(lte_handler);
 
 #if defined(CONFIG_MODEM_INFO)
+	int err;
 	char buf[MODEM_INFO_FWVER_SIZE];
 
 	modem_info_get_fw_version(buf, sizeof(buf));
@@ -206,7 +182,7 @@ void memfault_lte_metrics_init(void)
 
 	MEMFAULT_METRIC_SET_STRING(ncs_lte_modem_fw_version, buf);
 
-	int err = modem_info_connectivity_stats_init();
+	err = modem_info_connectivity_stats_init();
 	if (err) {
 		LOG_WRN("Failed to init connectivity stats, error: %d", err);
 	}
@@ -226,7 +202,9 @@ void memfault_lte_metrics_update(void)
 #if defined(CONFIG_MODEM_INFO)
 	int tx_kbytes;
 	int rx_kybtes;
+	char operator_name[MODEM_INFO_SHORT_OP_NAME_SIZE];
 	int err = modem_info_get_connectivity_stats(&tx_kbytes, &rx_kybtes);
+
 	if (err) {
 		LOG_WRN("Failed to collect connectivity stats, error: %d", err);
 	} else {
@@ -241,7 +219,22 @@ void memfault_lte_metrics_update(void)
 		}
 	}
 
-	// Reset stats
+	err = modem_info_get_operator(operator_name, sizeof(operator_name));
+	if (err != 0) {
+		LOG_DBG("Network operator name was not reported by the modem");
+
+		err = MEMFAULT_METRIC_SET_STRING(ncs_lte_operator, "Not available");
+		if (err) {
+			LOG_ERR("Failed to set ncs_lte_operator");
+		}
+	} else {
+		err = MEMFAULT_METRIC_SET_STRING(ncs_lte_operator, operator_name);
+		if (err) {
+			LOG_ERR("Failed to set ncs_lte_operator");
+		}
+	}
+
+	/* Reset stats */
 	err = modem_info_connectivity_stats_init();
 	if (err) {
 		LOG_ERR("Failed to reset connectivity stats, err: %d", err);

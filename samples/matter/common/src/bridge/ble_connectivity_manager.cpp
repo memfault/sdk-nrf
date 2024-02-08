@@ -56,16 +56,9 @@ void BLEConnectivityManager::FilterMatch(bt_scan_device_info *device_info, bt_sc
 		return;
 	}
 
-	if (filter_match->addr.match) {
-		/* Result comes from the recovery mechanism */
-		Instance().mRecovery.mScannedDevice.mAddr = *filter_match->addr.addr;
-		Instance().mRecovery.mScannedDevice.mConnParam = *device_info->conn_param;
-		Instance().mRecovery.mAddressMatched = true;
-		return;
-	}
-
 	auto scannedDevices = Instance().mScannedDevices;
 	auto scannedDevicesCounter = Instance().mScannedDevicesCounter;
+
 	/* Limit the number of devices that can be scanned. */
 	if (scannedDevicesCounter >= kMaxScannedDevices) {
 		return;
@@ -106,6 +99,8 @@ void BLEConnectivityManager::ConnectionHandler(bt_conn *conn, uint8_t conn_err)
 {
 	const bt_addr_le_t *dstAddr = bt_conn_get_dst(conn);
 	BLEBridgedDeviceProvider *provider = nullptr;
+	int err = 0;
+	bool securityFailed = false;
 
 	/* Find the created device instance based on address. */
 	for (int i = 0; i < kMaxConnectedDevices; i++) {
@@ -120,17 +115,32 @@ void BLEConnectivityManager::ConnectionHandler(bt_conn *conn, uint8_t conn_err)
 		}
 	}
 
-	/* The device with given address was not found.  */
+	/* The device with the given address was not found. */
 	if (!provider) {
 		return;
 	}
 
-	if (conn_err && provider->IsInitiallyConnected()) {
-		/* There was an error during recovery, so put it back to the lost devices list */
-		Instance().mRecovery.NotifyProviderToRecover(provider);
-		return;
-	} else if (Instance().mRecovery.IsNeeded()) {
-		/* Start recovering the next lost device */
+	/* If there was an error during the initial connection, we should notify the application */
+	bool firstConnFailed = (conn_err && !provider->IsInitiallyConnected());
+	VerifyOrExit(!firstConnFailed, err = conn_err);
+
+	/* The device was successfully recovered. */
+	if (conn_err == 0 && provider->IsInitiallyConnected()) {
+		Instance().mRecovery.RemoveRecovered(provider);
+		provider->NotifySuccessfulRecovery();
+	}
+
+	if (!sys_slist_is_empty(&Instance().mRecovery.mListToReconnect)) {
+		/* There is another provider to re-connect, schedule this operation. */
+		BLEBridgedDeviceProvider *providerToRecover =
+			Instance().mRecovery.GetProvider(&Instance().mRecovery.mListToReconnect);
+		DeviceLayer::PlatformMgr().ScheduleWork(
+			[](intptr_t context) {
+				Instance().Reconnect(reinterpret_cast<BLEBridgedDeviceProvider *>(context));
+			},
+			reinterpret_cast<intptr_t>(providerToRecover));
+	} else if (!sys_slist_is_empty(&Instance().mRecovery.mListToRecover)) {
+		/* There are pending providers to recover and no more scanned ones, schedule next scan operation. */
 		Instance().mRecovery.StartTimer();
 	}
 
@@ -139,20 +149,31 @@ void BLEConnectivityManager::ConnectionHandler(bt_conn *conn, uint8_t conn_err)
 	LOG_INF("Connected: %s", addrStr);
 
 #if defined(CONFIG_BT_SMP)
-	int err = bt_conn_set_security(conn, static_cast<bt_security_t>(CONFIG_BRIDGE_BT_MINIMUM_SECURITY_LEVEL));
-	if (err) {
-		LOG_ERR("Failed to set security (%d)", err);
-		return;
-	}
+	err = bt_conn_set_security(conn, static_cast<bt_security_t>(CONFIG_BRIDGE_BT_MINIMUM_SECURITY_LEVEL));
+	VerifyOrExit(err == 0, securityFailed = true);
 
 	/* Start GATT discovery only if this specific device was successfully connected before. Otherwise, it will be
 	 * called after a successful pairing. */
 	if (provider->IsInitiallyConnected()) {
-		StartGattDiscovery(conn, provider);
+		err = StartGattDiscovery(conn, provider);
+		VerifyOrExit(err == 0, );
 	}
 #else
-	StartGattDiscovery(conn, provider);
+	err = StartGattDiscovery(conn, provider);
+	VerifyOrExit(err == 0, );
 #endif
+
+	return;
+
+exit:
+	if (securityFailed) {
+		LOG_ERR("Failed to set the connection security (%d)", err);
+	} else {
+		LOG_ERR("The connection failed (%d)", err);
+	}
+	/* Trigger the connection callback to inform the application that the connection procedure failed. */
+	provider->GetBLEBridgedDevice().mFirstConnectionCallback(
+		false, provider->GetBLEBridgedDevice().mFirstConnectionCallbackContext);
 }
 
 void BLEConnectivityManager::DisconnectionHandler(bt_conn *conn, uint8_t reason)
@@ -284,22 +305,44 @@ void BLEConnectivityManager::DiscoveryCompletedHandler(bt_gatt_dm *dm, void *con
 
 	discoveryResult = true;
 exit:
-	if (provider) {
-		if (!provider->IsInitiallyConnected()) {
-			/* Provider is not initalized it so we need to call the first connection callback */
-			provider->GetBLEBridgedDevice().mFirstConnectionCallback(
-				discoveryResult, provider->GetBLEBridgedDevice().mFirstConnectionCallbackContext);
-			provider->ConfirmInitialConnection();
-		}
 
-		VerifyOrReturn(CHIP_NO_ERROR == provider->NotifyReachableStatusChange(true),
-			       LOG_WRN("The device has not been notified about the status change."));
-
-		VerifyOrReturn(provider->ParseDiscoveredData(dm) == 0,
-			       LOG_ERR("Cannot parse the GATT discovered data."));
+	Platform::UniquePtr<DiscoveryHandlerCtx> discoveryCtx(Platform::New<DiscoveryHandlerCtx>());
+	if (!discoveryCtx) {
+		return;
 	}
 
-	bt_gatt_dm_data_release(dm);
+	discoveryCtx->mProvider = provider;
+	discoveryCtx->mDiscoveryData = dm;
+
+	CHIP_ERROR err = chip::DeviceLayer::PlatformMgr().ScheduleWork(
+		[](intptr_t context) {
+			Platform::UniquePtr<DiscoveryHandlerCtx> ctx(reinterpret_cast<DiscoveryHandlerCtx *>(context));
+			if (!ctx->mProvider->IsInitiallyConnected()) {
+				/* Provider is not initalized, so we need to call the first connection callback. */
+				CHIP_ERROR err = ctx->mProvider->GetBLEBridgedDevice().mFirstConnectionCallback(
+					ctx->mDiscoveryData,
+					ctx->mProvider->GetBLEBridgedDevice().mFirstConnectionCallbackContext);
+				ctx->mProvider->ConfirmInitialConnection();
+				VerifyOrReturn(CHIP_NO_ERROR == err, bt_gatt_dm_data_release(ctx->mDiscoveryData);
+					       Instance().RemoveBLEProvider(ctx->mProvider->GetBtAddress()););
+			}
+
+			if (CHIP_NO_ERROR != ctx->mProvider->NotifyReachableStatusChange(true)) {
+				LOG_WRN("The device has not been notified about the status change.");
+			}
+
+			if (0 != ctx->mProvider->ParseDiscoveredData(ctx->mDiscoveryData)) {
+				LOG_ERR("Cannot parse the GATT discovered data.");
+			}
+			bt_gatt_dm_data_release(ctx->mDiscoveryData);
+		},
+		reinterpret_cast<intptr_t>(discoveryCtx.get()));
+
+	if (CHIP_NO_ERROR == err) {
+		discoveryCtx.release();
+	} else {
+		bt_gatt_dm_data_release(dm);
+	}
 }
 
 void BLEConnectivityManager::DiscoveryNotFound(bt_conn *conn, void *context)
@@ -417,14 +460,13 @@ CHIP_ERROR BLEConnectivityManager::Scan(ScanDoneCallback callback, void *context
 		mRecovery.CancelTimer();
 		ret = StopScan();
 		VerifyOrExit(ret == CHIP_NO_ERROR, );
-		ret = PrepareFilterForUuid();
-		VerifyOrExit(ret == CHIP_NO_ERROR, );
-		mScannedDevicesCounter = 0;
-		memset(mScannedDevices, 0, sizeof(mScannedDevices));
 	} else if (mScanActive) {
 		LOG_ERR("Scan is already in progress");
 		return CHIP_ERROR_INCORRECT_STATE;
 	}
+
+	mScannedDevicesCounter = 0;
+	memset(mScannedDevices, 0, sizeof(mScannedDevices));
 
 	if (!callback) {
 		return CHIP_ERROR_INVALID_ARGUMENT;
@@ -446,31 +488,82 @@ exit:
 	return ret;
 }
 
-void BLEConnectivityManager::ReScanCallback(ScannedDevice *devices, uint8_t count, void *context)
+void BLEConnectivityManager::Recovery::RemoveRecovered(BLEBridgedDeviceProvider *provider)
 {
-	/* Get a provider form the recovery ring buffer, if there is none entries it should be nullptr. */
-	BLEBridgedDeviceProvider *provider = Instance().mRecovery.GetProvider();
-	/* check if device still need to be found (for example it could be removed from the bridge devices map) */
-	if (Instance().FindBLEProvider(provider->GetBtAddress())) {
-		if (Instance().mRecovery.mAddressMatched) {
-			bt_addr_le_t address = provider->GetBtAddress();
+	if (!provider) {
+		return;
+	}
 
-			if (memcmp(&Instance().mRecovery.mScannedDevice.mAddr, &address, sizeof(address)) == 0) {
+	sys_snode_t *node;
+	sys_snode_t *tmpNodeSafe;
+	ListItem *item;
+
+	/* Iterate through the list of providers and remove the requested one. */
+	SYS_SLIST_FOR_EACH_NODE_SAFE (&Instance().mRecovery.mListToRecover, node, tmpNodeSafe) {
+		item = reinterpret_cast<ListItem *>(node);
+		if (!item) {
+			return;
+		}
+
+		if (item->mProvider == provider) {
+			sys_slist_find_and_remove(&Instance().mRecovery.mListToRecover, item);
+			Platform::Delete(item);
+			return;
+		}
+	}
+}
+
+void BLEConnectivityManager::ReScanCallback(ScanResult &result, void *context)
+{
+	DeviceLayer::PlatformMgr().ScheduleWork(
+		[](intptr_t context) {
+			BLEBridgedDeviceProvider *provider;
+			ScanResult result = *reinterpret_cast<ScanResult *>(context);
+			sys_snode_t *node;
+			sys_snode_t *tmpNodeSafe;
+			Recovery::ListItem *item;
+			bool providerFound = false;
+			bt_addr_le_t providerAddress;
+
+			/* Filter out devices to recover from a scan result and put them to the queue to reconnect. */
+			SYS_SLIST_FOR_EACH_NODE_SAFE (&Instance().mRecovery.mListToRecover, node, tmpNodeSafe) {
+				item = reinterpret_cast<Recovery::ListItem *>(node);
+
+				if (!item) {
+					return;
+				}
+
+				providerFound = false;
+
+				for (uint8_t i = 0; i < result.mCount && !providerFound; i++) {
+					providerAddress = item->mProvider->GetBtAddress();
+					if (memcmp(&providerAddress, &result.mDevices[i].mAddr,
+						   sizeof(result.mDevices[i].mAddr)) == 0) {
+						providerFound = true;
+						Instance().mRecovery.PutProvider(
+							item->mProvider, &Instance().mRecovery.mListToReconnect);
+					}
+				}
+
+				/* Increase failed attempts counter of all devices to recover that were not detected. */
+				if (!providerFound) {
+					item->mProvider->NotifyFailedRecovery();
+				}
+			}
+
+			if (sys_slist_is_empty(&Instance().mRecovery.mListToReconnect)) {
+				Instance().mRecovery.StartTimer();
+			} else {
+				provider = Instance().mRecovery.GetProvider(&Instance().mRecovery.mListToReconnect);
 				DeviceLayer::PlatformMgr().ScheduleWork(
 					[](intptr_t context) {
 						Instance().Reconnect(
 							reinterpret_cast<BLEBridgedDeviceProvider *>(context));
 					},
 					reinterpret_cast<intptr_t>(provider));
-				return;
 			}
-		}
-		/* The device still should be recovered so put it back into the recovery ring buffer */
-		Instance().mRecovery.NotifyProviderToRecover(provider);
-	} else if (Instance().mRecovery.IsNeeded()) {
-		/* There is another device that needs to be recovered */
-		Instance().mRecovery.StartTimer();
-	}
+		},
+		reinterpret_cast<intptr_t>(&result));
 }
 
 CHIP_ERROR BLEConnectivityManager::StopScan()
@@ -503,8 +596,9 @@ void BLEConnectivityManager::ScanTimeoutHandle(intptr_t context)
 		Instance().mRecovery.StartTimer();
 	}
 
-	Instance().mScanDoneCallback(Instance().mScannedDevices, Instance().mScannedDevicesCounter,
-				     Instance().mScanDoneCallbackContext);
+	Instance().mScanResult.mDevices = Instance().mScannedDevices;
+	Instance().mScanResult.mCount = Instance().mScannedDevicesCounter;
+	Instance().mScanDoneCallback(Instance().mScanResult, Instance().mScanDoneCallbackContext);
 }
 
 CHIP_ERROR BLEConnectivityManager::Reconnect(BLEBridgedDeviceProvider *provider)
@@ -516,9 +610,17 @@ CHIP_ERROR BLEConnectivityManager::Reconnect(BLEBridgedDeviceProvider *provider)
 	StopScan();
 
 	bt_conn *conn;
+	bt_le_conn_param *connParams = GetScannedDeviceConnParams(provider->GetBLEBridgedDevice().mAddr);
 
-	int err = bt_conn_le_create(&Instance().mRecovery.mScannedDevice.mAddr, create_param,
-				    &Instance().mRecovery.mScannedDevice.mConnParam, &conn);
+	if (!connParams) {
+		LOG_ERR("Failed to get conn params");
+		return CHIP_ERROR_INTERNAL;
+	}
+
+	char addrStr[BT_ADDR_LE_STR_LEN];
+	bt_addr_le_to_str(&provider->GetBLEBridgedDevice().mAddr, addrStr, sizeof(addrStr));
+
+	int err = bt_conn_le_create(&provider->GetBLEBridgedDevice().mAddr, create_param, connParams, &conn);
 
 	if (err) {
 		LOG_ERR("Creating reconnection failed (err %d)", err);
@@ -548,11 +650,13 @@ CHIP_ERROR BLEConnectivityManager::Connect(BLEBridgedDeviceProvider *provider, C
 	mRecovery.CancelTimer();
 	StopScan();
 
-	bt_conn *conn;
-	bt_le_conn_param *connParams = GetScannedDeviceConnParams(provider->GetBLEBridgedDevice().mAddr);
+	bt_conn *conn{};
+	bt_addr_le_t btAddress = provider->GetBtAddress();
+	bt_le_conn_param *connParams = GetScannedDeviceConnParams(btAddress);
 
 	if (!connParams) {
 		LOG_ERR("Failed to get conn params");
+		RemoveBLEProvider(btAddress);
 		return CHIP_ERROR_INTERNAL;
 	}
 
@@ -560,6 +664,7 @@ CHIP_ERROR BLEConnectivityManager::Connect(BLEBridgedDeviceProvider *provider, C
 
 	if (err) {
 		LOG_ERR("Creating connection failed (err %d)", err);
+		RemoveBLEProvider(btAddress);
 		return System::MapErrorZephyr(err);
 	} else {
 		provider->SetConnectionObject(conn);
@@ -679,7 +784,8 @@ bt_le_conn_param *BLEConnectivityManager::GetScannedDeviceConnParams(bt_addr_le_
 
 BLEConnectivityManager::Recovery::Recovery()
 {
-	ring_buf_init(&mRingBuf, sizeof(mProvidersToRecover), reinterpret_cast<uint8_t *>(mProvidersToRecover));
+	sys_slist_init(&mListToRecover);
+	sys_slist_init(&mListToReconnect);
 	k_timer_init(&mRecoveryTimer, TimerTimeoutCallback, nullptr);
 	k_timer_user_data_set(&mRecoveryTimer, this);
 }
@@ -687,7 +793,7 @@ BLEConnectivityManager::Recovery::Recovery()
 void BLEConnectivityManager::Recovery::NotifyProviderToRecover(BLEBridgedDeviceProvider *provider)
 {
 	if (provider) {
-		PutProvider(provider);
+		PutProvider(provider, &mListToRecover);
 		StartTimer();
 	}
 }
@@ -695,51 +801,84 @@ void BLEConnectivityManager::Recovery::NotifyProviderToRecover(BLEBridgedDeviceP
 void BLEConnectivityManager::Recovery::TimerTimeoutCallback(k_timer *timer)
 {
 	if (!Instance().mScanActive) {
-		bt_addr_le_t *address = Instance().mRecovery.GetCurrentLostDeviceAddress();
-		Instance().mRecovery.mAddressMatched = false;
-		if (address) {
+		/* Schedule scan only if there is any device to be recovered and there is no device to be
+		 * re-connected.*/
+		if (sys_slist_is_empty(&Instance().mRecovery.mListToReconnect) &&
+		    !sys_slist_is_empty(&Instance().mRecovery.mListToRecover)) {
 			DeviceLayer::PlatformMgr().ScheduleWork(
 				[](intptr_t context) {
-					if (context) {
-						Instance().PrepareFilterForAddress(
-							reinterpret_cast<bt_addr_le_t *>(context));
-						Instance().Scan(ReScanCallback, nullptr, kRecoveryScanTimeoutMs);
-					}
+					Instance().Scan(ReScanCallback, nullptr, kRecoveryScanTimeoutMs);
 				},
-				reinterpret_cast<intptr_t>(address));
+				0);
 		}
 	}
 }
 
-BLEBridgedDeviceProvider *BLEConnectivityManager::Recovery::GetProvider()
+BLEBridgedDeviceProvider *BLEConnectivityManager::Recovery::GetProvider(sys_slist_t *list)
 {
-	uint32_t deviceAddr = 0;
-	int ret = ring_buf_get(&mRingBuf, reinterpret_cast<uint8_t *>(&deviceAddr), sizeof(deviceAddr));
-	if (ret == sizeof(deviceAddr)) {
-		return reinterpret_cast<BLEBridgedDeviceProvider *>(deviceAddr);
+	ListItem *item = reinterpret_cast<ListItem *>(sys_slist_get(list));
+	BLEBridgedDeviceProvider *provider = nullptr;
+
+	if (item) {
+		provider = item->mProvider;
+		Platform::Delete(item);
 	}
 
-	return nullptr;
+	return provider;
 }
 
-bool BLEConnectivityManager::Recovery::PutProvider(BLEBridgedDeviceProvider *provider)
+bool BLEConnectivityManager::Recovery::PutProvider(BLEBridgedDeviceProvider *provider, sys_slist_t *list)
 {
-	int ret = ring_buf_put(&mRingBuf, reinterpret_cast<uint8_t *>(&provider), sizeof(provider));
-	return ret == sizeof(provider);
+	if (sys_slist_len(list) >= kMaxConnectedDevices) {
+		return false;
+	}
+
+	ListItem *item = Platform::New<ListItem>();
+
+	if (!item) {
+		return false;
+	}
+
+	item->mProvider = provider;
+	sys_slist_append(list, item);
+
+	return true;
 }
 
-bt_addr_le_t *BLEConnectivityManager::Recovery::GetCurrentLostDeviceAddress()
+uint16_t BLEConnectivityManager::Recovery::GetFailedRecoveryAttempts()
 {
-	uint32_t deviceAddr = 0;
-	if (IsNeeded()) {
-		int ret = ring_buf_peek(&mRingBuf, reinterpret_cast<uint8_t *>(&deviceAddr), sizeof(deviceAddr));
-		if (ret == sizeof(deviceAddr)) {
-			mCurrentAddr = reinterpret_cast<BLEBridgedDeviceProvider *>(deviceAddr)->GetBtAddress();
-			return &mCurrentAddr;
+	sys_snode_t *node;
+	sys_snode_t *tmpNodeSafe;
+	ListItem *item;
+	uint16_t attempts = UINT16_MAX;
+
+	/* Find the smallest number or failed recovery attempts from all providers. */
+	SYS_SLIST_FOR_EACH_NODE_SAFE (&Instance().mRecovery.mListToRecover, node, tmpNodeSafe) {
+		item = reinterpret_cast<ListItem *>(node);
+
+		if (!item) {
+			return 0;
 		}
+
+		uint16_t newAttempts = item->mProvider->GetFailedRecoveryAttempts();
+
+		attempts = newAttempts < attempts ? newAttempts : attempts;
 	}
 
-	return nullptr;
+	return attempts;
+}
+
+void BLEConnectivityManager::Recovery::StartTimer()
+{
+	uint16_t attempts = GetFailedRecoveryAttempts();
+	/* Calculate next recovery time as a quadratic function of failed attempts number.
+	 * This allows to scan the less frequently, the longer no devices are detected.
+	 */
+	uint32_t time = ((attempts * attempts) + 1) * kRecoveryIntervalSec;
+
+	time = time < kRecoveryMaxIntervalSec ? time : kRecoveryMaxIntervalSec;
+
+	k_timer_start(&mRecoveryTimer, K_SECONDS(time), K_NO_WAIT);
 }
 
 } /* namespace Nrf */

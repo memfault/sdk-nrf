@@ -61,7 +61,8 @@ void disconnected(struct bt_conn *conn, uint8_t reason)
 	if (count == 1) {
 		err = MEMFAULT_METRIC_TIMER_STOP(ncs_bt_connection_time_ms);
 		if (err) {
-			LOG_WRN("Failed to stop memfault ncs_bt_connection_time_ms timer, err: %d", err);
+			LOG_WRN("Failed to stop memfault ncs_bt_connection_time_ms timer, err: %d",
+				err);
 		}
 	}
 

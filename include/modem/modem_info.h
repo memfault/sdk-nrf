@@ -176,9 +176,9 @@ int modem_info_params_init(struct modem_param_info *modem_param);
 int modem_info_rsrp_register(rsrp_cb_t cb);
 
 /**
- * @brief Initialize collection of connectivity stats
+ * @brief Initialize collection of connectivity statistics
  *
- * @note The function will reset stats if connectivity stats
+ * @note The function will reset statistics if connectivity statistics
  *       are already initialized/enabled.
  *
  * @return 0 If the operation was successful.
@@ -187,7 +187,7 @@ int modem_info_rsrp_register(rsrp_cb_t cb);
 int modem_info_connectivity_stats_init(void);
 
 /**
- * @brief Disable collection of connectivity stats
+ * @brief Disable collection of connectivity statistics
  *
  * @return 0 If the operation was successful.
  *           Otherwise, a (negative) error code is returned.
@@ -359,11 +359,11 @@ int modem_info_get_rsrp(int *val);
  * Get the total amount of data transmitted and receievd during the collection
  * period.
  *
- * @note Will return bytes = 0 until connectivity stats collection has been
- * enabled via AT%XCONNSTAT=1, or with modem_info_connectivity_stats_init().
+ * @note Will return bytes = 0 until connectivity statistics collection has been
+ * enabled using AT%XCONNSTAT=1, or with modem_info_connectivity_stats_init().
  *
- * @param tx_kbytes Pointer to the target variable.
- * @param rx_kbytes Pointer to the target variable.
+ * @param tx_kbytes Pointer to the target variable for the number of kilobytes transmitted.
+ * @param rx_kbytes Pointer to the target variable for the number of kilobytes received.
  *
  * @return 0 if the operation was successful.
  *         Otherwise, a (negative) error code is returned.

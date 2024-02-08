@@ -45,7 +45,7 @@ There are also some metrics, which are specific to |NCS| that are enabled by def
 
   * Enabled and disabled using :kconfig:option:`CONFIG_MEMFAULT_NCS_LTE_METRICS`.
   * ``ncs_lte_time_to_connect_ms`` - Time from the point when the device starts to search for an LTE network until the time when it gets registered with the network.
-  *  ``ncs_lte_connection_loss_count`` - The number of times that the device has lost the LTE network connection after the initial network registration.
+  * ``ncs_lte_connection_loss_count`` - The number of times that the device has lost the LTE network connection after the initial network registration.
 
 * Stack usage metrics:
 

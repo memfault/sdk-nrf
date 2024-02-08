@@ -307,12 +307,11 @@ static int sock_protocol_resolve(
 	return proto;
 }
 
-static int sock_getaddrinfo(
-	struct sock_info *socket_info,
+static int sock_getaddrinfo_req(
+	struct addrinfo **result,
 	int family,
 	int type,
 	char *address,
-	int port,
 	int pdn_cid)
 {
 	int err;
@@ -336,7 +335,7 @@ static int sock_getaddrinfo(
 			hints.ai_flags = AI_PDNSERV;
 		}
 
-		err = getaddrinfo(address, service, &hints, &socket_info->addrinfo);
+		err = getaddrinfo(address, service, &hints, result);
 		if (err) {
 			if (err == DNS_EAI_SYSTEM) {
 				mosh_error("getaddrinfo() failed, err %d errno %d", err, errno);
@@ -344,17 +343,6 @@ static int sock_getaddrinfo(
 				mosh_error("getaddrinfo() failed, err %d", err);
 			}
 			return -EADDRNOTAVAIL;
-		}
-
-		/* Set port to address info */
-		if (family == AF_INET) {
-			((struct sockaddr_in *)socket_info->addrinfo->ai_addr)->sin_port =
-				htons(port);
-		} else if (family == AF_INET6) {
-			((struct sockaddr_in6 *)socket_info->addrinfo->ai_addr)->sin6_port =
-				htons(port);
-		} else {
-			assert(0);
 		}
 	}
 	return 0;
@@ -505,6 +493,29 @@ exit:
 	return err;
 }
 
+int sock_getaddrinfo(int family, int type, char *hostname, int pdn_cid)
+{
+	struct addrinfo *ai = NULL;
+	int err;
+
+	mosh_print("getaddrinfo query family=%d, type=%d, pdn_cid=%d, hostname=%s",
+		   family, type, pdn_cid, hostname);
+
+	err = sock_getaddrinfo_req(&ai, family, type, hostname, pdn_cid);
+	if (err) {
+		return err;
+	}
+
+	for (struct addrinfo *addr = ai; addr; addr = addr->ai_next) {
+		mosh_print("getaddrinfo answer family=%d, address=%s",
+			   addr->ai_family, net_utils_sckt_addr_ntop(addr->ai_addr));
+	}
+
+	freeaddrinfo(ai);
+
+	return err;
+}
+
 int sock_open_and_connect(
 	int family,
 	int type,
@@ -547,9 +558,18 @@ int sock_open_and_connect(
 	}
 
 	/* Get address */
-	err = sock_getaddrinfo(socket_info, family, type, address, port, pdn_cid);
+	err = sock_getaddrinfo_req(&socket_info->addrinfo, family, type, address, pdn_cid);
 	if (err) {
 		goto connect_error;
+	}
+
+	/* Set port to address info */
+	if (family == AF_INET) {
+		((struct sockaddr_in *)socket_info->addrinfo->ai_addr)->sin_port = htons(port);
+	} else if (family == AF_INET6) {
+		((struct sockaddr_in6 *)socket_info->addrinfo->ai_addr)->sin6_port = htons(port);
+	} else {
+		assert(0);
 	}
 
 	/* Create socket */
@@ -604,8 +624,10 @@ int sock_open_and_connect(
 		}
 	}
 
-	if (type == SOCK_STREAM || (type == SOCK_DGRAM && secure)) {
-		/* Connect TCP and DTLS socket */
+	if (type == SOCK_STREAM || type == SOCK_DGRAM) {
+		/* Connect TCP or UDP socket.
+		 * UDP socket supports connect for setting peer address.
+		 */
 		err = connect(
 			fd,
 			socket_info->addrinfo->ai_addr,
@@ -689,7 +711,6 @@ static int sock_send(
 	bool data_hex_format)
 {
 	int bytes;
-	int dest_addr_len = 0;
 	int set, res;
 	char packet_number_prefix_str[5];
 
@@ -722,19 +743,7 @@ static int sock_send(
 		}
 	}
 
-	if (socket_info->type == SOCK_DGRAM && !socket_info->secure) {
-		/* UDP */
-		if (socket_info->family == AF_INET) {
-			dest_addr_len = sizeof(struct sockaddr_in);
-		} else if (socket_info->family == AF_INET6) {
-			dest_addr_len = sizeof(struct sockaddr_in6);
-		}
-		bytes = sendto(socket_info->fd, data, length, 0,
-			       socket_info->addrinfo->ai_addr, dest_addr_len);
-	} else {
-		/* TCP, DTLS and raw socket */
-		bytes = send(socket_info->fd, data, length, 0);
-	}
+	bytes = send(socket_info->fd, data, length, 0);
 	if (bytes < 0) {
 		/* Ideally we'd like to log the failure here but non-blocking
 		 * socket causes huge number of failures due to incorrectly

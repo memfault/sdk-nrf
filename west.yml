@@ -61,7 +61,7 @@ manifest:
     # https://developer.nordicsemi.com/nRF_Connect_SDK/doc/latest/zephyr/guides/modules.html
     - name: zephyr
       repo-path: sdk-zephyr
-      revision: b3c97b010983e5523d90f9140b8e657b06a2ea3f
+      revision: 41e34920abf4f6407178d8ce8bd78a882840caec
       import:
         # In addition to the zephyr repository itself, NCS also
         # imports the contents of zephyr/west.yml at the above
@@ -112,7 +112,7 @@ manifest:
     - name: hostap
       repo-path: sdk-hostap
       path: modules/lib/hostap
-      revision: 04454972385783830a756c52127e722373b62f26
+      revision: ecebc52715feb1605b7aab0cb13004be287db884
       userdata:
         ncs:
           upstream-url: https://w1.fi/cgit/hostap/
@@ -121,7 +121,7 @@ manifest:
     - name: wfa-qt-control-app
       repo-path: sdk-wi-fiquicktrack-controlappc
       path: modules/lib/wfa-qt-control-app
-      revision: pre_zephyr_separation_snapshot
+      revision: b3cea7b770cf8270cf25831cf3c9db063234e603
       userdata:
         ncs:
           upstream-url: https://github.com/Wi-FiQuickTrack/Wi-FiQuickTrack-ControlAppC
@@ -129,7 +129,7 @@ manifest:
           compare-by-default: true
     - name: mcuboot
       repo-path: sdk-mcuboot
-      revision: beebb23f8e2d744ef89819e584928377ef6c444a
+      revision: a9d5fa76a6840f8934b2aaaf51e290f91eb3f991
       path: bootloader/mcuboot
     - name: qcbor
       url: https://github.com/laurencelundblade/QCBOR.git
@@ -142,7 +142,7 @@ manifest:
     - name: nrfxlib
       repo-path: sdk-nrfxlib
       path: nrfxlib
-      revision: 328ce793412e18315e4871c574e2ba823982d24d
+      revision: 97c3a3b499233985d0cf0959b77476b3f98a9e0a
     - name: trusted-firmware-m
       repo-path: sdk-trusted-firmware-m
       path: modules/tee/tf-m/trusted-firmware-m
@@ -154,7 +154,7 @@ manifest:
     - name: matter
       repo-path: sdk-connectedhomeip
       path: modules/lib/matter
-      revision: 288b64af79b92d0a5412181eb87fa3a5e0368cab
+      revision: 4936f9fa2be9e6cd16b02e4fcb9a7aff611f4981
       submodules:
         - name: nlio
           path: third_party/nlio/repo
@@ -181,7 +181,7 @@ manifest:
       # Only for internal Nordic development
       repo-path: dragoon.git
       remote: dragoon
-      revision: 703901a727bf401c3dd179bc032754c93ea2d494
+      revision: bacb539ce2c9deb6821d9cb3ebdec51f22d84599
       submodules: true
       groups:
         - dragoon
@@ -226,7 +226,7 @@ manifest:
     - name: openthread
       repo-path: sdk-openthread
       path: modules/lib/openthread
-      revision: ab28127a2a9e7b7212e1bd943d3f55a4d9db5f4a
+      revision: 905a22e0c7ea2a50fd3b935c24eb200f83721455
       userdata:
         ncs:
           upstream-url: https://github.com/openthread/openthread

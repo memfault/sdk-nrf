@@ -66,6 +66,8 @@ static int do_agnss_request_send(struct lwm2m_ctx *ctx);
 static int do_pgps_request_send(struct lwm2m_ctx *ctx);
 static int do_ground_fix_request_send(struct lwm2m_ctx *ctx);
 
+#if defined(CONFIG_LWM2M_CLIENT_UTILS_LOCATION_ASSIST_AGNSS) ||                                    \
+	defined(CONFIG_LWM2M_CLIENT_UTILS_LOCATION_ASSIST_PGPS)
 static int gnss_assintace_request_prepare(void)
 {
 	if (permanent_error) {
@@ -86,6 +88,7 @@ static int gnss_assintace_request_prepare(void)
 	gnss_retry_info.retry_left = 1;
 	return 0;
 }
+#endif
 
 static void location_assist_gnss_work_handler(struct k_work *work)
 {
@@ -310,6 +313,21 @@ int location_assistance_agnss_request_send(struct lwm2m_ctx *ctx)
 }
 #endif
 
+static void gfix_cb(enum lwm2m_send_status status)
+{
+	if (status == LWM2M_SEND_STATUS_SUCCESS) {
+		bool wait_response;
+		(void)lwm2m_get_bool(
+			&LWM2M_OBJ(GROUND_FIX_OBJECT_ID, 0, GROUND_FIX_SEND_LOCATION_BACK),
+			&wait_response);
+		if (!wait_response) {
+			/* If we are not waiting for location back, assume result is OK
+			 * if the send was acknoledged.
+			 */
+			location_assist_ground_fix_result_cb(LOCATION_ASSIST_RESULT_CODE_OK);
+		}
+	}
+}
 static int do_ground_fix_request_send(struct lwm2m_ctx *ctx)
 {
 	int path_count = GROUND_FIX_PATHS_DEFAULT;
@@ -337,7 +355,7 @@ static int do_ground_fix_request_send(struct lwm2m_ctx *ctx)
 	};
 
 	/* Send Request to server */
-	return lwm2m_send_cb(ctx, send_path, path_count, NULL);
+	return lwm2m_send_cb(ctx, send_path, path_count, gfix_cb);
 }
 
 #if defined(CONFIG_LWM2M_CLIENT_UTILS_GROUND_FIX_OBJ_SUPPORT)

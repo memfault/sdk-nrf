@@ -162,7 +162,9 @@ The following list summarizes the most important changes inherited from the upst
 Thread
 ------
 
-|no_changes_yet_note|
+* The default cryptography backend for Thread is now Arm PSA Crypto API instead of Mbed TLS, which was used in earlier versions.
+  You can still build all examples with deprecated Mbed TLS support by setting the :kconfig:option:`OPENTHREAD_NRF_SECURITY_CHOICE` Kconfig option to ``y``, but you must build the Thread libraries from sources.
+  To :ref:`inherit Thread certification <ug_thread_cert_inheritance_without_modifications>` from Nordic Semiconductor, you must use the PSA Crypto API backend.
 
 See `Thread samples`_ for the list of changes for the Thread samples.
 
@@ -170,6 +172,18 @@ Zigbee
 ------
 
 |no_changes_yet_note|
+
+Gazell
+------
+
+* Added:
+
+  * :kconfig:option:`CONFIG_GAZELL_PAIRING_USER_CONFIG_ENABLE` and :kconfig:option:`CONFIG_GAZELL_PAIRING_USER_CONFIG_FILE`.
+    The options allow to use user-specific file as Gazell pairing configuration header to override the pairing configuration.
+
+* Fixed:
+
+  * Clear system address and host id in RAM when :c:func:`gzp_erase_pairing_data` is called.
 
 Enhanced ShockBurst (ESB)
 -------------------------
@@ -206,6 +220,17 @@ Asset Tracker v2
   * The :kconfig:option:`CONFIG_DATA_SAMPLE_WIFI_DEFAULT` Kconfig option to configure whether Wi-Fi APs are included in sample requests by default.
   * The :kconfig:option:`NRF_CLOUD_SEND_SERVICE_INFO_FOTA` and :kconfig:option:`NRF_CLOUD_SEND_SERVICE_INFO_UI` Kconfig options.
     The application no longer sends a device shadow update; this is now handled by the :ref:`lib_nrf_cloud` library.
+
+* Updated:
+
+  * The following power optimizations to the LwM2M configuration overlay:
+
+    * Enable DTLS Connection Identifier.
+    * Perform LwM2M update once an hour and request for similar update interval of periodic tracking area from the LTE network.
+    * Request the same active time as the QUEUE mode polling time.
+    * Enable eDRX with shortest possible interval and a short paging window.
+    * Enable tickless mode in the LwM2M engine.
+    * Enable LTE Release Assist Indicator.
 
 * Removed the nRF7002 EK devicetree overlay file :file:`nrf91xxdk_with_nrf7002ek.overlay`, because UART1 is disabled through the shield configuration.
 
@@ -342,6 +367,13 @@ Bluetooth Mesh samples
 Cellular samples
 ----------------
 
+* :ref:`ciphersuites` sample:
+
+  * Updated:
+
+    * The format of the :file:`.pem` file to the pem format.
+    * The sample to automatically convert the :file:`.pem` file to hex format so it can be included.
+
 * :ref:`location_sample` sample:
 
   * Removed the nRF7002 EK devicetree overlay file :file:`nrf91xxdk_with_nrf7002ek.overlay`, because UART1 is disabled through the shield configuration.
@@ -355,6 +387,8 @@ Cellular samples
     * Support for printing the sample version information using the ``version`` command.
     * Support for counting pulses from a GPIO pin using the ``gpio_count`` command.
     * Support for changing shell UART baudrate using the ``uart baudrate`` command.
+    * Support for DNS query using the ``sock getaddrinfo`` command.
+    * Support for PDN CID 0 in the ``-I`` argument for the ``sock connect`` command.
 
   * Removed the nRF7002 EK devicetree overlay file :file:`nrf91xxdk_with_nrf7002ek.overlay`, because UART1 is disabled through the shield configuration.
 
@@ -363,6 +397,12 @@ Cellular samples
     * The MQTT and CoAP overlays to enable the Kconfig option :kconfig:option:`CONFIG_NRF_CLOUD_SEND_SERVICE_INFO_UI`.
       The sample no longer sends a device shadow update for MQTT and CoAP builds; this is now handled by the :ref:`lib_nrf_cloud` library.
     * To use the new :c:struct:`nrf_cloud_location_config` structure when calling the :c:func:`nrf_cloud_location_request` function.
+    * The ``connect`` subcommand to use the :c:func:`connect` function on non-secure datagram sockets.
+      This sets the peer address for the non-secure datagram socket.
+      This fixes a bug where using the ``connect`` subcommand and then using the ``rai_no_data`` option with the ``rai`` subcommand on a non-secure datagram socket would lead to an error.
+      The ``rai_no_data`` option requires the socket to be connected and have a peer address set.
+      This bug is caused by the non-secure datagram socket not being connected when using the ``connect`` subcommand.
+    * The ``send`` subcommand to use the :c:func:`send` function for non-secure datagram sockets that are connected and have a peer address set.
 
 * :ref:`nrf_cloud_multi_service` sample:
 
@@ -371,6 +411,8 @@ Cellular samples
     * A generic processing example for application-specific shadow data.
     * Configuration and overlay files to enable MCUboot to use the external flash on the nRF1961 DK.
     * A :kconfig:option:`CONFIG_COAP_ALWAYS_CONFIRM` Kconfig option to select CON or NON CoAP transfers for functions that previously used NON transfers only.
+    * Support for the :ref:`lib_nrf_provisioning` library.
+    * An overlay file :file:`overlay-coap_nrf_provisioning.conf` to enable the :ref:`lib_nrf_provisioning` library with CoAP connectivity.
 
   * Fixed:
 
@@ -417,6 +459,13 @@ Cellular samples
 
   * Added the :ref:`CONFIG_UDP_DATA_UPLOAD_ITERATIONS <CONFIG_UDP_DATA_UPLOAD_ITERATIONS>` Kconfig option for configuring the number of data transmissions to the server.
 
+* :ref:`lwm2m_carrier` sample:
+
+  * Updated:
+
+    * The format of the :file:`.pem` files to the pem format.
+    * The sample to automatically convert the :file:`.pem` files to hex format so they can be included.
+
 * :ref:`lwm2m_client` sample:
 
   * Added:
@@ -426,7 +475,10 @@ Cellular samples
     * Release Assistance Indication (RAI) feature.
       This helps to save power by releasing the network connection faster on a network that supports it.
 
-  * Updated the eDRX cycle to 5.12s for both LTE-M and Nb-IOT.
+  * Updated:
+
+    * The eDRX cycle to 5.12 s for both LTE-M and NB-IoT.
+    * The periodic TAU (RPTAU) to 12 hours.
 
 Cryptography samples
 --------------------
@@ -478,6 +530,12 @@ Matter samples
 
   * Added support for `AWS IoT Core`_.
 
+* :ref:`matter_template_sample` sample:
+
+  * Added support for DFU over Bluetooth LE SMP.
+    The functionality is disabled by default.
+    To enable it, set the :kconfig:option:`CONFIG_CHIP_DFU_OVER_BT_SMP` Kconfig option to ``y``.
+
 * :ref:`matter_lock_sample` sample:
 
   * Fixed an issue that prevented nRF Toolbox for iOS in version 5.0.9 from controlling the sample using :ref:`nus_service_readme`.
@@ -511,11 +569,20 @@ Networking samples
 
 * :ref:`https_client` sample:
 
-  * Updated the sample to gracefully bring down the network interfaces.
+  * Updated:
+
+    * The :file:`.pem` certificate for example.com.
+    * The format of the :file:`.pem` file to the pem format.
+    * The sample to automatically convert the :file:`.pem` file to hex format so it can be included.
+    * The sample to gracefully bring down the network interfaces.
 
 * :ref:`download_sample` sample:
 
-  * Updated the sample to gracefully bring down the network interfaces.
+  * Updated:
+
+    * The format of the :file:`.pem` file to the pem format.
+    * The sample to automatically convert the :file:`.pem` file to hex format so it can be included.
+    * The sample to gracefully bring down the network interfaces.
 
 NFC samples
 -----------
@@ -666,8 +733,11 @@ Modem libraries
 
 * :ref:`lib_location` library:
 
-  * Added the :c:enumerator:`LOCATION_EVT_STARTED` event to indicate that location request has been started.
-    This is for metrics collection purposes and sent only if the :kconfig:option:`CONFIG_LOCATION_DATA_DETAILS` Kconfig option is set.
+  * Added:
+
+    * The :c:enumerator:`LOCATION_EVT_STARTED` event to indicate that location request has been started.
+      This is for metrics collection purposes and sent only if the :kconfig:option:`CONFIG_LOCATION_DATA_DETAILS` Kconfig option is set.
+    * Support for multiple event handlers.
 
   * Updated:
 
@@ -715,6 +785,7 @@ Modem libraries
 
     * The ``lte_net_if`` module now handles the :c:enumerator:`~pdn_event.PDN_EVENT_NETWORK_DETACH` PDN event.
       Not handling this caused permanent connection loss and error message (``ipv4_addr_add, error: -19``) in some situations when reconnecting.
+    * Threads sleeping in the :c:func:`nrf_modem_os_timedwait` function with context ``0`` are now woken by all calls to the :c:func:`nrf_modem_os_event_notify` function.
 
   * Removed:
 
@@ -737,6 +808,10 @@ Modem libraries
   * Added the :kconfig:option:`CONFIG_AT_HOST_STACK_SIZE` Kconfig option.
     This option allows the stack size of the AT host workqueue thread to be adjusted.
 
+* :ref:`modem_key_mgmt` library:
+
+  * Fixed a potential race condition, where two threads might corrupt a shared response buffer.
+
 Libraries for networking
 ------------------------
 
@@ -757,6 +832,7 @@ Libraries for networking
 
     * IPv6 support changed from compile time to runtime, and is default enabled.
     * IPv6 to IPv4 fallback is done when both DNS request and TCP/TLS connect fails.
+    * HTTP downloads forward data fragments to a callback only when the buffer is full.
 
   * Removed:
 
@@ -776,6 +852,7 @@ Libraries for networking
     * The :c:func:`nrf_cloud_coap_shadow_delta_process` function to include a parameter for application-specific shadow data.
     * The :c:func:`nrf_cloud_coap_shadow_delta_process` function to process default shadow data added by nRF Cloud, which is not used by CoAP.
     * The CDDL file for AGNSS to align with cloud changes and regenerated the AGNSS encoder accordingly.
+    * To allow QZSS constellation assistance requests from AGNSS.
     * The following functions to accept a ``confirmable`` parameter:
 
       * :c:func:`nrf_cloud_coap_bytes_send`
@@ -823,6 +900,7 @@ Libraries for networking
   * Renamed nRF Device provisioning to :ref:`lib_nrf_provisioning`.
   * Updated the device mode callback to send an event when the provisioning state changes.
   * Fixed file descriptor handling by setting the :c:struct:`coap_client` structure's ``fd`` field to ``-1`` when closing the socket.
+  * Added the :kconfig:option:`CONFIG_NRF_PROVISIONING_PRINT_ATTESTATION_TOKEN` option to enable printing the attestation token when the device is not yet claimed.
 
 * :ref:`lib_nrf_cloud_fota` library:
 
@@ -834,7 +912,10 @@ Libraries for networking
 
 * :ref:`lib_lwm2m_client_utils` library:
 
-  * Updated the Release Assistance Indication (RAI) support to follow socket state changes from LwM2M engine, and modify RAI values based on the state.
+  * Updated:
+
+    * The Release Assistance Indication (RAI) support to follow socket state changes from LwM2M engine and modify RAI values based on the state.
+    * Request a periodic TAU (RPTAU) to match the client lifetime.
 
 * :ref:`lib_lwm2m_location_assistance` library:
 
@@ -864,6 +945,9 @@ nRF Security
   This will also break the configuration for those using the RSA keys without explicitly enabling an RSA key size.
   Enable the required key size to fix the configuration, for example by setting the Kconfig option :kconfig:option:`CONFIG_PSA_WANT_RSA_KEY_SIZE_2048` if 2048-bit RSA keys are required.
 
+* The PSA config is now validated by ncs/nrf/ext/oberon/psa/core/library/check_crypto_config.h.
+  Users with invalid configurations must update their PSA configuration according to the error messages that check_crypto_config.h provides.
+
 
 Other libraries
 ---------------
@@ -871,6 +955,11 @@ Other libraries
 * :ref:`lib_adp536x` library:
 
   * Fixed issue where the adp536x driver was included in the immutable bootloader on Thingy:91 when :kconfig:option:`CONFIG_SECURE_BOOT` was enabled.
+
+* :ref:`mod_memfault` library:
+
+  * Added more default LTE metrics, such as band, operator, RSRP, and kilobytes sent and received.
+  * Updated the default metric names to follow the standard |NCS| variable name convention.
 
 Common Application Framework (CAF)
 ----------------------------------
@@ -974,6 +1063,9 @@ Documentation
   * A page on :ref:`ug_nrf70_developing_fw_patch_ext_flash` in the :ref:`ug_nrf70_developing` user guide.
   * A page on :ref:`ug_nrf70_developing_raw_ieee_80211_packet_transmission` in the :ref:`ug_nrf70_developing` user guide.
   * :ref:`contributions_ncs` page in a new :ref:`contributions` section that also includes the development model pages, previously listed under :ref:`releases_and_maturity`.
+  * :ref:`ug_lte` user guide under :ref:`protocols`.
+  * Gazell and NFC sections in the :ref:`app_power_opt_recommendations` user guide.
+  * :ref:`ug_nrf70_stack partitioning` page in the :ref:`ug_nrf70_developing` user guide.
 
 * Updated:
 
