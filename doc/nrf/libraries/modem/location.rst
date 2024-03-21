@@ -60,6 +60,14 @@ The supported location methods are as follows:
 
 The ``cloud location`` method handles the location methods (cellular and Wi-Fi positioning)
 that scan for technology-specific information and sends it over to the cloud service for location resolution.
+If the following conditions are met, Wi-Fi and cellular scan results are combined into a single cloud request:
+
+* Methods are one after the other in the location request method list.
+* Location request mode is :c:enum:`LOCATION_REQ_MODE_FALLBACK`.
+* Requested cloud service for Wi-Fi and cellular is the same.
+
+A special :c:enum:`LOCATION_METHOD_WIFI_CELLULAR` method can appear within the :c:struct:`location_event_data` structure,
+but it cannot be added into the location configuration passed to the :c:func:`location_request` function.
 
 The default priority order of location methods is GNSS positioning, Wi-Fi positioning and Cellular positioning.
 If any of these methods are disabled, the method is simply omitted from the list.
@@ -122,6 +130,8 @@ The following diagram shows successful cellular positioning.
 The following diagram depicts a failure to find the GNSS fix, followed by a fallback to cloud positioning.
 Since the Wi-Fi and cellular positioning methods are one after another, they are combined to a single cloud positioning request.
 Both Wi-Fi APs and LTE cells are given to the application with a single :c:enum:`LOCATION_EVT_CLOUD_LOCATION_EXT_REQUEST` event.
+The :c:enum:`LOCATION_EVT_STARTED` and the :c:enum:`LOCATION_EVT_FALLBACK` events are sent,
+if the :kconfig:option:`CONFIG_LOCATION_DATA_DETAILS` Kconfig option is set.
 
 .. msc::
   hscale="1.3";
@@ -132,6 +142,7 @@ Both Wi-Fi APs and LTE cells are given to the application with a single :c:enum:
 
   Application => Loclib [label="location_request(&config)\nmethod list: GNSS, Wi-Fi, Cellular"];
   |||;
+  Application << Loclib [label="LOCATION_EVT_STARTED"];
   Application << Loclib [label="LOCATION_EVT_GNSS_ASSISTANCE_REQUEST"];
   Application => Cloud [label="Request A-GNSS data"];
   Application << Cloud [label="A-GNSS data"];
@@ -141,6 +152,7 @@ Both Wi-Fi APs and LTE cells are given to the application with a single :c:enum:
   Loclib rbox Loclib [label="GNSS timeout occurs"];
 
   Loclib rbox Loclib [label="Fallback to cloud positioning"];
+  Application << Loclib [label="LOCATION_EVT_FALLBACK"];
   Loclib rbox Loclib [label="Scan Wi-Fi and LTE networks"];
   |||;
   Application << Loclib [label="LOCATION_EVT_CLOUD_LOCATION_EXT_REQUEST"];
@@ -221,7 +233,7 @@ Configure the following Kconfig options to enable Wi-Fi interface:
 
 * :kconfig:option:`CONFIG_WIFI` - Enable Wi-Fi for Zephyr.
 
-The chosen Wi-Fi device needs to be set in Devicetree:
+The chosen Wi-Fi device needs to be set in devicetree:
 
 .. code-block:: devicetree
 
@@ -291,6 +303,10 @@ when :c:func:`location_config_defaults_set` function is called:
 * :kconfig:option:`CONFIG_LOCATION_REQUEST_DEFAULT_CELLULAR_TIMEOUT`
 * :kconfig:option:`CONFIG_LOCATION_REQUEST_DEFAULT_CELLULAR_CELL_COUNT`
 * :kconfig:option:`CONFIG_LOCATION_REQUEST_DEFAULT_WIFI_TIMEOUT`
+
+The following option adds more details to the :c:struct:`location_event_data` structure:
+
+* :kconfig:option:`CONFIG_LOCATION_DATA_DETAILS`
 
 Usage
 *****

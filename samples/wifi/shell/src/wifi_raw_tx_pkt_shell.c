@@ -90,25 +90,27 @@ int validate(int value, int min, int max, const char *param)
 
 int validate_rate(int data_rate, int flag)
 {
-	if ((flag == 0) && ((data_rate == 1) ||
-			   (data_rate == 2) ||
-			   (data_rate == 55) ||
-			   (data_rate == 11) ||
-			   (data_rate == 6) ||
-			   (data_rate == 9) ||
-			   (data_rate == 12) ||
-			   (data_rate == 18) ||
-			   (data_rate == 24) ||
-			   (data_rate == 36) ||
-			   (data_rate == 48) ||
-			   (data_rate == 54))) {
+	if ((flag == NRF_WIFI_FMAC_RAWTX_MODE_LEGACY) && ((data_rate == 1) ||
+							 (data_rate == 2) ||
+							 (data_rate == 55) ||
+							 (data_rate == 11) ||
+							 (data_rate == 6) ||
+							 (data_rate == 9) ||
+							 (data_rate == 12) ||
+							 (data_rate == 18) ||
+							 (data_rate == 24) ||
+							 (data_rate == 36) ||
+							 (data_rate == 48) ||
+							 (data_rate == 54))) {
 
 		return 1;
-	} else if (((flag >= 1 && flag <= 5)) && ((data_rate >= 0) && (data_rate <= 7))) {
+	} else if (((flag >= NRF_WIFI_FMAC_RAWTX_MODE_HT &&
+		    flag <= NRF_WIFI_FMAC_RAWTX_MODE_HE_ER_SU)) &&
+		    ((data_rate >= 0) && (data_rate <= 7))) {
 		return 1;
 	}
 
-	LOG_ERR("Invalid Data rate");
+	LOG_ERR("Invalid data rate %d", data_rate);
 	return 0;
 }
 
@@ -192,7 +194,7 @@ static void send_packet(const char *transmission_mode,
 		k_msleep(delay);
 	}
 
-	LOG_INF("Sent %d packets with %d failures", num_pkts, num_failures);
+	LOG_INF("Sent %d packets with %d failures on socket", num_pkts, num_failures);
 	close(sockfd);
 	free(test_frame);
 }
@@ -217,7 +219,8 @@ static int parse_raw_tx_configure_args(const struct shell *sh,
 		switch (opt) {
 		case 'f':
 			*flags = atoi(optarg);
-			if (!validate(*flags, 0, 4, "Rate Flags")) {
+			if (!validate(*flags, NRF_WIFI_FMAC_RAWTX_MODE_LEGACY,
+				      NRF_WIFI_FMAC_RAWTX_MODE_HE_ER_SU, "Rate Flags")) {
 				return -ENOEXEC;
 			}
 			opt_num++;
@@ -371,8 +374,52 @@ static int cmd_send_raw_tx_pkt(
 	return 0;
 }
 
+static int cmd_tx_injection_mode(const struct shell *sh,
+				 size_t argc, char *argv[])
+{
+	struct net_if *iface = NULL;
+	bool mode_val = 0;
+
+	if (argc != 2) {
+		shell_help(sh);
+		return -ENOEXEC;
+	}
+
+	iface = net_if_get_first_wifi();
+	if (!iface) {
+		LOG_ERR("Failed to get Wi-Fi iface");
+		return -ENOEXEC;
+	}
+
+	if (strcmp(argv[1], "-h") == 0) {
+		shell_help(sh);
+		return 0;
+	} else if ((strcmp(argv[1], "1") == 0) || (strcmp(argv[1], "0") == 0)) {
+		mode_val = atoi(argv[1]);
+	} else {
+		LOG_ERR("Entered wrong input");
+		shell_help(sh);
+		return -ENOEXEC;
+	}
+
+	if (net_eth_txinjection_mode(iface, mode_val)) {
+		LOG_ERR("TX Injection mode %s failed", mode_val ? "enabling" : "disabling");
+		return -ENOEXEC;
+	}
+
+	LOG_INF("TX Injection mode :%s", mode_val ? "enabled" : "disabled");
+	return 0;
+}
+
 SHELL_STATIC_SUBCMD_SET_CREATE(
 	raw_tx_cmds,
+	SHELL_CMD_ARG(mode, NULL,
+		      "This command may be used to enable or disable TX Injection mode\n"
+		      "[enable: 1, disable: 0]\n"
+		      "[-h, --help] : Print out the help for the mode command\n"
+		      "Usage: raw_tx mode 1 or 0\n",
+		      cmd_tx_injection_mode,
+		      2, 0),
 	SHELL_CMD_ARG(configure, NULL,
 		      "Configure raw TX packet header\n"
 		      "This command may be used to configure raw TX packet header\n"
@@ -381,7 +428,7 @@ SHELL_STATIC_SUBCMD_SET_CREATE(
 		      "[-d, --data-rate] : Data rate value.\n"
 		      "[-q, --queue-number] : Queue number.\n"
 		      "[-h, --help] : Print out the help for the configure command\n"
-		      "Usage: raw_tx configure -f 1 -d 9 -q 1\n",
+		      "Usage: raw_tx configure -f 0 -d 9 -q 1\n",
 		      cmd_configure_raw_tx_pkt,
 		      7, 0),
 	SHELL_CMD_ARG(send, NULL,

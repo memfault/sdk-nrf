@@ -32,7 +32,7 @@ zephyr_include_directories_ifndef(CONFIG_NRF700X_RADIO_TEST
   ${OS_AGNOSTIC_BASE}/fw_if/umac_if/inc/default
 )
 
-zephyr_library_sources_ifdef(CONFIG_NRF700X_BT_COEX
+zephyr_library_sources_ifdef(CONFIG_NRF700X_SR_COEX
   src/coex.c
 )
 
@@ -143,6 +143,8 @@ elseif(CONFIG_NRF700X_RADIO_TEST)
   set(NRF70_PATCH ${OS_AGNOSTIC_BASE}/fw_bins/radio_test/nrf70.bin)
 elseif(CONFIG_NRF700X_SCAN_ONLY)
   set(NRF70_PATCH ${OS_AGNOSTIC_BASE}/fw_bins/scan_only/nrf70.bin)
+elseif (CONFIG_NRF700X_SYSTEM_WITH_RAW_MODES)
+  set(NRF70_PATCH ${OS_AGNOSTIC_BASE}/fw_bins/system_with_raw/nrf70.bin)
 else()
   # Error
   message(FATAL_ERROR "Unsupported nRF70 patch configuration")
@@ -176,21 +178,25 @@ if(CONFIG_NRF_WIFI_PATCHES_EXT_FLASH_STORE)
     )
     add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/zephyr/nrf70.hex
       COMMAND ${Python3_EXECUTABLE}
-        -c 'import sys\; import intelhex\; intelhex.bin2hex(sys.argv[1], sys.argv[2], int(sys.argv[3])) '
+        -c "import sys; import intelhex; intelhex.bin2hex(sys.argv[1], sys.argv[2], int(sys.argv[3])) "
         ${NRF70_PATCH}
         ${CMAKE_BINARY_DIR}/zephyr/nrf70.hex
         $<TARGET_PROPERTY:partition_manager,nrf70_wifi_fw_XIP_ABS_ADDR>
+        VERBATIM
       )
-    set_property(
-      GLOBAL PROPERTY
-      nrf70_wifi_fw_PM_HEX_FILE
-      ${CMAKE_BINARY_DIR}/zephyr/nrf70.hex
-      )
-    set_property(
-      GLOBAL PROPERTY
-      nrf70_wifi_fw_PM_TARGET
-      nrf70_wifi_fw_patch_target
-      )
+    # Delegate merging WiFi FW patch to mcuboot because we need to merge signed hex instead of raw nrf70.hex.
+    if(NOT CONFIG_NRF_WIFI_FW_PATCH_DFU)
+      set_property(
+        GLOBAL PROPERTY
+        nrf70_wifi_fw_PM_HEX_FILE
+        ${CMAKE_BINARY_DIR}/zephyr/nrf70.hex
+        )
+      set_property(
+        GLOBAL PROPERTY
+        nrf70_wifi_fw_PM_TARGET
+        nrf70_wifi_fw_patch_target
+        )
+    endif()
   else()
     dt_nodelabel(nrf70_fw_node NODELABEL "nrf70_fw_partition")
     if(NOT DEFINED nrf70_fw_node)

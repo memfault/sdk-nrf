@@ -223,23 +223,35 @@ static void le_audio_msg_sub_thread(void)
 			break;
 
 		case LE_AUDIO_EVT_CONFIG_RECEIVED:
-			LOG_DBG("Config received");
+			LOG_DBG("LE audio config received");
 
-			ret = unicast_server_config_get(&bitrate_bps, &sampling_rate_hz, NULL);
+			ret = unicast_server_config_get(msg.conn, msg.dir, &bitrate_bps,
+							&sampling_rate_hz, NULL);
 			if (ret) {
 				LOG_WRN("Failed to get config: %d", ret);
 				break;
 			}
 
-			LOG_DBG("Sampling rate: %d Hz", sampling_rate_hz);
-			LOG_DBG("Bitrate: %d bps", bitrate_bps);
+			LOG_DBG("\tSampling rate: %d Hz", sampling_rate_hz);
+			LOG_DBG("\tBitrate (compressed): %d bps", bitrate_bps);
+
+			if (msg.dir == BT_AUDIO_DIR_SINK) {
+				ret = audio_system_config_set(VALUE_NOT_SET, VALUE_NOT_SET,
+							      sampling_rate_hz);
+				ERR_CHK(ret);
+			} else if (msg.dir == BT_AUDIO_DIR_SOURCE) {
+				ret = audio_system_config_set(sampling_rate_hz, bitrate_bps,
+							      VALUE_NOT_SET);
+				ERR_CHK(ret);
+			}
 
 			break;
 
 		case LE_AUDIO_EVT_PRES_DELAY_SET:
 			LOG_DBG("Set presentation delay");
 
-			ret = unicast_server_config_get(NULL, NULL, &pres_delay_us);
+			ret = unicast_server_config_get(msg.conn, BT_AUDIO_DIR_SINK, NULL, NULL,
+							&pres_delay_us);
 			if (ret) {
 				LOG_ERR("Failed to get config: %d", ret);
 				break;
@@ -410,7 +422,7 @@ static int ext_adv_populate(struct bt_data *ext_adv_buf, size_t ext_adv_buf_size
 	int ret;
 	size_t ext_adv_buf_cnt = 0;
 
-	NET_BUF_SIMPLE_DEFINE(uuid_buf, CONFIG_EXT_ADV_UUID_BUF_MAX);
+	NET_BUF_SIMPLE_DEFINE_STATIC(uuid_buf, CONFIG_EXT_ADV_UUID_BUF_MAX);
 
 	ext_adv_buf[ext_adv_buf_cnt].type = BT_DATA_UUID16_SOME;
 	ext_adv_buf[ext_adv_buf_cnt].data_len = 0;
@@ -428,6 +440,12 @@ static int ext_adv_populate(struct bt_data *ext_adv_buf, size_t ext_adv_buf_size
 
 	if (ret) {
 		LOG_ERR("Failed to add adv data from content ctrl: %d", ret);
+		return ret;
+	}
+
+	ret = bt_mgmt_manufacturer_uuid_populate(&uuid_buf, CONFIG_BT_DEVICE_MANUFACTURER_ID);
+	if (ret) {
+		LOG_ERR("Failed to add adv data with manufacturer ID: %d", ret);
 		return ret;
 	}
 
@@ -482,10 +500,10 @@ void streamctrl_send(void const *const data, size_t size, uint8_t num_ch)
 int main(void)
 {
 	int ret;
+	static struct bt_data ext_adv_buf[CONFIG_EXT_ADV_BUF_MAX];
 
 	LOG_DBG("nRF5340 APP core started");
 
-	struct bt_data ext_adv_buf[CONFIG_EXT_ADV_BUF_MAX];
 	size_t ext_adv_buf_cnt = 0;
 
 	ret = nrf5340_audio_dk_init();

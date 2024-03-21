@@ -7,7 +7,7 @@ Google Fast Pair Service (GFPS)
    :local:
    :depth: 2
 
-The Google Fast Pair Service (Fast Pair for short) implements a Bluetooth® Low Energy (LE) GATT Service required when :ref:`ug_bt_fast_pair`.
+The Google Fast Pair Service (Fast Pair for short) implements a Bluetooth® Low Energy (LE) GATT Service required for :ref:`ug_bt_fast_pair` with the |NCS|.
 
 Service UUID
 ************
@@ -132,9 +132,19 @@ The pairing flow and the set of Bluetooth authentication callbacks in use depend
 API documentation
 *****************
 
-| Header file: :file:`include/bluetooth/services/fast_pair.h`
+| Header file: :file:`include/bluetooth/services/fast_pair/fast_pair.h`
 | Source files: :file:`subsys/bluetooth/services/fast_pair`
 
 .. doxygengroup:: bt_fast_pair
+   :project: nrf
+   :members:
+
+Fast Pair UUID API
+==================
+
+| Header file: :file:`include/bluetooth/services/fast_pair/uuid.h`
+| Source files: :file:`subsys/bluetooth/services/fast_pair`
+
+.. doxygengroup:: bt_fast_pair_uuid
    :project: nrf
    :members:

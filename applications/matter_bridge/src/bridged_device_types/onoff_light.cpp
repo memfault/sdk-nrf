@@ -23,18 +23,34 @@ using namespace ::chip;
 using namespace ::chip::app;
 using namespace Nrf;
 
+constexpr CommandId identifyIncomingCommands[] = {
+	app::Clusters::Identify::Commands::Identify::Id,
+	app::Clusters::Identify::Commands::TriggerEffect::Id,
+	kInvalidCommandId,
+};
+
 DECLARE_DYNAMIC_ATTRIBUTE_LIST_BEGIN(onOffAttrs)
-DECLARE_DYNAMIC_ATTRIBUTE(Clusters::OnOff::Attributes::OnOff::Id, BOOLEAN, 1, 0), DECLARE_DYNAMIC_ATTRIBUTE_LIST_END();
+DECLARE_DYNAMIC_ATTRIBUTE(Clusters::OnOff::Attributes::OnOff::Id, BOOLEAN, 1, 0),
+	DECLARE_DYNAMIC_ATTRIBUTE(Clusters::OnOff::Attributes::FeatureMap::Id, BITMAP32, 4, 0),
+	DECLARE_DYNAMIC_ATTRIBUTE(Clusters::OnOff::Attributes::GlobalSceneControl::Id, BOOLEAN, 1, 0),
+	DECLARE_DYNAMIC_ATTRIBUTE(Clusters::OnOff::Attributes::OnTime::Id, INT16U, 2, ZAP_ATTRIBUTE_MASK(WRITABLE)),
+	DECLARE_DYNAMIC_ATTRIBUTE(Clusters::OnOff::Attributes::OffWaitTime::Id, INT16U, 2, ZAP_ATTRIBUTE_MASK(WRITABLE)),
+	DECLARE_DYNAMIC_ATTRIBUTE(Clusters::OnOff::Attributes::StartUpOnOff::Id, ENUM8, 1, ZAP_ATTRIBUTE_MASK(WRITABLE)),
+	DECLARE_DYNAMIC_ATTRIBUTE_LIST_END();
 
 constexpr CommandId onOffIncomingCommands[] = {
 	app::Clusters::OnOff::Commands::Off::Id,
 	app::Clusters::OnOff::Commands::On::Id,
 	app::Clusters::OnOff::Commands::Toggle::Id,
+	app::Clusters::OnOff::Commands::OffWithEffect::Id,
+	app::Clusters::OnOff::Commands::OnWithRecallGlobalScene::Id,
+	app::Clusters::OnOff::Commands::OnWithTimedOff::Id,
 	kInvalidCommandId,
 };
 
 DECLARE_DYNAMIC_ATTRIBUTE_LIST_BEGIN(groupsAttrs)
 DECLARE_DYNAMIC_ATTRIBUTE(Clusters::Groups::Attributes::NameSupport::Id, BITMAP8, 1, 0),
+	DECLARE_DYNAMIC_ATTRIBUTE(Clusters::Groups::Attributes::FeatureMap::Id, BITMAP32, 4, 1),
 	DECLARE_DYNAMIC_ATTRIBUTE_LIST_END();
 
 constexpr CommandId groupsIncomingCommands[] = {
@@ -47,13 +63,23 @@ constexpr CommandId groupsIncomingCommands[] = {
 	kInvalidCommandId,
 };
 
+constexpr CommandId groupsGeneratedCommands[] = {
+	app::Clusters::Groups::Commands::AddGroupResponse::Id,
+	app::Clusters::Groups::Commands::RemoveGroupResponse::Id,
+	app::Clusters::Groups::Commands::ViewGroupResponse::Id,
+	app::Clusters::Groups::Commands::GetGroupMembershipResponse::Id,
+	kInvalidCommandId,
+};
+
 DECLARE_DYNAMIC_CLUSTER_LIST_BEGIN(bridgedLightClusters)
 DECLARE_DYNAMIC_CLUSTER(Clusters::OnOff::Id, onOffAttrs, ZAP_CLUSTER_MASK(SERVER), onOffIncomingCommands, nullptr),
 	DECLARE_DYNAMIC_CLUSTER(Clusters::Descriptor::Id, descriptorAttrs, ZAP_CLUSTER_MASK(SERVER), nullptr, nullptr),
-	DECLARE_DYNAMIC_CLUSTER(Clusters::Groups::Id, groupsAttrs, ZAP_CLUSTER_MASK(SERVER), groupsIncomingCommands, nullptr),
-	DECLARE_DYNAMIC_CLUSTER(Clusters::BridgedDeviceBasicInformation::Id, bridgedDeviceBasicAttrs, ZAP_CLUSTER_MASK(SERVER), nullptr, nullptr),
-	DECLARE_DYNAMIC_CLUSTER(Clusters::Identify::Id, identifyAttrs, ZAP_CLUSTER_MASK(SERVER), sIdentifyIncomingCommands,
-				nullptr) DECLARE_DYNAMIC_CLUSTER_LIST_END;
+	DECLARE_DYNAMIC_CLUSTER(Clusters::Groups::Id, groupsAttrs, ZAP_CLUSTER_MASK(SERVER), groupsIncomingCommands,
+				groupsGeneratedCommands),
+	DECLARE_DYNAMIC_CLUSTER(Clusters::BridgedDeviceBasicInformation::Id, bridgedDeviceBasicAttrs,
+				ZAP_CLUSTER_MASK(SERVER), nullptr, nullptr),
+	DECLARE_DYNAMIC_CLUSTER(Clusters::Identify::Id, identifyAttrs, ZAP_CLUSTER_MASK(SERVER),
+				identifyIncomingCommands, nullptr) DECLARE_DYNAMIC_CLUSTER_LIST_END;
 
 DECLARE_DYNAMIC_ENDPOINT(bridgedLightEndpoint, bridgedLightClusters);
 
@@ -104,6 +130,18 @@ CHIP_ERROR OnOffLightDevice::HandleReadOnOff(AttributeId attributeId, uint8_t *b
 		uint32_t featureMap = GetOnOffFeatureMap();
 		return CopyAttribute(&featureMap, sizeof(featureMap), buffer, maxReadLength);
 	}
+	case Clusters::OnOff::Attributes::OnTime::Id: {
+		return CopyAttribute(&mOnTime, sizeof(mOnTime), buffer, maxReadLength);
+	}
+	case Clusters::OnOff::Attributes::OffWaitTime::Id: {
+		return CopyAttribute(&mOffWaitTime, sizeof(mOffWaitTime), buffer, maxReadLength);
+	}
+	case Clusters::OnOff::Attributes::StartUpOnOff::Id: {
+		return CopyAttribute(&mStartUpOnOff, sizeof(mStartUpOnOff), buffer, maxReadLength);
+	}
+	case Clusters::OnOff::Attributes::GlobalSceneControl::Id: {
+		return CopyAttribute(&mGlobalSceneControl, sizeof(mGlobalSceneControl), buffer, maxReadLength);
+	}
 	default:
 		return CHIP_ERROR_INVALID_ARGUMENT;
 	}
@@ -136,13 +174,22 @@ CHIP_ERROR OnOffLightDevice::HandleWrite(ClusterId clusterId, AttributeId attrib
 	}
 
 	switch (attributeId) {
-	case Clusters::OnOff::Attributes::OnOff::Id: {
-		SetOnOff(*buffer);
-		return CHIP_NO_ERROR;
-	}
+	case Clusters::OnOff::Attributes::OnOff::Id:
+		mOnOff = *buffer;
+		break;
+	case Clusters::OnOff::Attributes::OnTime::Id:
+		mOnTime = *buffer;
+		break;
+	case Clusters::OnOff::Attributes::OffWaitTime::Id:
+		mOffWaitTime = *buffer;
+		break;
+	case Clusters::OnOff::Attributes::StartUpOnOff::Id:
+		mStartUpOnOff = static_cast<Clusters::OnOff::StartUpOnOffEnum>(*buffer);
+		break;
 	default:
 		return CHIP_ERROR_INVALID_ARGUMENT;
 	}
+	return CHIP_NO_ERROR;
 }
 
 CHIP_ERROR OnOffLightDevice::HandleAttributeChange(chip::ClusterId clusterId, chip::AttributeId attributeId, void *data,
@@ -168,8 +215,7 @@ CHIP_ERROR OnOffLightDevice::HandleAttributeChange(chip::ClusterId clusterId, ch
 			if (err != CHIP_NO_ERROR) {
 				return err;
 			}
-
-			SetOnOff(value);
+			mOnOff = value;
 			break;
 		}
 		default:

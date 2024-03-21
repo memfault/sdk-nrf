@@ -198,12 +198,20 @@ void disconnect_cloud(void)
  */
 static bool connect_cloud(void)
 {
+	char device_id[NRF_CLOUD_CLIENT_ID_MAX_LEN + 1];
+	int err;
+
 	LOG_INF("Connecting to nRF Cloud");
+
+	err = nrf_cloud_client_id_get(device_id, sizeof(device_id));
+	if (!err) {
+		LOG_INF("Device ID: %s", device_id);
+	} else {
+		LOG_ERR("Error requesting the device id: %d", err);
+	}
 
 	/* Clear the disconnected flag, no longer accurate. */
 	k_event_clear(&cloud_events, CLOUD_DISCONNECTED);
-
-	int err;
 
 #if defined(CONFIG_NRF_CLOUD_MQTT)
 	/* Connect to nRF Cloud -- Non-blocking. State updates are handled in callbacks. */
@@ -519,11 +527,6 @@ static int setup_cloud(void)
 		LOG_ERR("Error initializing FOTA: %d", err);
 		return err;
 	}
-	err = coap_fota_begin();
-	if (err) {
-		LOG_ERR("Error starting FOTA: %d", err);
-		return err;
-	}
 #endif /* CONFIG_COAP_FOTA */
 	err = nrf_cloud_coap_init();
 	if (err) {
@@ -589,6 +592,14 @@ void cloud_connection_thread_fn(void)
 		if (IS_ENABLED(CONFIG_NRF_PROVISIONING)) {
 			LOG_DBG("Awaiting provisioning idle");
 			(void)await_provisioning_idle(K_FOREVER);
+		}
+
+		/* Obtain time before connecting to the cloud,
+		 * otherwise NTP query will fail.
+		 */
+		if (IS_ENABLED(CONFIG_WIFI)) {
+			LOG_INF("Waiting to obtain date/time");
+			(void)await_date_time_known(K_FOREVER);
 		}
 
 		/* Attempt to connect to nRF Cloud. */

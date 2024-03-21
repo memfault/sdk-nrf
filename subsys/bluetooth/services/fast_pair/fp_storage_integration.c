@@ -4,17 +4,27 @@
  * SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
  */
 
-#include <bluetooth/services/fast_pair.h>
+#include <bluetooth/services/fast_pair/fast_pair.h>
 
 #include <zephyr/logging/log.h>
 LOG_MODULE_DECLARE(fast_pair, CONFIG_BT_FAST_PAIR_LOG_LEVEL);
 
 #include "fp_storage.h"
 #include "fp_activation.h"
+#include "fp_storage_ak.h"
 
 int bt_fast_pair_factory_reset(void)
 {
+	/* It is assumed that this function executes in the cooperative thread context. */
+	__ASSERT_NO_MSG(!k_is_preempt_thread());
+	__ASSERT_NO_MSG(!k_is_in_isr());
+
 	return fp_storage_factory_reset();
+}
+
+bool bt_fast_pair_has_account_key(void)
+{
+	return fp_storage_ak_has_account_key();
 }
 
 static int storage_init(void)

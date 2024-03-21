@@ -9,6 +9,10 @@
 #include "app/fabric_table_delegate.h"
 #include "migration/migration_manager.h"
 
+#ifdef CONFIG_NCS_SAMPLE_MATTER_SETTINGS_SHELL
+#include "persistent_storage/persistent_storage_shell.h"
+#endif
+
 #ifdef CONFIG_CHIP_OTA_REQUESTOR
 #include "dfu/ota/ota_util.h"
 #endif
@@ -39,23 +43,26 @@ Clusters::NetworkCommissioning::Instance Nrf::Matter::InitData::sWiFiCommissioni
 #endif
 
 #ifdef CONFIG_CHIP_CRYPTO_PSA
-chip::Crypto::PSAOperationalKeystore Nrf::Matter::InitData::sPSAOperationalKeystore{};
+chip::Crypto::PSAOperationalKeystore Nrf::Matter::InitData::sOperationalKeystoreDefault{};
 #endif
 
-#if CONFIG_CHIP_FACTORY_DATA
-FactoryDataProvider<InternalFlashFactoryData> Nrf::Matter::InitData::sDefaultFactoryDataProvider{};
+#ifdef CONFIG_CHIP_FACTORY_DATA
+FactoryDataProvider<InternalFlashFactoryData> Nrf::Matter::InitData::sFactoryDataProviderDefault{};
 #endif
 namespace
 {
 /* Local instance of the initialization data that is overwritten by an application. */
-Nrf::Matter::InitData sLocalInitData
-{
-	.mNetworkingInstance = nullptr, .mServerInitParams = nullptr, .mDeviceInfoProvider = nullptr,
-#if CONFIG_CHIP_FACTORY_DATA
-	.mFactoryDataProvider = nullptr,
+Nrf::Matter::InitData sLocalInitData{ .mNetworkingInstance = nullptr,
+				      .mServerInitParams = nullptr,
+				      .mDeviceInfoProvider = nullptr,
+#ifdef CONFIG_CHIP_FACTORY_DATA
+				      .mFactoryDataProvider = nullptr,
 #endif
-	.mPreServerInitClbk = nullptr, .mPostServerInitClbk = nullptr
-};
+#ifdef CONFIG_CHIP_CRYPTO_PSA
+				      .mOperationalKeyStore = nullptr,
+#endif
+				      .mPreServerInitClbk = nullptr,
+				      .mPostServerInitClbk = nullptr };
 
 /* Synchronization primitives */
 K_MUTEX_DEFINE(sInitMutex);
@@ -154,7 +161,7 @@ void DoInitChipServer(intptr_t /* unused */)
 #endif
 
 	/* Initialize CHIP server */
-#if CONFIG_CHIP_FACTORY_DATA
+#ifdef CONFIG_CHIP_FACTORY_DATA
 	if (sLocalInitData.mFactoryDataProvider) {
 		sInitResult = sLocalInitData.mFactoryDataProvider->Init();
 		VerifyInitResultOrReturn(sInitResult, "FactoryDataProvider::Init() failed");
@@ -169,8 +176,13 @@ void DoInitChipServer(intptr_t /* unused */)
 	/* The default CommissionableDataProvider is set internally in the GenericConfigurationManagerImpl::Init(). */
 #endif
 
+#ifdef CONFIG_NCS_SAMPLE_MATTER_SETTINGS_SHELL
+	VerifyOrReturn(Nrf::PersistentStorageShell::Init(),
+		       LOG_ERR("Matter settings shell has been enabled, but it cannot be initialized."));
+#endif
+
 #ifdef CONFIG_CHIP_CRYPTO_PSA
-	sLocalInitData.mServerInitParams->operationalKeystore = &Nrf::Matter::InitData::sPSAOperationalKeystore;
+	sLocalInitData.mServerInitParams->operationalKeystore = sLocalInitData.mOperationalKeyStore;
 #endif
 
 	VerifyOrReturn(sLocalInitData.mServerInitParams, LOG_ERR("No valid server initialization parameters"));
@@ -234,7 +246,7 @@ CHIP_ERROR StartServer()
 	return WaitForReadiness();
 }
 
-#if CONFIG_CHIP_FACTORY_DATA
+#ifdef CONFIG_CHIP_FACTORY_DATA
 FactoryDataProviderBase *GetFactoryDataProvider()
 {
 	return sLocalInitData.mFactoryDataProvider;

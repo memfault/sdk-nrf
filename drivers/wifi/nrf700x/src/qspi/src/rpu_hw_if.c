@@ -22,7 +22,7 @@
 #include "qspi_if.h"
 #include "spi_if.h"
 
-LOG_MODULE_DECLARE(wifi_nrf, CONFIG_WIFI_NRF700X_BUS_LOG_LEVEL);
+LOG_MODULE_REGISTER(wifi_nrf_bus, CONFIG_WIFI_NRF700X_BUS_LOG_LEVEL);
 
 #define NRF7002_NODE DT_NODELABEL(nrf700x)
 
@@ -35,12 +35,11 @@ GPIO_DT_SPEC_GET(NRF7002_NODE, iovdd_ctrl_gpios);
 static const struct gpio_dt_spec bucken_spec =
 GPIO_DT_SPEC_GET(NRF7002_NODE, bucken_gpios);
 
-#if defined(CONFIG_BOARD_NRF7002DK_NRF7001_NRF5340_CPUAPP) || \
-	defined(CONFIG_BOARD_NRF7002DK_NRF5340_CPUAPP)
+#ifdef CONFIG_NRF700X_RADIO_COEX
 #define NRF_RADIO_COEX_NODE DT_NODELABEL(nrf_radio_coex)
-static const struct gpio_dt_spec btrf_switch_spec =
+static const struct gpio_dt_spec sr_rf_switch_spec =
 GPIO_DT_SPEC_GET(NRF_RADIO_COEX_NODE, btrf_switch_gpios);
-#endif /* CONFIG_BOARD_NRF700XDK_NRF5340_CPUAPP */
+#endif /* CONFIG_NRF700X_RADIO_COEX */
 
 char blk_name[][15] = { "SysBus",   "ExtSysBus",	   "PBus",	   "PKTRAM",
 			       "GRAM",	   "LMAC_ROM",	   "LMAC_RET_RAM", "LMAC_SRC_RAM",
@@ -177,37 +176,35 @@ out:
 }
 
 
-static int ble_gpio_config(void)
+static int sr_gpio_config(void)
 {
-#if defined(CONFIG_BOARD_NRF7002DK_NRF7001_NRF5340_CPUAPP) || \
-	defined(CONFIG_BOARD_NRF7002DK_NRF5340_CPUAPP)
+#ifdef CONFIG_NRF700X_RADIO_COEX
 	int ret;
 
-	if (!device_is_ready(btrf_switch_spec.port)) {
+	if (!device_is_ready(sr_rf_switch_spec.port)) {
 		return -ENODEV;
 	}
 
-	ret = gpio_pin_configure_dt(&btrf_switch_spec, GPIO_OUTPUT);
+	ret = gpio_pin_configure_dt(&sr_rf_switch_spec, GPIO_OUTPUT);
 	if (ret) {
-		LOG_ERR("BLE GPIO configuration failed %d", ret);
+		LOG_ERR("SR GPIO configuration failed %d", ret);
 		return ret;
 	}
 
 	return ret;
 #else
 	return 0;
-#endif /* CONFIG_BOARD_NRF700XDK_NRF5340 */
+#endif /* CONFIG_NRF700X_RADIO_COEX */
 }
 
-static int ble_gpio_remove(void)
+static int sr_gpio_remove(void)
 {
-#if defined(CONFIG_BOARD_NRF7002DK_NRF7001_NRF5340_CPUAPP) || \
-	defined(CONFIG_BOARD_NRF7002DK_NRF5340_CPUAPP)
+#ifdef CONFIG_NRF700X_RADIO_COEX
 	int ret;
 
-	ret = gpio_pin_configure_dt(&btrf_switch_spec, GPIO_DISCONNECTED);
+	ret = gpio_pin_configure_dt(&sr_rf_switch_spec, GPIO_DISCONNECTED);
 	if (ret) {
-		LOG_ERR("Bluetooth LE GPIO remove failed %d", ret);
+		LOG_ERR("SR GPIO remove failed %d", ret);
 		return ret;
 	}
 
@@ -321,21 +318,20 @@ static int rpu_pwroff(void)
 	return ret;
 }
 
-#if defined(CONFIG_BOARD_NRF7002DK_NRF7001_NRF5340_CPUAPP) || \
-	defined(CONFIG_BOARD_NRF7002DK_NRF5340_CPUAPP)
-int ble_ant_switch(unsigned int ant_switch)
+#ifdef CONFIG_NRF700X_RADIO_COEX
+int sr_ant_switch(unsigned int ant_switch)
 {
 	int ret;
 
-	ret = gpio_pin_set_dt(&btrf_switch_spec, ant_switch & 0x1);
+	ret = gpio_pin_set_dt(&sr_rf_switch_spec, ant_switch & 0x1);
 	if (ret) {
-		LOG_ERR("BLE GPIO set failed %d", ret);
+		LOG_ERR("SR GPIO set failed %d", ret);
 		return ret;
 	}
 
 	return ret;
 }
-#endif /* CONFIG_BOARD_NRF7002DK_NRF5340 */
+#endif /* CONFIG_NRF700X_RADIO_COEX */
 
 int rpu_read(unsigned int addr, void *data, int len)
 {
@@ -381,10 +377,17 @@ int rpu_wakeup(void)
 		return ret;
 	}
 
-	/* These return actual values not return values */
-	(void)rpu_rdsr2();
+	ret = rpu_rdsr2();
+	if (ret < 0) {
+		LOG_ERR("Error: RDSR2 failed");
+		return ret;
+	}
 
-	(void)rpu_rdsr1();
+	ret = rpu_rdsr1();
+	if (ret < 0) {
+		LOG_ERR("Error: RDSR1 failed");
+		return ret;
+	}
 
 	return 0;
 }
@@ -477,20 +480,20 @@ int rpu_init(void)
 
 	CALL_RPU_FUNC(rpu_gpio_config);
 
-	ret = ble_gpio_config();
+	ret = sr_gpio_config();
 	if (ret) {
 		goto rpu_gpio_remove;
 	}
 
 	ret = rpu_pwron();
 	if (ret) {
-		goto ble_gpio_remove;
+		goto sr_gpio_remove;
 	}
 
 	return 0;
 
-ble_gpio_remove:
-	ble_gpio_remove();
+sr_gpio_remove:
+	sr_gpio_remove();
 rpu_gpio_remove:
 	rpu_gpio_remove();
 out:
@@ -523,7 +526,7 @@ int rpu_disable(void)
 
 	CALL_RPU_FUNC(rpu_pwroff);
 	CALL_RPU_FUNC(rpu_gpio_remove);
-	CALL_RPU_FUNC(ble_gpio_remove);
+	CALL_RPU_FUNC(sr_gpio_remove);
 
 	qdev = NULL;
 	cfg = NULL;

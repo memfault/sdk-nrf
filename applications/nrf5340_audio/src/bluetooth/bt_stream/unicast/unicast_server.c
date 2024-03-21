@@ -21,11 +21,16 @@
 #include "bt_le_audio_tx.h"
 #include "le_audio.h"
 
+#include <../subsys/bluetooth/audio/bap_endpoint.h>
+
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(unicast_server, CONFIG_UNICAST_SERVER_LOG_LEVEL);
 
 BUILD_ASSERT(CONFIG_BT_ASCS_ASE_SRC_COUNT <= 1,
 	     "A maximum of one source stream is currently supported");
+
+BUILD_ASSERT(strlen(CONFIG_BT_SET_IDENTITY_RESOLVING_KEY) == BT_CSIP_SET_SIRK_SIZE,
+	     "SIRK incorrect size, must be 16 bytes");
 
 ZBUS_CHAN_DEFINE(le_audio_chan, struct le_audio_msg, NULL, NULL, ZBUS_OBSERVERS_EMPTY,
 		 ZBUS_MSG_INIT(0));
@@ -113,21 +118,20 @@ static struct bt_csip_set_member_cb csip_callbacks = {
 struct bt_csip_set_member_register_param csip_param = {
 	.set_size = CSIP_SET_SIZE,
 	.lockable = true,
-#if !CONFIG_BT_CSIP_SET_MEMBER_TEST_SAMPLE_DATA
-	/* CSIP SIRK for demo is used, must be changed before production */
-	.set_sirk = {'N', 'R', 'F', '5', '3', '4', '0', '_', 'T', 'W', 'S', '_', 'D', 'E', 'M',
-		     'O'},
-#else
-#warning "CSIP test sample data is used, must be changed before production"
-#endif
 	.cb = &csip_callbacks,
 };
 
-static struct bt_audio_codec_cap lc3_codec = BT_AUDIO_CODEC_CAP_LC3(
+static struct bt_audio_codec_cap lc3_codec_sink = BT_AUDIO_CODEC_CAP_LC3(
 	BT_AUDIO_CODEC_CAPABILIY_FREQ,
 	(BT_AUDIO_CODEC_LC3_DURATION_10 | BT_AUDIO_CODEC_LC3_DURATION_PREFER_10),
 	BT_AUDIO_CODEC_LC3_CHAN_COUNT_SUPPORT(1), LE_AUDIO_SDU_SIZE_OCTETS(CONFIG_LC3_BITRATE_MIN),
-	LE_AUDIO_SDU_SIZE_OCTETS(CONFIG_LC3_BITRATE_MAX), 1u, BT_AUDIO_CONTEXT_TYPE_MEDIA);
+	LE_AUDIO_SDU_SIZE_OCTETS(CONFIG_LC3_BITRATE_MAX), 1u, AVAILABLE_SINK_CONTEXT);
+
+static struct bt_audio_codec_cap lc3_codec_source = BT_AUDIO_CODEC_CAP_LC3(
+	BT_AUDIO_CODEC_CAPABILIY_FREQ,
+	(BT_AUDIO_CODEC_LC3_DURATION_10 | BT_AUDIO_CODEC_LC3_DURATION_PREFER_10),
+	BT_AUDIO_CODEC_LC3_CHAN_COUNT_SUPPORT(1), LE_AUDIO_SDU_SIZE_OCTETS(CONFIG_LC3_BITRATE_MIN),
+	LE_AUDIO_SDU_SIZE_OCTETS(CONFIG_LC3_BITRATE_MAX), 1u, AVAILABLE_SOURCE_CONTEXT);
 
 static enum bt_audio_dir caps_dirs[] = {
 	BT_AUDIO_DIR_SINK,
@@ -145,12 +149,12 @@ static const struct bt_audio_codec_qos_pref qos_pref = BT_AUDIO_CODEC_QOS_PREF(
 static struct bt_pacs_cap caps[] = {
 #if (CONFIG_BT_AUDIO_RX)
 				{
-					 .codec_cap = &lc3_codec,
+					 .codec_cap = &lc3_codec_sink,
 				},
 #endif
 #if (CONFIG_BT_AUDIO_TX)
 				{
-					 .codec_cap = &lc3_codec,
+					 .codec_cap = &lc3_codec_source,
 				}
 #endif /* (CONFIG_BT_AUDIO_TX) */
 };
@@ -206,7 +210,11 @@ static void print_codec(const struct bt_audio_codec_cfg *codec, enum bt_audio_di
 			return;
 		}
 
-		bitrate = octets_per_sdu * 8 * (1000000 / dur_us);
+		ret = le_audio_bitrate_get(codec, &bitrate);
+		if (ret) {
+			LOG_ERR("Unable to calculate bitrate: %d", ret);
+			return;
+		}
 
 		if (dir == BT_AUDIO_DIR_SINK) {
 			LOG_INF("LC3 codec config for sink:");
@@ -527,8 +535,8 @@ static int adv_buf_put(struct bt_data *adv_buf, uint8_t adv_buf_vacant, int *ind
 	return 0;
 }
 
-int unicast_server_config_get(uint32_t *bitrate, uint32_t *sampling_rate_hz,
-			      uint32_t *pres_delay_us)
+int unicast_server_config_get(struct bt_conn *conn, enum bt_audio_dir dir, uint32_t *bitrate,
+			      uint32_t *sampling_rate_hz, uint32_t *pres_delay_us)
 {
 	int ret;
 
@@ -537,48 +545,74 @@ int unicast_server_config_get(uint32_t *bitrate, uint32_t *sampling_rate_hz,
 		return -ENXIO;
 	}
 
-	if (audio_streams[0].codec_cfg == NULL) {
-		LOG_ERR("No codec found for the stream");
-		return -ENXIO;
-	}
+	if (dir == BT_AUDIO_DIR_SINK) {
+		/* If multiple sink streams exists, they should have the same configurations,
+		 * hence we only check the first one.
+		 */
+		if (audio_streams[0].codec_cfg == NULL) {
+			LOG_ERR("No codec found for the stream");
 
-	if (sampling_rate_hz != NULL) {
-		ret = le_audio_freq_hz_get(audio_streams[0].codec_cfg, sampling_rate_hz);
-		if (ret) {
-			LOG_ERR("Invalid sampling frequency: %d", ret);
-			return -ENXIO;
-		}
-	}
-
-	if (bitrate != NULL) {
-		int dur_us;
-
-		ret = le_audio_duration_us_get(audio_streams[0].codec_cfg, &dur_us);
-		if (ret) {
-			LOG_ERR("Invalid frame duration: %d", ret);
 			return -ENXIO;
 		}
 
-		/* Get the configuration for the sink stream */
-		int frames_per_sec = 1000000 / dur_us;
-		int octets_per_sdu;
+		if (sampling_rate_hz != NULL) {
+			ret = le_audio_freq_hz_get(audio_streams[0].codec_cfg, sampling_rate_hz);
+			if (ret) {
+				LOG_ERR("Invalid sampling frequency: %d", ret);
+				return -ENXIO;
+			}
+		}
 
-		ret = le_audio_octets_per_frame_get(audio_streams[0].codec_cfg, &octets_per_sdu);
-		if (ret) {
-			LOG_ERR("Invalid octets per frame: %d", ret);
+		if (bitrate != NULL) {
+			ret = le_audio_bitrate_get(audio_streams[0].codec_cfg, bitrate);
+			if (ret) {
+				LOG_ERR("Unable to calculate bitrate: %d", ret);
+				return -ENXIO;
+			}
+		}
+
+		if (pres_delay_us != NULL) {
+			if (audio_streams[0].qos == NULL) {
+				LOG_ERR("No QoS found for the stream");
+				return -ENXIO;
+			}
+
+			*pres_delay_us = audio_streams[0].qos->pd;
+		}
+	} else if (dir == BT_AUDIO_DIR_SOURCE) {
+		/* If multiple source streams exists, they should have the same configurations,
+		 * hence we only check the first one.
+		 */
+		if (bap_tx_streams[0]->codec_cfg == NULL) {
+			LOG_ERR("No codec found for the stream");
 			return -ENXIO;
 		}
 
-		*bitrate = frames_per_sec * (octets_per_sdu * 8);
-	}
-
-	if (pres_delay_us != NULL) {
-		if (audio_streams[0].qos == NULL) {
-			LOG_ERR("No QoS found for the stream");
-			return -ENXIO;
+		if (sampling_rate_hz != NULL) {
+			ret = le_audio_freq_hz_get(bap_tx_streams[0]->codec_cfg, sampling_rate_hz);
+			if (ret) {
+				LOG_ERR("Invalid sampling frequency: %d", ret);
+				return -ENXIO;
+			}
 		}
 
-		*pres_delay_us = audio_streams[0].qos->pd;
+		if (bitrate != NULL) {
+			ret = le_audio_bitrate_get(bap_tx_streams[0]->codec_cfg, bitrate);
+			if (ret) {
+				LOG_ERR("Unable to calculate bitrate: %d", ret);
+				return -ENXIO;
+			}
+		}
+
+		if (pres_delay_us != NULL) {
+			if (bap_tx_streams[0]->qos == NULL) {
+				LOG_ERR("No QoS found for the stream");
+				return -ENXIO;
+			}
+
+			*pres_delay_us = bap_tx_streams[0]->qos->pd;
+			LOG_ERR("pres_delay_us: %d", *pres_delay_us);
+		}
 	}
 
 	return 0;
@@ -679,6 +713,20 @@ int unicast_server_enable(le_audio_receive_cb recv_cb)
 	bt_bap_unicast_server_register_cb(&unicast_server_cb);
 
 	channel_assignment_get(&channel);
+
+	if (IS_ENABLED(CONFIG_BT_CSIP_SET_MEMBER_TEST_SAMPLE_DATA)) {
+		LOG_WRN("CSIP test sample data is used, must be changed "
+			"before production");
+	} else {
+		if (strcmp(CONFIG_BT_SET_IDENTITY_RESOLVING_KEY_DEFAULT,
+			   CONFIG_BT_SET_IDENTITY_RESOLVING_KEY) == 0) {
+			LOG_WRN("CSIP using the default SIRK, must be changed "
+				"before production");
+		}
+
+		memcpy(csip_param.set_sirk, CONFIG_BT_SET_IDENTITY_RESOLVING_KEY,
+		       BT_CSIP_SET_SIRK_SIZE);
+	}
 
 	for (int i = 0; i < ARRAY_SIZE(caps); i++) {
 		ret = bt_pacs_cap_register(caps_dirs[i], &caps[i]);

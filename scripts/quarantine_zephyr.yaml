@@ -92,6 +92,37 @@
     - net.ip-addr
   comment: "Fixed with https://github.com/zephyrproject-rtos/zephyr/pull/68463"
 
+- scenarios:
+    - examples.nrfx_uarte.tx_rx_non_blocking
+  platforms:
+    - nrf9160dk_nrf9160
+    - nrf52840dk_nrf52840
+  comment: "https://nordicsemi.atlassian.net/browse/NRFX-3395"
+
+- scenarios:
+    - examples.nrfx_uarte.rx_double_buffered
+  platforms:
+    - nrf52840dk_nrf52840
+    - nrf9160dk_nrf9160
+    - nrf5340dk_nrf5340_cpuapp
+    - nrf52833dk_nrf52833
+  comment: "https://nordicsemi.atlassian.net/browse/NRFX-3468"
+
+- scenarios:
+    - examples.nrfx_uarte.tx_rx_non_blocking
+  platforms:
+    - nrf5340dk_nrf5340_cpuapp
+    - nrf52833dk_nrf52833
+  comment: "https://nordicsemi.atlassian.net/browse/NRFX-3468"
+
+- scenarios:
+    - examples.nrfx_saadc.maximum_performance
+  platforms:
+    - nrf52840dk_nrf52840
+    - nrf52833dk_nrf52833
+    - nrf9160dk_nrf9160
+  comment: "https://nordicsemi.atlassian.net/browse/NRFX-3813"
+
 # ---------------------------------   Won't fix section -----------------------------------
 
 - scenarios:
@@ -114,6 +145,20 @@
     - nrf5340dk_nrf5340_cpuapp_ns
     - nrf9160dk_nrf9160_ns
   comment: "Won't be fixed - https://nordicsemi.atlassian.net/browse/NCSDK-18853"
+
+- scenarios:
+    - sample.tfm.regression_ipc_lvl1
+    - sample.tfm.regression_ipc_lvl2
+    - sample.tfm.regression_sfn
+    - sample.tfm.psa_test_protected_storage
+    - sample.tfm.psa_test_internal_trusted_storage
+    - sample.tfm.psa_test_storage
+    - sample.tfm.psa_test_crypto
+  comment: "Won't be fixed - We have our own copy of these regression tests in nrf"
+
+- scenarios:
+    - libraries.uoscore
+  comment: "Won't be fixes - We don't support uoscore since it doesn't use NRF security"
 
 - scenarios:
     - sample.drivers.crypto.mbedtls

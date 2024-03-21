@@ -49,10 +49,6 @@ config MBEDTLS_THREADING_ALT
 	bool
 	default y if CC3XX_BACKEND || PSA_CRYPTO_DRIVER_CC3XX
 
-config MBEDTLS_PLATFORM_ZEROIZE_ALT
-	bool
-	default y if NRF_CC3XX_PLATFORM
-
 # Legacy configurations for _ALT defines
 config MBEDTLS_AES_SETKEY_ENC_ALT
 	bool
@@ -242,7 +238,7 @@ config CC312_ONLY_ENABLED
 config OBERON_ONLY_PSA_ENABLED
 	bool
 	default y
-	depends on (PSA_CRYPTO_DRIVER_OBERON && !PSA_CRYPTO_DRIVER_CC3XX) && \
+	depends on (PSA_CRYPTO_DRIVER_OBERON && !PSA_CRYPTO_DRIVER_CC3XX && !PSA_CRYPTO_DRIVER_CRACEN) && \
 		   !CC3XX_BACKEND
 
 config OBERON_ONLY_ENABLED
@@ -673,6 +669,7 @@ config MBEDTLS_HKDF_C
 config MBEDTLS_RSA_C
 	bool
 	prompt "RSA - Rivest-Shamir-Adleman cryptosystem"
+	depends on PSA_WANT_KEY_TYPE_RSA_PUBLIC_KEY || !MBEDTLS_USE_PSA_CRYPTO
 	help
 	  Enable RSA cryptosystem support.
 	  MBEDTLS_RSA_C setting in mbed TLS config file.
@@ -775,6 +772,7 @@ config MBEDTLS_PKCS5_C
 	prompt "Enable PKCS5 support"
 	default y
 	depends on MBEDTLS_MD_C
+	depends on MBEDTLS_CIPHER_PADDING_PKCS7
 
 config MBEDTLS_PK_WRITE_C
 	bool
@@ -785,5 +783,11 @@ config MBEDTLS_PK_PARSE_C
 	bool
 	prompt "Enable PK parse support"
 	default y if MBEDTLS_TLS_LIBRARY
+
+config MBEDTLS_PK_PARSE_EC_EXTENDED
+	bool
+	prompt "Enhance support for reading EC keys"
+	default y
+	depends on MBEDTLS_PK_PARSE_C
 
 endmenu # Legacy mbed TLS crypto APIs

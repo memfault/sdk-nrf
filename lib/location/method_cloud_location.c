@@ -179,11 +179,11 @@ int method_cloud_location_get(const struct location_request_info *request)
 	method_cloud_location_start_work.wifi_config = NULL;
 	method_cloud_location_start_work.cell_config = NULL;
 	if (request->current_method == LOCATION_METHOD_CELLULAR ||
-	    request->current_method == LOCATION_METHOD_INTERNAL_WIFI_CELLULAR) {
+	    request->current_method == LOCATION_METHOD_WIFI_CELLULAR) {
 		method_cloud_location_start_work.cell_config = request->cellular;
 	}
 	if (request->current_method == LOCATION_METHOD_WIFI ||
-	    request->current_method == LOCATION_METHOD_INTERNAL_WIFI_CELLULAR) {
+	    request->current_method == LOCATION_METHOD_WIFI_CELLULAR) {
 		method_cloud_location_start_work.wifi_config = request->wifi;
 	}
 
@@ -196,6 +196,18 @@ int method_cloud_location_get(const struct location_request_info *request)
 
 	return 0;
 }
+
+#if defined(CONFIG_LOCATION_DATA_DETAILS)
+void method_cloud_location_details_get(struct location_data_details *details)
+{
+#if defined(CONFIG_LOCATION_METHOD_CELLULAR)
+	scan_cellular_details_get(details);
+#endif
+#if defined(CONFIG_LOCATION_METHOD_WIFI)
+	scan_wifi_details_get(details);
+#endif
+}
+#endif
 
 int method_cloud_location_init(void)
 {

@@ -272,6 +272,12 @@ It adds the following subcommands to configure and send raw TX packets:
    * - Subcommands
      - Description
      - Valid values
+   * - mode
+     - | Enable or Disable TX injection mode
+       | [-h, --help]: Print out the help for the mode command
+     - | Valid values:
+       | 1 - Enable
+       | 0 - Disable
    * - configure
      - | Configure the raw TX packet header with the following parameters:
        | [-f, --rate-flags]: Rate flag value
@@ -305,6 +311,24 @@ It adds the following subcommands to configure and send raw TX packets:
      - | N/A
 
 For more information, see :ref:`ug_nrf70_developing_raw_ieee_80211_packet_transmission`.
+
+``promiscuous_set`` is an extension to the Wi-Fi command line.
+It adds the following subcommand to configure Promiscuous mode:
+
+.. list-table:: Promiscuous mode shell subcommand
+   :header-rows: 1
+
+   * - Subcommand
+     - Description
+     - Valid values
+   * - mode
+     - | Enable or Disable Promiscuous mode
+       | [-h, --help]: Print out the help for the mode command
+     - | Valid values:
+       | 1 - Enable
+       | 0 - Disable
+
+For more information, see :ref:`ug_nrf70_developing_promiscuous_packet_reception`.
 
 Testing STA mode
 ================

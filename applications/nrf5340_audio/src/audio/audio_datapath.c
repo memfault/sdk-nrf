@@ -85,8 +85,12 @@ LOG_MODULE_REGISTER(audio_datapath, CONFIG_AUDIO_DATAPATH_LOG_LEVEL);
 #define DRIFT_REGULATOR_DIV_FACTOR 2
 
 /* To allow BLE transmission and (host -> HCI -> controller) */
-#define JUST_IN_TIME_US		  (CONFIG_AUDIO_FRAME_DURATION_US - 2500)
-#define JUST_IN_TIME_THRESHOLD_US 1500
+#if defined(CONFIG_BT_LL_ACS_NRF53)
+#define JUST_IN_TIME_TARGET_DLY_US (CONFIG_AUDIO_FRAME_DURATION_US - 3000)
+#else /* !CONFIG_BT_LL_ACS_NRF53 */
+#define JUST_IN_TIME_TARGET_DLY_US 3000
+#endif /* !CONFIG_BT_LL_ACS_NRF53 */
+#define JUST_IN_TIME_BOUND_US 2500
 
 /* How often to print under-run warning */
 #define UNDERRUN_LOG_INTERVAL_BLKS 5000
@@ -793,30 +797,59 @@ static void audio_datapath_i2s_stop(void)
  *		to allow the sending of encoded data to be sent just before the connection interval
  *		opens up. This is done to reduce overall latency.
  *
- * @param[in]	sdu_ref_us	The SDU reference, in µs, to the previous sent packet.
+ * @param[in]	tx_sync_ts_us	The timestamp from get_tx_sync.
+ * @param[in]	curr_ts_us	The current time. This must be in the controller frame of reference.
  */
-static void audio_datapath_just_in_time_check_and_adjust(uint32_t sdu_ref_us)
+static void audio_datapath_just_in_time_check_and_adjust(uint32_t tx_sync_ts_us,
+							 uint32_t curr_ts_us)
 {
 	int ret;
-	static int32_t count;
+	static int32_t print_count;
+	int64_t diff;
 
-	uint32_t curr_frame_ts = audio_sync_timer_capture();
-	int diff = curr_frame_ts - sdu_ref_us;
-
-	if (count++ % 100 == 0) {
-		LOG_DBG("Time from last anchor: %d us, time to next: %d us", diff,
-			CONFIG_AUDIO_FRAME_DURATION_US - diff);
+	if (IS_ENABLED(CONFIG_BT_LL_ACS_NRF53)) {
+		/* CONFIG_BT_LL_ACS_NRF53 custom implementation. */
+		diff = (int64_t)curr_ts_us - tx_sync_ts_us;
+	} else {
+		diff = (int64_t)tx_sync_ts_us - curr_ts_us;
 	}
 
-	if ((diff < (JUST_IN_TIME_US - JUST_IN_TIME_THRESHOLD_US)) ||
-	    (diff > (JUST_IN_TIME_US + JUST_IN_TIME_THRESHOLD_US))) {
+	/*
+	 * The diff should always be positive. If diff is a large negative number, it is likely
+	 * that wrapping has occurred. A small negative value however, may point to the application
+	 * sending data too late, and we need to drop data to get back in sync with the controller.
+	 */
+	if (diff < -((int64_t)UINT32_MAX / 2)) {
+		LOG_DBG("Timestamp wrap. diff: %lld", diff);
+		diff += UINT32_MAX;
+
+	} else if (diff < 0) {
+		LOG_DBG("tx_sync_ts_us: %u is earlier than curr_ts_us %u", tx_sync_ts_us,
+			curr_ts_us);
+	}
+
+	if (print_count % 100 == 0) {
+		if (IS_ENABLED(CONFIG_BT_LL_ACS_NRF53)) {
+			LOG_DBG("JIT diff: %lld us. Target: %u +/- %u",
+				CONFIG_AUDIO_FRAME_DURATION_US - diff,
+				CONFIG_AUDIO_FRAME_DURATION_US - JUST_IN_TIME_TARGET_DLY_US,
+				JUST_IN_TIME_BOUND_US);
+		} else {
+			LOG_DBG("JIT diff: %lld us. Target: %u +/- %u", diff,
+				JUST_IN_TIME_TARGET_DLY_US, JUST_IN_TIME_BOUND_US);
+		}
+	}
+	print_count++;
+
+	if ((diff < (JUST_IN_TIME_TARGET_DLY_US - JUST_IN_TIME_BOUND_US)) ||
+	    (diff > (JUST_IN_TIME_TARGET_DLY_US + JUST_IN_TIME_BOUND_US))) {
 		ret = audio_system_fifo_rx_block_drop();
 		if (ret) {
 			LOG_WRN("Not able to drop FIFO RX block");
 			return;
 		}
 		LOG_DBG("Dropped block to align with connection interval");
-		count = 0;
+		print_count = 0;
 	}
 }
 
@@ -832,22 +865,25 @@ static void audio_datapath_just_in_time_check_and_adjust(uint32_t sdu_ref_us)
 static void audio_datapath_sdu_ref_update(const struct zbus_channel *chan)
 {
 	if (IS_ENABLED(CONFIG_AUDIO_SOURCE_I2S)) {
-		uint32_t sdu_ref_us;
+		uint32_t tx_sync_ts_us;
+		uint32_t curr_ts_us;
 		bool adjust;
 		const struct sdu_ref_msg *msg;
 
 		msg = zbus_chan_const_msg(chan);
-		sdu_ref_us = msg->timestamp;
+		tx_sync_ts_us = msg->tx_sync_ts_us;
+		curr_ts_us = msg->curr_ts_us;
 		adjust = msg->adjust;
 
 		if (ctrl_blk.stream_started) {
-			ctrl_blk.prev_drift_sdu_ref_us = sdu_ref_us;
+			ctrl_blk.prev_drift_sdu_ref_us = tx_sync_ts_us;
 
-			if (adjust && sdu_ref_us != 0) {
-				audio_datapath_just_in_time_check_and_adjust(sdu_ref_us);
+			if (adjust && tx_sync_ts_us != 0) {
+				audio_datapath_just_in_time_check_and_adjust(tx_sync_ts_us,
+									     curr_ts_us);
 			}
 		} else {
-			LOG_WRN("Stream not started - Can not update sdu_ref_us");
+			LOG_WRN("Stream not started - Can not update tx_sync_ts_us");
 		}
 	}
 }
@@ -890,11 +926,6 @@ void audio_datapath_stream_out(const uint8_t *buf, size_t size, uint32_t sdu_ref
 	if (sdu_ref_us == ctrl_blk.prev_pres_sdu_ref_us && sdu_ref_us != 0) {
 		LOG_WRN("Duplicate sdu_ref_us (%d) - Dropping audio frame", sdu_ref_us);
 		return;
-	}
-
-	if (bad_frame) {
-		/* Error in the frame or frame lost - sdu_ref_us is still valid */
-		LOG_DBG("Bad audio frame");
 	}
 
 	bool sdu_ref_not_consecutive = false;
@@ -949,7 +980,8 @@ void audio_datapath_stream_out(const uint8_t *buf, size_t size, uint32_t sdu_ref
 	}
 
 	if (pcm_size != (BLK_STEREO_SIZE_OCTETS * NUM_BLKS_IN_FRAME)) {
-		LOG_WRN("Decoded audio has wrong size");
+		LOG_WRN("Decoded audio has wrong size: %d. Expected: %d", pcm_size,
+			(BLK_STEREO_SIZE_OCTETS * NUM_BLKS_IN_FRAME));
 		/* Discard frame */
 		return;
 	}
@@ -1034,7 +1066,17 @@ int audio_datapath_init(void)
 	audio_i2s_init();
 	ctrl_blk.datapath_initialized = true;
 	ctrl_blk.drift_comp.enabled = true;
-	ctrl_blk.pres_comp.enabled = true;
+	if (IS_ENABLED(CONFIG_STREAM_BIDIRECTIONAL) && (CONFIG_AUDIO_DEV == GATEWAY) &&
+	    IS_ENABLED(CONFIG_BT_LL_ACS_NRF53)) {
+		/* Disable presentation compensation feature for microphone return on gateway when
+		 * using Audio Controller Subsystem. Also, since there's only one stream output from
+		 * gateway for now, so no need to have presentation compensation.
+		 */
+		ctrl_blk.pres_comp.enabled = false;
+	} else {
+		ctrl_blk.pres_comp.enabled = true;
+	}
+
 	ctrl_blk.pres_comp.pres_delay_us = CONFIG_BT_AUDIO_PRESENTATION_DELAY_US;
 
 	return 0;

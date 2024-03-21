@@ -21,6 +21,9 @@ zephyr_library_sources_ifdef(
 	CONFIG_MODEM_JWT
 	src/nrf_cloud_jwt.c)
 zephyr_library_sources_ifdef(
+	CONFIG_NRF_CLOUD_JWT_SOURCE_CUSTOM
+	src/nrf_cloud_jwt.c)
+zephyr_library_sources_ifdef(
 	CONFIG_NRF_CLOUD_MQTT
 	src/nrf_cloud.c
 	src/nrf_cloud_fsm.c
@@ -45,13 +48,13 @@ zephyr_library_sources_ifdef(
 	src/nrf_cloud_download.c)
 zephyr_library_sources_ifdef(
   CONFIG_NRF_CLOUD_FOTA_POLL
+  src/nrf_cloud_download.c
   src/nrf_cloud_fota_poll.c)
 zephyr_library_sources_ifdef(
 	CONFIG_NRF_CLOUD_REST
 	src/nrf_cloud_rest.c)
 zephyr_compile_definitions_ifdef(
-	CONFIG_NRF_CLOUD_COAP
-	CDDL_CBOR_CANONICAL)
+	CONFIG_NRF_CLOUD_COAP)
 zephyr_library_sources_ifdef(
 	CONFIG_NRF_CLOUD_COAP
 	coap/src/agnss_encode.c
@@ -66,5 +69,8 @@ zephyr_library_sources_ifdef(
 	coap/src/pgps_encode.c)
 zephyr_library_sources_ifdef(
 	CONFIG_NRF_CLOUD_CHECK_CREDENTIALS
+	src/nrf_cloud_credentials.c)
+zephyr_library_sources_ifdef(
+	CONFIG_NRF_CLOUD_PROVISION_CERTIFICATES
 	src/nrf_cloud_credentials.c)
 zephyr_include_directories(./include coap/include)

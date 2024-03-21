@@ -11,7 +11,8 @@
 #include <app-common/zap-generated/ids/Clusters.h>
 #include <app/util/attribute-storage.h>
 
-namespace Nrf {
+namespace Nrf
+{
 
 class BridgedDeviceDataProvider {
 public:
@@ -33,6 +34,8 @@ public:
 	virtual void Init() = 0;
 	virtual void NotifyUpdateState(chip::ClusterId clusterId, chip::AttributeId attributeId, void *data,
 				       size_t dataSize) = 0;
+
+	/* This method shall return CHIP_ERROR_UNSUPPORTED_CHIP_FEATURE for attributes that cannot be updated. */
 	virtual CHIP_ERROR UpdateState(chip::ClusterId clusterId, chip::AttributeId attributeId, uint8_t *buffer) = 0;
 
 	CHIP_ERROR NotifyReachableStatusChange(bool isReachable);

@@ -63,6 +63,7 @@ struct sock_info {
 	int port;
 	int bind_port;
 	int pdn_cid;
+	int send_flags;
 	bool in_use;
 	bool secure;
 	char *send_buffer;
@@ -237,7 +238,7 @@ static int sock_validate_parameters(
 	int bind_port,
 	int pdn_cid,
 	bool secure,
-	int sec_tag)
+	uint32_t sec_tag)
 {
 	/* Validate family parameter */
 	if (family != AF_INET && family != AF_INET6 && family != AF_PACKET) {
@@ -338,7 +339,7 @@ static int sock_getaddrinfo_req(
 		err = getaddrinfo(address, service, &hints, result);
 		if (err) {
 			if (err == DNS_EAI_SYSTEM) {
-				mosh_error("getaddrinfo() failed, err %d errno %d", err, errno);
+				mosh_error("getaddrinfo() failed, err %d, errno %d", err, errno);
 			} else {
 				mosh_error("getaddrinfo() failed, err %d", err);
 			}
@@ -350,19 +351,19 @@ static int sock_getaddrinfo_req(
 
 static int sock_set_tls_options(
 	int fd,
-	int sec_tag,
+	uint32_t sec_tag,
 	bool session_cache,
 	int peer_verify,
 	char *peer_hostname)
 {
 	int err;
-	sec_tag_t sec_tag_list[] = { sec_tag };
+	uint32_t sec_tag_list[] = { sec_tag };
 	uint8_t cache;
 	uint32_t verify;
 
 	/* Security tag */
 	err = setsockopt(fd, SOL_TLS, TLS_SEC_TAG_LIST, sec_tag_list,
-			 sizeof(sec_tag_t) * ARRAY_SIZE(sec_tag_list));
+			 sizeof(uint32_t) * ARRAY_SIZE(sec_tag_list));
 	if (err) {
 		mosh_error("Unable to set security tag, errno %d", errno);
 		err = errno;
@@ -524,8 +525,9 @@ int sock_open_and_connect(
 	int bind_port,
 	int pdn_cid,
 	bool secure,
-	int sec_tag,
+	uint32_t sec_tag,
 	bool session_cache,
+	bool keep_open,
 	int peer_verify,
 	char *peer_hostname)
 {
@@ -537,7 +539,7 @@ int sock_open_and_connect(
 		   "pdn_cid=%d, address=%s",
 		   family, type, port, bind_port, pdn_cid, address);
 	if (secure) {
-		mosh_print("                        secure=%d, sec_tag=%d, session_cache=%d, "
+		mosh_print("                        secure=%d, sec_tag=%u, session_cache=%d, "
 			   "peer_verify=%d, peer_hostname=%s",
 			   secure, sec_tag, session_cache, peer_verify, peer_hostname);
 	}
@@ -584,7 +586,7 @@ int sock_open_and_connect(
 				"through this application.",
 				CONFIG_POSIX_MAX_FDS);
 		} else {
-			mosh_error("Socket create failed, err %d", errno);
+			mosh_error("Socket create failed, errno %d", errno);
 		}
 		err = errno;
 		goto connect_error;
@@ -612,6 +614,14 @@ int sock_open_and_connect(
 	if (bind_port > 0) {
 		err = sock_bind(fd, family, bind_port);
 		if (err) {
+			goto connect_error;
+		}
+	}
+
+	if (keep_open) {
+		err = setsockopt(fd, SOL_SOCKET, SO_KEEPOPEN, &(int){1}, sizeof(int));
+		if (err) {
+			mosh_error("Unable to set option SO_KEEPOPEN, errno %d", errno);
 			goto connect_error;
 		}
 	}
@@ -676,7 +686,7 @@ static void print_throughput_summary(uint32_t data_len, int64_t time_ms)
 
 	mosh_print("Summary:");
 	mosh_print("  Data length: %7u bytes", data_len);
-	mosh_print("  Time:        %7.2f s", (float)time_ms / 1000);
+	mosh_print("  Time:       %8.3f s", (float)time_ms / 1000);
 	mosh_print("  Throughput:  %7.0f bit/s", throughput);
 }
 
@@ -743,18 +753,15 @@ static int sock_send(
 		}
 	}
 
-	bytes = send(socket_info->fd, data, length, 0);
+	bytes = send(socket_info->fd, data, length, socket_info->send_flags);
 	if (bytes < 0) {
-		/* Ideally we'd like to log the failure here but non-blocking
-		 * socket causes huge number of failures due to incorrectly
-		 * set POLLOUT flag:
-		 * https://devzone.nordicsemi.com/f/nordic-q-a/65392/bug-nrf9160-tcp-send-flow-control-seems-entirely-broken
-		 * Hence, we'll log only if we have blocking socket
-		 */
-		if (sock_get_blocking_mode(socket_info->fd)) {
-			mosh_print("socket send failed, err %d", errno);
+		int err = errno;
+
+		/* Do not log EAGAIN when in non-blocking mode, this is normal. */
+		if ((err != EAGAIN) || sock_get_blocking_mode(socket_info->fd)) {
+			mosh_error("Socket send failed, errno %d", err);
 		}
-		return -1;
+		return -err;
 	}
 	return bytes;
 }
@@ -805,16 +812,15 @@ static void sock_send_random_data_length(struct sock_info *socket_info)
 		bytes = sock_send(socket_info, socket_info->send_buffer,
 				  strlen(socket_info->send_buffer), false, false);
 
-		if (bytes == -ECANCELED) {
+		if (bytes == -EAGAIN) {
+			/* Wait for socket to allow sending again */
+			socket_info->send_poll = true;
+			return;
+		} else if (bytes < 0) {
 			socket_info->send_poll = false;
 			break;
 		}
 
-		if (bytes < 0) {
-			/* Wait for socket to allow sending again */
-			socket_info->send_poll = true;
-			return;
-		}
 		socket_info->send_bytes_sent += bytes;
 		socket_info->send_bytes_left -= bytes;
 
@@ -849,6 +855,7 @@ int sock_send_data(
 	int interval,
 	bool packet_number_prefix,
 	bool blocking,
+	int flags,
 	int buffer_size,
 	bool data_format_hex)
 {
@@ -862,7 +869,14 @@ int sock_send_data(
 		return -EINVAL;
 	}
 
+	if ((flags & MSG_WAITACK) && !blocking) {
+		mosh_error("The wait_ack flag cannot be used in non-blocking mode");
+		return -EINVAL;
+	}
+
 	sock_all_set_nonblocking();
+
+	socket_info->send_flags = flags;
 
 	/* Process data to be sent if it's in hex format */
 	if (data_format_hex) {
@@ -992,8 +1006,14 @@ int sock_send_data(
 		}
 
 	} else if (data_out != NULL && data_out_length > 0) {
+		/* Set requested blocking mode for duration of data sending */
+		set_sock_blocking_mode(socket_info->fd, blocking);
+
 		/* Send data if it's given and is not zero length */
 		sock_send(socket_info, data_out, data_out_length, true, data_format_hex);
+
+		/* Keep default mode of the socket in non-blocking mode */
+		set_sock_blocking_mode(socket_info->fd, false);
 	} else {
 		mosh_print("No send parameters given");
 		return -EINVAL;
@@ -1212,10 +1232,11 @@ int sock_close(int socket_id)
 
 static int sock_rai_option_set(int fd, int option, char *option_string)
 {
-	int err = setsockopt(fd, SOL_SOCKET, option, NULL, 0);
+	int err = setsockopt(fd, SOL_SOCKET, SO_RAI, &option, sizeof(option));
 
 	if (err) {
-		mosh_error("setsockopt() for %s failed with error %d", option_string, errno);
+		mosh_error("setsockopt() for SO_RAI with value %s failed with error %d",
+			   option_string, errno);
 		return err;
 	}
 
@@ -1237,41 +1258,41 @@ int sock_rai(int socket_id, bool rai_last, bool rai_no_data,
 		mosh_error("No socket specific RAI options given with -i");
 	}
 
-	/* SO_RAI_LAST */
+	/* RAI_LAST */
 	if (rai_last) {
-		err = sock_rai_option_set(socket_info->fd, SO_RAI_LAST, "SO_RAI_LAST");
+		err = sock_rai_option_set(socket_info->fd, RAI_LAST, "RAI_LAST");
 		if (err) {
 			return err;
 		}
 	}
 
-	/* SO_RAI_NO_DATA */
+	/* RAI_NO_DATA */
 	if (rai_no_data) {
-		err = sock_rai_option_set(socket_info->fd, SO_RAI_NO_DATA, "SO_RAI_NO_DATA");
+		err = sock_rai_option_set(socket_info->fd, RAI_NO_DATA, "RAI_NO_DATA");
 		if (err) {
 			return err;
 		}
 	}
 
-	/* SO_RAI_ONE_RESP */
+	/* RAI_ONE_RESP */
 	if (rai_one_resp) {
-		err = sock_rai_option_set(socket_info->fd, SO_RAI_ONE_RESP, "SO_RAI_ONE_RESP");
+		err = sock_rai_option_set(socket_info->fd, RAI_ONE_RESP, "RAI_ONE_RESP");
 		if (err) {
 			return err;
 		}
 	}
 
-	/* SO_RAI_ONGOING */
+	/* RAI_ONGOING */
 	if (rai_ongoing) {
-		err = sock_rai_option_set(socket_info->fd, SO_RAI_ONGOING, "SO_RAI_ONGOING");
+		err = sock_rai_option_set(socket_info->fd, RAI_ONGOING, "RAI_ONGOING");
 		if (err) {
 			return err;
 		}
 	}
 
-	/* SO_RAI_WAIT_MORE */
+	/* RAI_WAIT_MORE */
 	if (rai_wait_more) {
-		err = sock_rai_option_set(socket_info->fd, SO_RAI_WAIT_MORE, "SO_RAI_WAIT_MORE");
+		err = sock_rai_option_set(socket_info->fd, RAI_WAIT_MORE, "RAI_WAIT_MORE");
 		if (err) {
 			return err;
 		}

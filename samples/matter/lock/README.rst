@@ -96,6 +96,25 @@ Instead, the factory reset and recommissioning to a Matter fabric allows the dev
 
 See `Matter door lock build types`_, `Selecting a build type`_, and :ref:`matter_lock_sample_switching_thread_wifi` for more information about how to configure and test this feature with this sample.
 
+Wi-Fi firmware on external memory
+---------------------------------
+
+.. matter_door_lock_sample_nrf70_firmware_patch_start
+
+You can program a portion of the application code related to the nRF70 Series' Wi-Fi firmware onto an external memory to free up space in the on-chip memory.
+This option is available only when building for the nRF5340 DK with the nRF7002 EK shield attached.
+To prepare an application to use this feature, you need to create additional MCUboot partitions.
+To learn how to configure MCUboot partitions, see the :ref:`nrf70_fw_patch_update_adding_partitions` guide.
+To enable this feature for Matter, set the :kconfig:option:`CONFIG_NRF_WIFI_FW_PATCH_DFU` Kconfig option to ``y`` for the application (in the application :file:`prj.conf`) and the :kconfig:option:`CONFIG_UPDATEABLE_IMAGE_NUMBER` Kconfig option to ``3`` for the MCUBoot child image (in its own :file:`prj.conf`).
+
+.. matter_door_lock_sample_nrf70_firmware_patch_end
+
+For example:
+
+   .. code-block:: console
+
+      west build -b nrf5340dk_nrf5340_cpuapp -p -- -DSHIELD=nrf7002ek -Dmultiprotocol_rpmsg_SHIELD=nrf7002ek_coex -DCONF_FILE=prj_thread_wifi_switched.conf -DCONFIG_NRF_WIFI_PATCHES_EXT_FLASH_STORE=y -Dmcuboot_CONFIG_UPDATEABLE_IMAGE_NUMBER=3
+
 .. _matter_lock_sample_ble_nus:
 
 Matter Bluetooth LE with Nordic UART Service
@@ -104,7 +123,7 @@ Matter Bluetooth LE with Nordic UART Service
 .. matter_door_lock_sample_lock_nus_desc_start
 
 The Matter implementation in the |NCS| lets you extend Bluetooth LE an additional Bluetooth LE service and use it in any Matter application, even when the device is not connected to a Matter network.
-The Matter door lock sample provides a basic implementation of this feature, which integrates Bluetooth LE with with :ref:`Nordic UART Service (NUS) <nus_service_readme>`.
+The Matter door lock sample provides a basic implementation of this feature, which integrates Bluetooth LE with the :ref:`Nordic UART Service (NUS) <nus_service_readme>`.
 Using NUS, you can declare commands specific to a Matter sample and use them to control the device remotely through Bluetooth LE.
 The connection between the device and the Bluetooth controller is secured and requires providing a passcode to pair the devices.
 
@@ -309,16 +328,6 @@ Button 2:
 Button 3:
     * On the nRF5340 DK when using the ``thread_wifi_switched`` build type: If pressed for more than ten seconds, it switches the Matter transport protocol from Thread or Wi-Fi to the other and factory resets the device.
     * On other platform or build type: Not available.
-
-.. matter_door_lock_sample_button4_start
-
-Button 4:
-    * On nRF52840 DK, nRF5340 DK, and nRF21540 DK: Starts the NFC tag emulation, enables Bluetooth LE advertising for the predefined period of time (15 minutes by default), and makes the device discoverable over Bluetooth LE.
-      This button is used during the :ref:`commissioning procedure <matter_lock_sample_remote_control_commissioning>`.
-
-    * On nRF7002 DK: Not available.
-
-.. matter_door_lock_sample_button4_end
 
 .. matter_door_lock_sample_jlink_start
 

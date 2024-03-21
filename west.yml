@@ -61,7 +61,7 @@ manifest:
     # https://developer.nordicsemi.com/nRF_Connect_SDK/doc/latest/zephyr/guides/modules.html
     - name: zephyr
       repo-path: sdk-zephyr
-      revision: 41e34920abf4f6407178d8ce8bd78a882840caec
+      revision: b8f9cb9f9f4a7759e31ec0399b731258e9583a7a
       import:
         # In addition to the zephyr repository itself, NCS also
         # imports the contents of zephyr/west.yml at the above
@@ -112,7 +112,7 @@ manifest:
     - name: hostap
       repo-path: sdk-hostap
       path: modules/lib/hostap
-      revision: ecebc52715feb1605b7aab0cb13004be287db884
+      revision: e46a24a0aa7ff24d06fb20695c61943d99a0a88a
       userdata:
         ncs:
           upstream-url: https://w1.fi/cgit/hostap/
@@ -121,7 +121,7 @@ manifest:
     - name: wfa-qt-control-app
       repo-path: sdk-wi-fiquicktrack-controlappc
       path: modules/lib/wfa-qt-control-app
-      revision: b3cea7b770cf8270cf25831cf3c9db063234e603
+      revision: d649bd1342215e089d4211757186705cda179013
       userdata:
         ncs:
           upstream-url: https://github.com/Wi-FiQuickTrack/Wi-FiQuickTrack-ControlAppC
@@ -129,32 +129,36 @@ manifest:
           compare-by-default: true
     - name: mcuboot
       repo-path: sdk-mcuboot
-      revision: a9d5fa76a6840f8934b2aaaf51e290f91eb3f991
+      revision: v2.0.99-ncs1
       path: bootloader/mcuboot
     - name: qcbor
-      url: https://github.com/laurencelundblade/QCBOR.git
+      url: https://github.com/laurencelundblade/QCBOR
       revision: 751d36583a9ce1a640900c57e13c9b6b8f3a2ba2
       path: modules/tee/tf-m/qcbor
     - name: mbedtls
       path: modules/crypto/mbedtls
       repo-path: sdk-mbedtls
-      revision: v3.3.0-ncs2
+      revision: c99e53f8bacdce37db400e5c46b26ee26937234c
+    - name: oberon-psa-crypto
+      path: modules/crypto/oberon-psa-crypto
+      repo-path: sdk-oberon-psa-crypto
+      revision: 5028cb64083e01122e9360f59854fbf3d36e203d
     - name: nrfxlib
       repo-path: sdk-nrfxlib
       path: nrfxlib
-      revision: 97c3a3b499233985d0cf0959b77476b3f98a9e0a
+      revision: fdf57b2c87c612d1bed2dc57789c664620f10cbd
     - name: trusted-firmware-m
       repo-path: sdk-trusted-firmware-m
       path: modules/tee/tf-m/trusted-firmware-m
-      revision: eaf90ec9d9e42a0a47c65ed34e79705e136f7a1d
+      revision: d824e9483ba22a628e7c0a715fa6115103de9bc7
     - name: psa-arch-tests
       repo-path: sdk-psa-arch-tests
       path: modules/tee/tf-m/psa-arch-tests
-      revision: 0a980137820ab08d267cce1daa93f003c0437854
+      revision: 94a349db22cd0e44136c281724ffc71b6e7391c3
     - name: matter
       repo-path: sdk-connectedhomeip
       path: modules/lib/matter
-      revision: 4936f9fa2be9e6cd16b02e4fcb9a7aff611f4981
+      revision: 776f65563f939671623f30fdd040670754da3d6a
       submodules:
         - name: nlio
           path: third_party/nlio/repo
@@ -174,14 +178,14 @@ manifest:
     - name: nrf-802154
       repo-path: sdk-nrf-802154
       path: nrf-802154
-      revision: e45bb47f0a4a43b69d19a145bdf15001d67e02dd
+      revision: v2.6.0
       groups:
         - nrf-802154
     - name: dragoon
       # Only for internal Nordic development
       repo-path: dragoon.git
       remote: dragoon
-      revision: bacb539ce2c9deb6821d9cb3ebdec51f22d84599
+      revision: c2a191d8b1c80583640c38793efcc299c31736a2
       submodules: true
       groups:
         - dragoon
@@ -196,13 +200,12 @@ manifest:
           compare-by-default: false
     - name: sidewalk
       repo-path: sdk-sidewalk
-      revision: cc49dd2edd793bb77d5c0ea725012b1540f7fa68
-      submodules: true
+      revision: v2.6.0
       groups:
         - sidewalk
     - name: find-my
       repo-path: sdk-find-my
-      revision: de25273096aa6ab735121cb849ad10a9b46a67fd
+      revision: v2.6.0
       groups:
         - find-my
     - name: azure-sdk-for-c
@@ -226,7 +229,7 @@ manifest:
     - name: openthread
       repo-path: sdk-openthread
       path: modules/lib/openthread
-      revision: 905a22e0c7ea2a50fd3b935c24eb200f83721455
+      revision: 51ab865600d73c78eab0900d2790f56ef6631a20
       userdata:
         ncs:
           upstream-url: https://github.com/openthread/openthread
@@ -245,7 +248,7 @@ manifest:
       remote: memfault
     - name: ant
       repo-path: sdk-ant
-      revision: c0cb28b9ea43009f6611386656881352d5382c36
+      revision: fcfcd1bc801b0ad2ef08117c7a681514729a5c4b
       remote: ant-nrfconnect
       groups:
         - ant

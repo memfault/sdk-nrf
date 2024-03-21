@@ -7,7 +7,7 @@ Bluetooth Mesh: Sensor observer
    :local:
    :depth: 2
 
-The Bluetooth® mesh sensor observer sample demonstrates how to set up a basic Bluetooth Mesh :ref:`bt_mesh_sensor_cli_readme` model application that gets sensor data from one :ref:`bt_mesh_sensor_srv_readme` model.
+The Bluetooth® Mesh sensor observer sample demonstrates how to set up a basic Bluetooth Mesh :ref:`bt_mesh_sensor_cli_readme` model application that gets sensor data from one :ref:`bt_mesh_sensor_srv_readme` model.
 Five different sensor types are used to showcase different ways for the server to publish data.
 In addition, the samples demonstrate usage of both :ref:`single-channel sensor types and sensor series types <bt_mesh_sensor_types_channels>`, as well as how to add and write to a sensor setting.
 
@@ -92,16 +92,16 @@ Buttons:
 Once the provisioning procedure has completed, the buttons will have the following functionality:
 
 Button 1:
-   Sends a get message for a setting.
+   Sends a get message for the :c:var:`bt_mesh_sensor_dev_op_temp_range_spec` setting of the :c:var:`bt_mesh_sensor_present_dev_op_temp` sensor.
 
 Button 2:
-   Sends a set message for a setting, switching between the ranges specified in the :c:var:`temp_ranges` variable.
+   Sends a set message for the :c:var:`bt_mesh_sensor_dev_op_temp_range_spec` setting of the :c:var:`bt_mesh_sensor_present_dev_op_temp` sensor, switching between the ranges specified in the :c:var:`temp_ranges` variable.
 
 Button 3:
    Sends a get message for a descriptor, requesting information about the :c:var:`bt_mesh_sensor_present_dev_op_temp` sensor.
 
 Button 4:
-   Sends a set message for a sensor setting, switching between the ranges specified in the :c:var:`presence_motion_threshold` variable.
+   Sends a set message for the :c:var:`bt_mesh_sensor_motion_threshold` setting of the :c:var:`bt_mesh_sensor_presence_detected` sensor, switching between the ranges specified in the :c:var:`presence_motion_threshold` variable.
 
 Terminal:
    All sensor values gathered from the server are printed over UART.

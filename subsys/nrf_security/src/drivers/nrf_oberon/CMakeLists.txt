@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
 #
 
-set(drivers_path ${OBERON_PSA_PATH}/drivers)
+set(drivers_path ${OBERON_PSA_PATH}/oberon/drivers)
 
 # Link to libraries
 if(CONFIG_MBEDTLS_PSA_CRYPTO_C)
@@ -56,4 +56,14 @@ if (COMPILE_PSA_APIS)
   append_with_prefix_ifdef(CONFIG_PSA_NEED_OBERON_HMAC_DRBG_DRIVER             src_crypto_oberon ${drivers_path} oberon_hmac_drbg.c)
 
   target_sources(${mbedcrypto_target} PRIVATE ${src_crypto_oberon})
+
+  # Turn off warnings that Oberon are systematically
+  # triggering. Oberon is testing this deliverable before we get it so
+  # we don't need to re-test it with gcc warnings.
+  target_compile_options(
+	${mbedcrypto_target}
+	PRIVATE
+	-Wno-uninitialized
+	-Wno-maybe-uninitialized
+  )
 endif()

@@ -30,6 +30,7 @@
 # Applications
 /applications/asset_tracker_v2/           @nrfconnect/ncs-cia @coderbyheart
 /applications/connectivity_bridge/        @nrfconnect/ncs-cia @nordic-auko
+/applications/ipc_radio/                  @dchat-nordic
 /applications/machine_learning/           @pdunaj
 /applications/matter_bridge/              @Damian-Nordic @kkasperczyk-no
 /applications/matter_weather_station/     @Damian-Nordic @kkasperczyk-no
@@ -73,6 +74,8 @@ Kconfig*                                  @tejlmand
 /doc/nrf/security/                        @greg-fer
 /doc/nrf/test_and_optimize/               @greg-fer
 /doc/nrf/*.rst                            @greg-fer
+# Protocols related docs
+/doc/nrf/protocols/thread/*.rst           @wiba-nordic
 # All subfolders
 /drivers/                                 @anangl
 /drivers/serial/                          @nordic-krch @anangl
@@ -83,13 +86,12 @@ Kconfig*                                  @tejlmand
 /drivers/wifi/nrf700x/                    @krish2718 @sachinthegreen @rado17 @rlubos
 /dts/                                     @anangl
 /ext/                                     @carlescufi
-/ext/oberon/                              @frkv @Vge0rge @vili-nordic @SebastianBoe @mswarowsky
 /include/                                 @anangl @rlubos
 /include/net/azure_*                      @nrfconnect/ncs-cia @coderbyheart
 /include/net/wifi_credentials.h           @nrfconnect/ncs-cia
 /include/net/nrf_cloud_*                  @plskeggs @jayteemo @glarsennordic
 /include/bluetooth/                       @alwa-nordic @jori-nordic @KAGA164
-/include/bluetooth/services/fast_pair.h   @alstrzebonski @MarekPieta @kapi-no
+/include/bluetooth/services/fast_pair/    @alstrzebonski @MarekPieta @kapi-no
 /include/bluetooth/adv_prov.h             @MarekPieta @kapi-no @KAGA164
 /include/bluetooth/mesh/                  @ludvigsj
 /include/caf/                             @pdunaj
@@ -198,10 +200,13 @@ Kconfig*                                  @tejlmand
 /samples/wifi/scan/                       @D-Triveni @bama-nordic
 /samples/wifi/shell/                      @krish2718 @sachinthegreen @rado17 @rlubos
 /samples/wifi/sta/                        @D-Triveni @bama-nordic
-/samples/wifi/sr_coex/                    @muraliThokala @bama-nordic
+/samples/wifi/ble_coex/                   @muraliThokala @bama-nordic
 /samples/wifi/shutdown/                   @krish2718 @sachinthegreen
 /samples/wifi/twt/                        @chiranjeevi2776 @krish2718
 /samples/wifi/throughput/                 @SusanGRapaka @D-Triveni
+/samples/wifi/raw_tx_packet/              @D-Triveni
+/samples/wifi/softap/                     @D-Triveni @krish2718
+/samples/wifi/monitor/                    @chiranjeevi2776 @krish2718
 /scripts/                                 @tejlmand @nrfconnect/ncs-test-leads
 /scripts/hid_configurator/                @MarekPieta
 /scripts/tools-versions-*.txt             @tejlmand @grho @shanthanordic @ihansse
@@ -213,6 +218,7 @@ Kconfig*                                  @tejlmand
 /scripts/print_toolchain_checksum.sh      @nrfconnect/ncs-ci
 /share/zephyrbuild-package/               @tejlmand
 /share/ncs-package/                       @tejlmand
+/snippets/nrf91-modem-trace-ext-flash/    @nrfconnect/ncs-cia
 /snippets/nrf91-modem-trace-uart/         @eivindj-nordic
 /snippets/tfm-enable-share-uart/          @nrfconnect/ncs-cia
 /snippets/nrf70-debug/                    @krish2718 @sachinthegreen
@@ -261,7 +267,8 @@ Kconfig*                                  @tejlmand
 /subsys/nrf_profiler/                     @pdunaj
 /subsys/shell/                            @nordic-krch
 /subsys/nrf_security/                     @frkv @Vge0rge @vili-nordic @SebastianBoe @mswarowsky
-/subsys/secure_storage/                   @frkv @Vge0rge @vili-nordic @SebastianBoe @mswarowsky
+/subsys/trusted_storage/                  @frkv @Vge0rge @vili-nordic @SebastianBoe @mswarowsky
+/subsys/uart_async_adapter/               @rakons
 /subsys/net_core_monitor/                 @maje-emb
 /subsys/zigbee/                           @milewr
 /tests/                                   @PerMac @katgiadla

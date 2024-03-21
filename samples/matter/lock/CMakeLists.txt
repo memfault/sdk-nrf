@@ -11,35 +11,32 @@ set(mcuboot_KCONFIG_ROOT "\\\${ZEPHYR_CONNECTEDHOMEIP_MODULE_DIR}/config/nrfconn
 set(multiprotocol_rpmsg_KCONFIG_ROOT "\\\${ZEPHYR_CONNECTEDHOMEIP_MODULE_DIR}/config/nrfconnect/chip-module/Kconfig.multiprotocol_rpmsg.root")
 set(hci_ipc_KCONFIG_ROOT "\\\${ZEPHYR_CONNECTEDHOMEIP_MODULE_DIR}/config/nrfconnect/chip-module/Kconfig.hci_ipc.root")
 
-# For prj.conf the CONF_FILE is empty. In other case extract the exact file name from the path string.
+# For prj.conf the CONF_FILE is empty. In other cases extract the exact file name from the path string.
 if(CONF_FILE)
     get_filename_component(CONF_FILE_NAME ${CONF_FILE} NAME CACHE)
 endif()
 
-if(NOT CONF_FILE_NAME STREQUAL "prj_no_dfu.conf")
-    set(PM_STATIC_YML_FILE ${CMAKE_CURRENT_SOURCE_DIR}/configuration/${BOARD}/pm_static_dfu.yml)
-endif()
-
 if(CONF_FILE_NAME STREQUAL "prj_thread_wifi_switched.conf")
-    # TODO: Add Kconfig for adding custom Matter compilation flags
-    set(CHIP_CFLAGS "-flto")
+    set(PM_STATIC_YML_FILE ${CMAKE_CURRENT_SOURCE_DIR}/configuration/${BOARD}/pm_static_dfu_wifi_ext_patch.yml)
+elseif(NOT CONF_FILE_NAME STREQUAL "prj_no_dfu.conf")
+    set(PM_STATIC_YML_FILE ${CMAKE_CURRENT_SOURCE_DIR}/configuration/${BOARD}/pm_static_dfu.yml)
 endif()
 
 find_package(Zephyr HINTS $ENV{ZEPHYR_BASE})
 
 project(matter-lock)
 
-set(COMMON_ROOT ${ZEPHYR_NRF_MODULE_DIR}/samples/matter/common)
-set(NLIO_ROOT ${ZEPHYR_CONNECTEDHOMEIP_MODULE_DIR}/third_party/nlio/repo)
+# Enable GNU STD support and initialize the Matter Data Model.
 include(${ZEPHYR_CONNECTEDHOMEIP_MODULE_DIR}/config/nrfconnect/app/enable-gnu-std.cmake)
 include(${ZEPHYR_CONNECTEDHOMEIP_MODULE_DIR}/src/app/chip_data_model.cmake)
 
 # NORDIC SDK APP START
+
+# Include all source files that are located in the Matter common directory.
+include(${ZEPHYR_NRF_MODULE_DIR}/samples/matter/common/cmake/source_common.cmake)
+
 target_include_directories(app PRIVATE
     src
-    ${COMMON_ROOT}/src
-    ${NLIO_ROOT}/include
-    ${ZEPHYR_CONNECTEDHOMEIP_MODULE_DIR}/zzz_generated/app-common
 )
 
 target_sources(app PRIVATE
@@ -47,38 +44,12 @@ target_sources(app PRIVATE
     src/bolt_lock_manager.cpp
     src/main.cpp
     src/zcl_callbacks.cpp
-    src/zap-generated/callback-stub.cpp
-    src/zap-generated/IMClusterCommandHandler.cpp
-    ${COMMON_ROOT}/src/board/led_widget.cpp
-    ${COMMON_ROOT}/src/app/task_executor.cpp
-    ${COMMON_ROOT}/src/board/board.cpp
-    ${COMMON_ROOT}/src/app/matter_init.cpp
-    ${COMMON_ROOT}/src/app/matter_event_handler.cpp
 )
 
-if(CONFIG_CHIP_OTA_REQUESTOR OR CONFIG_MCUMGR_TRANSPORT_BT)
-    target_sources(app PRIVATE ${COMMON_ROOT}/src/dfu/ota/ota_util.cpp)
-endif()
-
-if(CONFIG_CHIP_NUS)
-    target_sources(app PRIVATE ${COMMON_ROOT}/src/bt_nus/bt_nus_service.cpp)
-endif()
-
-if(CONFIG_MCUMGR_TRANSPORT_BT)
-    zephyr_library_link_libraries(MCUBOOT_BOOTUTIL)
-    target_sources(app PRIVATE ${COMMON_ROOT}/src/dfu/smp/dfu_over_smp.cpp)
-endif()
-
 if(CONFIG_THREAD_WIFI_SWITCHING)
-    target_sources(app PRIVATE src/thread_wifi_switch.cpp)
-
-    # Enable link-time optimization for the app and WPA supplicant libraries
-    target_compile_options(app PRIVATE -flto)
-    target_compile_options(..__nrf__modules__hostap PRIVATE -flto)
-endif()
-
-if(CONFIG_NCS_SAMPLE_MATTER_OPERATIONAL_KEYS_MIGRATION_TO_ITS)
-    target_sources(app PRIVATE ${COMMON_ROOT}/src/migration/migration_manager.cpp)
+    target_sources(app PRIVATE
+        src/thread_wifi_switch.cpp
+    )
 endif()
 
 chip_configure_data_model(app

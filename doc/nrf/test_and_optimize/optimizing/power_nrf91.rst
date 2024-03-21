@@ -163,7 +163,7 @@ After exporting the settings from Online Power Profiler, use the settings while 
 To measure current on an nRF9160 DK using the Power Profiler Kit II, while it is connected to a live network, complete the following steps:
 
 1. Connect Power Profiler Kit II to an nRF9160 DK as described in `Power Profiler Kit II user guide <Power Profiler Kit II (PPK2)_>`_.
-#. Navigate to the :ref:`udp` sample in |NCS| and copy the contents of the :file:`opp.conf` file that you exported from Online Power Profiler into the :file:`prj.conf` file in the UDP sample folder (``samples\\cellular\\udp``).
+#. Navigate to the :ref:`udp` sample in |NCS| and copy the contents of the :file:`opp.conf` file that you exported from Online Power Profiler into the :file:`prj.conf` file in the UDP sample folder (:file:`samples\cellular\udp`).
 #. :ref:`Build and program the sample onto the nRF9160 DK <programming>`.
 #. If PSM is available in your network, the power measurement using Power Profiler Kit II produces the following results:
 
@@ -396,7 +396,7 @@ Release Assistance Indication (RAI)
 
 If you have low-level control over the protocol your IOT device uses, you might know when you should not expect more data.
 In that case, you can request to skip the RRC idle mode using :term:`Release Assistance Indication (RAI)`.
-The recommended way to do this is using setsockopt with an option like ``SO_RAI_LAST``.
+The recommended way to do this is using :c:func:`setsockopt` with the option ``SO_RAI`` and value ``RAI_LAST``.
 
 Low battery behavior
 ====================

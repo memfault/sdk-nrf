@@ -72,7 +72,7 @@ See the following table for more details:
      - Incomplete verification
      - Not applicable.
 
-For the certification status of different features in a specific SoC, see its Compatibility Matrix in the `Nordic Semiconductor Infocenter`_.
+For the certification status of different features in a specific SoC, see its Compatibility Matrix in the `Nordic Semiconductor TechDocs`_.
 
 .. _api_deprecation:
 
@@ -171,24 +171,6 @@ Protocol support
 The following table indicates the software maturity levels of the support for each :ref:`protocol <protocols>`:
 
 .. sml-table:: top_level
-  :insert-values:
-    [
-      (
-        "Zigbee",
-        "nRF52833",
-        "Experimental"
-      ),
-      (
-        "Zigbee",
-        "nRF52840",
-        "Experimental"
-      ),
-      (
-        "Zigbee",
-        "nRF5340",
-        "Experimental"
-      )
-    ]
 
 Amazon Sidewalk features support
 ********************************
@@ -255,6 +237,7 @@ The following sections contain the tables indicating the software maturity level
 * PSA Crypto
 * |NSIB|
 * Hardware Unique Key
+* Trusted storage
 
 Trusted Firmware-M support
 ==========================
@@ -283,6 +266,13 @@ Hardware Unique Key
 .. toggle::
 
   .. sml-table:: hw_unique_key
+
+Trusted storage
+===============
+
+.. toggle::
+
+  .. sml-table:: trusted_storage
 
 Power management device support
 *******************************

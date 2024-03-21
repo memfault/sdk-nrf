@@ -206,6 +206,8 @@ static void button_msg_sub_thread(void)
 static void le_audio_msg_sub_thread(void)
 {
 	int ret;
+	uint32_t bitrate_bps;
+	uint32_t sampling_rate_hz;
 	const struct zbus_channel *chan;
 
 	while (1) {
@@ -253,6 +255,42 @@ static void le_audio_msg_sub_thread(void)
 
 			ret = led_on(LED_APP_1_BLUE);
 			ERR_CHK(ret);
+			break;
+
+		case LE_AUDIO_EVT_NO_VALID_CFG:
+			LOG_WRN("No valid configurations found or CIS establishment failed, will "
+				"disconnect");
+
+			ret = bt_mgmt_conn_disconnect(msg.conn, BT_HCI_ERR_REMOTE_USER_TERM_CONN);
+			if (ret) {
+				LOG_ERR("Failed to disconnect: %d", ret);
+			}
+
+			break;
+
+		case LE_AUDIO_EVT_CONFIG_RECEIVED:
+			LOG_DBG("LE audio config received");
+
+			ret = unicast_client_config_get(msg.conn, msg.dir, &bitrate_bps,
+							&sampling_rate_hz);
+			if (ret) {
+				LOG_WRN("Failed to get config: %d", ret);
+				break;
+			}
+
+			LOG_DBG("\tSampling rate: %d Hz", sampling_rate_hz);
+			LOG_DBG("\tBitrate (compressed): %d bps", bitrate_bps);
+
+			if (msg.dir == BT_AUDIO_DIR_SINK) {
+				ret = audio_system_config_set(sampling_rate_hz, bitrate_bps,
+							      VALUE_NOT_SET);
+				ERR_CHK(ret);
+			} else if (msg.dir == BT_AUDIO_DIR_SOURCE) {
+				ret = audio_system_config_set(VALUE_NOT_SET, VALUE_NOT_SET,
+							      sampling_rate_hz);
+				ERR_CHK(ret);
+			}
+
 			break;
 
 		default:
@@ -460,7 +498,8 @@ int main(void)
 	ret = unicast_client_enable(le_audio_rx_data_handler);
 	ERR_CHK(ret);
 
-	ret = bt_mgmt_scan_start(0, 0, BT_MGMT_SCAN_TYPE_CONN, CONFIG_BT_DEVICE_NAME);
+	ret = bt_mgmt_scan_start(0, 0, BT_MGMT_SCAN_TYPE_CONN, CONFIG_BT_DEVICE_NAME,
+				 BRDCAST_ID_NOT_USED);
 	if (ret) {
 		LOG_ERR("Failed to start scanning");
 		return ret;

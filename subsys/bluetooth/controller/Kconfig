@@ -11,7 +11,7 @@ choice BT_LL_CHOICE
 config BT_LL_SOFTDEVICE
 	bool "SoftDevice Link Layer"
 	select MPSL
-	select ZERO_LATENCY_IRQS
+	select ZERO_LATENCY_IRQS if !SOC_SERIES_BSIM_NRFXX
 	select BT_CTLR_LE_ENC_SUPPORT
 	select BT_CTLR_ECDH_SUPPORT
 	select BT_CTLR_EXT_REJ_IND_SUPPORT
@@ -38,7 +38,8 @@ config BT_LL_SOFTDEVICE
 	select BT_HAS_HCI_VS
 	select BT_CTLR_DF_SUPPORT if HAS_HW_NRF_RADIO_DFE
 	select BT_CTLR_LE_POWER_CONTROL_SUPPORT
-	depends on (SOC_COMPATIBLE_NRF52X || SOC_COMPATIBLE_NRF5340_CPUNET)
+	depends on (SOC_SERIES_BSIM_NRFXX || SOC_SERIES_NRF52X || SOC_COMPATIBLE_NRF5340_CPUNET ||\
+			    SOC_NRF54H20_ENGA_CPURAD || SOC_SERIES_NRF54LX)
 	help
 	  Use SoftDevice Link Layer implementation.
 
@@ -107,8 +108,8 @@ config SYSTEM_WORKQUEUE_STACK_SIZE
 
 config BT_CTLR_SDC_LLPM
 	bool "Enable Low Latency Packet Mode support"
-	depends on SOC_SERIES_NRF52X
 	select BT_CONN_PARAM_ANY if !BT_HCI_RAW
+	depends on (SOC_SERIES_NRF52X || SOC_SERIES_NRF54LX || SOC_SERIES_NRF54HX)
 	help
 	  Low Latency Packet Mode (LLPM) is a Nordic proprietary addition
 	  which lets the application use connection intervals down to 1 ms.
@@ -301,7 +302,9 @@ choice BT_LL_SOFTDEVICE_VARIANT
 						     BT_CTLR_SDC_PAWR_ADV || \
 						     BT_CTLR_SDC_PAWR_SYNC || \
 						     BT_ISO || \
-						     SOC_COMPATIBLE_NRF5340_CPUNET)
+						     SOC_COMPATIBLE_NRF5340_CPUNET || \
+						     SOC_NRF54H20_ENGA_CPURAD || \
+						     SOC_NRF54L15_ENGA_CPUAPP)
 	default BT_LL_SOFTDEVICE_CENTRAL if BT_OBSERVER
 	default BT_LL_SOFTDEVICE_PERIPHERAL if BT_BROADCASTER
 	help
@@ -330,14 +333,6 @@ config BT_LL_SOFTDEVICE_MULTIROLE
 	  by the linker.
 
 endchoice
-
-config BT_LL_SOFTDEVICE_EXPERIMENTAL_ISO
-	bool "ISO Support in the SoftDevice Controller [EXPERIMENTAL]"
-	default BT_ISO
-	select EXPERIMENTAL
-	help
-	  ISO support in the SoftDevice Controller is experimental.
-	  It cannot be used in products as per now.
 
 config BT_CTLR_FAL_SIZE
 	int "Configures the maximum number of addresses in the Filter Accept List"
@@ -395,20 +390,43 @@ config BT_CTLR_SDC_EVENT_TRIGGER
 config BT_CTLR_SDC_ISO_RX_PDU_BUFFER_PER_STREAM_COUNT
 	int "BT_CTLR_SDC_ISO_RX_PDU_BUFFER_PER_STREAM_COUNT"
 	depends on BT_CTLR_SYNC_ISO || BT_CTLR_CONN_ISO
-	range 0 10
+	range 0 32
+	default 4 if BT_CTLR_SYNC_ISO
 	default 3
+	help
+	  Configures the number of RX PDU buffers allocated per ISO stream.
+	  This is the number of maximum size (251 bytes) PDU buffers.
+	  When PDU size is smaller than the maximum size, the pool will be repartitioned
+	  into a larger number of adjusted PDUs.
+	  For BIS, this value determines how many pretransmissions can be stored and utilized.
 
 config BT_CTLR_SDC_ISO_TX_HCI_BUFFER_COUNT
 	int "BT_CTLR_SDC_ISO_TX_HCI_BUFFER_COUNT"
 	depends on BT_CTLR_ADV_ISO || BT_CTLR_CONN_ISO
 	range 0 10
 	default 3
+	help
+	  Configures the number of HCI TX buffers allocated for ISO.
+	  The HCI buffers are shared between the different streams.
+	  This number may need to be larger if there is high CPU utilization or lots of
+	  SDUs are being sent to the controller in quick succession, such as if using
+	  a very small SDU interval or lots of ISO streams concurrently.
+	  When using Testmode, the number of HCI TX buffers must be larger than the number
+	  of streams using Testmode at one time.
 
 config BT_CTLR_SDC_ISO_TX_PDU_BUFFER_PER_STREAM_COUNT
 	int "BT_CTLR_SDC_ISO_TX_PDU_BUFFER_PER_STREAM_COUNT"
 	depends on BT_CTLR_ADV_ISO || BT_CTLR_CONN_ISO
-	range 1 32
+	range 0 32
 	default 3
+	help
+	  Configures the number of TX PDU buffers allocated per ISO stream.
+	  This is the number of maximum size (251 bytes) PDU buffers.
+	  When PDU size is smaller than the maximum size, the pool will be repartitioned
+	  into a larger number of adjusted PDUs.
+	  For BIS, this value determines the number of PDUs that can be cached in the controller,
+	  therefore limiting the number of pretransmission subevents and value of pretransmission
+	  offset (PTO) that the controller can use.
 
 config BT_UNINIT_MPSL_ON_DISABLE
 	bool "Uninitializes MPSL on BT disable"
@@ -496,6 +514,41 @@ config BT_CTLR_SDC_SILENCE_UNEXPECTED_MSG_TYPE
 	bool
 	help
 	  Convenience config to silence unexpected incoming msg type
+
+config BT_CTLR_SDC_IGNORE_HCI_ISO_DATA_TS_FROM_HOST
+	bool "Configure the controller to ignore timestamps in HCI ISO data packets."
+	depends on BT_CTLR_PERIPHERAL_ISO || BT_CTLR_CENTRAL_ISO || BT_CTLR_ADV_ISO
+	select DEPRECATED
+	help
+	  Configures the SoftDevice Controller to ignore timestamps on HCI ISO data packets.
+	  The only use-case for this option is if the host uses timestamps which are not based
+	  on the clock of the controller. Instead of this configuration, the host should
+	  not add timestamps to the HCI ISO data packets if the timestamp is not based on the clock
+	  of the controller.
+
+config BT_CTLR_SDC_BIG_RESERVED_TIME_US
+	int "BIG reserved time [us]"
+	range 0 4000000
+	default 1600
+	help
+	  The time reserved for other roles in each ISO interval, used when selecting BIG parameters.
+
+config BT_CTLR_SDC_CIG_RESERVED_TIME_US
+	int "CIG reserved time [us]"
+	range 0 4000000
+	default 1300
+	help
+	  The time reserved for other roles in each ISO interval, used when selecting CIG parameters.
+
+config BT_CTLR_SDC_CIS_SUBEVENT_LENGTH_US
+	int "CIS subevent length [us]"
+	default 0
+	help
+	  Sets the subevent length to be used for CISes in microseconds.
+	  If the configured subevent length is too small, the
+	  HCI command used to configure the CIG will fail.
+	  If this parameter is set to zero, the subevent length
+	  is chosen by the controller.
 
 endmenu
 endif  # BT_LL_SOFTDEVICE

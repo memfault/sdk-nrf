@@ -1078,7 +1078,7 @@ static int handle_sensor_status(const struct bt_mesh_model *model, struct bt_mes
 
 		LOG_DBG("Checking sensor val");
 		if (id == BT_MESH_PROP_ID_TIME_SINCE_MOTION_SENSED) {
-			delayed_occupancy(srv, val);
+			delayed_occupancy(srv, 1000.0f * val);
 		} else if (val > 0) {
 			delayed_occupancy(srv, 0);
 		}
@@ -1152,7 +1152,7 @@ static int prop_get(struct net_buf_simple *buf,
 	struct bt_mesh_sensor_value sensor_val;
 	int err;
 	int64_t micro = 0;
-	const struct bt_mesh_sensor_format *format = prop_format_get(id);
+	const struct bt_mesh_sensor_format *format = bt_mesh_lc_prop_format_get(id);
 
 	if (!format) {
 		return -ENOENT;
@@ -1253,7 +1253,7 @@ static int prop_set(struct net_buf_simple *buf,
 {
 	struct bt_mesh_sensor_value val;
 	int err;
-	const struct bt_mesh_sensor_format *format = prop_format_get(id);
+	const struct bt_mesh_sensor_format *format = bt_mesh_lc_prop_format_get(id);
 	enum bt_mesh_sensor_value_status status;
 
 	if (!format) {
@@ -1273,33 +1273,24 @@ static int prop_set(struct net_buf_simple *buf,
 	LOG_DBG("Set Prop: 0x%04x: %s", id, bt_mesh_sensor_ch_str(&val));
 
 #if CONFIG_BT_MESH_LIGHT_CTRL_SRV_REG
-	/* Regulator coefficients are raw IEEE-754 floats, pull them straight
-	 * from the buffer instead of using sensor to decode them:
+	/* Regulator coefficients are raw IEEE-754 floats, status will always
+	 * be BT_MESH_SENSOR_VALUE_NUMBER:
 	 */
 	if (srv->reg) {
 		switch (id) {
 		case BT_MESH_LIGHT_CTRL_COEFF_KID:
-			status = bt_mesh_sensor_value_to_float(
-				&val, &srv->reg->cfg.ki.down);
-			break;
+			(void)bt_mesh_sensor_value_to_float(&val, &srv->reg->cfg.ki.down);
+			return 0;
 		case BT_MESH_LIGHT_CTRL_COEFF_KIU:
-			status = bt_mesh_sensor_value_to_float(
-				&val, &srv->reg->cfg.ki.down);
-			break;
+			(void)bt_mesh_sensor_value_to_float(&val, &srv->reg->cfg.ki.up);
+			return 0;
 		case BT_MESH_LIGHT_CTRL_COEFF_KPD:
-			status = bt_mesh_sensor_value_to_float(
-				&val, &srv->reg->cfg.ki.down);
-			break;
+			(void)bt_mesh_sensor_value_to_float(&val, &srv->reg->cfg.kp.down);
+			return 0;
 		case BT_MESH_LIGHT_CTRL_COEFF_KPU:
-			status = bt_mesh_sensor_value_to_float(
-				&val, &srv->reg->cfg.ki.down);
-			break;
-		default:
-			return -EINVAL;
+			(void)bt_mesh_sensor_value_to_float(&val, &srv->reg->cfg.kp.up);
+			return 0;
 		}
-
-		return bt_mesh_sensor_value_status_is_numeric(status) ?
-			0 : -EINVAL;
 	}
 #endif
 	int64_t micro;

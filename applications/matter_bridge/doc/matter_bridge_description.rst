@@ -126,7 +126,7 @@ By default, the Matter accessory device has no IPv6 network configured.
 To use the device within a Wi-Fi network, you must pair it with the Matter controller over Bluetooth® LE to get the configuration from the controller.
 
 The Bluetooth LE advertising starts automatically upon device startup, but only for a predefined period of time (15 minutes by default).
-If the Bluetooth LE advertising times out, you can re-enable it manually by pressing **Button (SW2)**.
+If the Bluetooth LE advertising times out, you can re-enable it manually by pressing **Button (SW1)**.
 
 Additionally, the controller must get the `Onboarding information`_ from the Matter accessory device and provision the device into the network.
 For details, see the `Testing`_ section.
@@ -154,6 +154,20 @@ Button 1:
 
     * If pressed for more than three seconds, it initiates the factory reset of the device.
       Releasing the button within a 3-second window of the initiation cancels the factory reset procedure.
+
+.. include:: ../../../samples/matter/lock/README.rst
+    :start-after: matter_door_lock_sample_led1_start
+    :end-before: matter_door_lock_sample_led1_end
+
+LED 2:
+   If the :kconfig:option:`CONFIG_BRIDGED_DEVICE_BT` Kconfig option is set to ``y``, shows the current state of Bridge's Bluetooth LE connectivity.
+   The following states are possible:
+
+   * Turned Off - The Bridge device is in the idle state and has no Bluetooth LE devices paired.
+   * Solid On - The Bridge device is in the idle state and all connections to the Bluetooth LE bridged devices are stable.
+   * Slow Even Flashing (1000 ms on / 1000 ms off) - The Bridge device lost connection to at least one Bluetooth LE bridged device.
+   * Even Flashing (300 ms on / 300 ms off) - The scan for Bluetooth LE devices is in progress.
+   * Fast Even Flashing (100 ms on / 100 ms off) - The Bridge device is connecting to the Bluetooth LE device and waiting for the Bluetooth LE authentication PIN code.
 
 .. include:: ../../../samples/matter/lock/README.rst
     :start-after: matter_door_lock_sample_jlink_start
@@ -386,7 +400,7 @@ Build the target using the following command in the project directory to enable 
 .. parsed-literal::
    :class: highlight
 
-   west build -b nrf7002dk_nrf5340_cpuapp -- -DCONFIG_BRIDGED_DEVICE_BT=y -DOVERLAY_CONFIG="overlay-bt_max_connections_app.conf" -Dhci_ipc_OVERLAY_CONFIG="*absoule_path*/overlay-bt_max_connections_net.conf"
+   west build -b nrf7002dk_nrf5340_cpuapp -- -DCONFIG_BRIDGED_DEVICE_BT=y -DEXTRA_CONF_FILE="overlay-bt_max_connections_app.conf" -Dhci_ipc_EXTRA_CONF_FILE="*absoule_path*/overlay-bt_max_connections_net.conf"
 
 Replace *absolute_path* with the absolute path to the Matter bridge application on your local disk.
 
@@ -453,6 +467,16 @@ Building and running
 .. |sample path| replace:: :file:`applications/matter_bridge`
 
 .. include:: /includes/build_and_run.txt
+
+.. include:: ../../../samples/matter/lock/README.rst
+    :start-after: matter_door_lock_sample_nrf70_firmware_patch_start
+    :end-before: matter_door_lock_sample_nrf70_firmware_patch_end
+
+For example:
+
+   .. code-block:: console
+
+      west build -b nrf5340dk_nrf5340_cpuapp -p -- -DSHIELD=nrf7002ek -DCONFIG_NRF_WIFI_PATCHES_EXT_FLASH_STORE=y -Dmcuboot_CONFIG_UPDATEABLE_IMAGE_NUMBER=3
 
 Selecting a build type
 ======================
