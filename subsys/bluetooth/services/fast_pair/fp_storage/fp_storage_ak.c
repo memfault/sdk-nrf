@@ -11,7 +11,7 @@
 #include <string.h>
 #include <zephyr/sys/__assert.h>
 #include <zephyr/settings/settings.h>
-#include <bluetooth/services/fast_pair.h>
+#include <bluetooth/services/fast_pair/fast_pair.h>
 
 #include "fp_common.h"
 #include "fp_storage_ak.h"
@@ -421,7 +421,7 @@ void fp_storage_ak_ram_clear(void)
 	is_enabled = false;
 }
 
-bool bt_fast_pair_has_account_key(void)
+bool fp_storage_ak_has_account_key(void)
 {
 	return (fp_storage_ak_count() > 0);
 }

@@ -8,7 +8,7 @@ zephyr_library()
 zephyr_include_directories(.)
 zephyr_library_sources_ifdef(CONFIG_TFM_ALLOW_NON_SECURE_FAULT_HANDLING fault.c)
 
-if (NOT CONFIG_TFM_BUILD_NS AND CONFIG_TFM_PARTITION_PLATFORM AND CONFIG_SOC_FAMILY_NRF)
+if (CONFIG_TFM_PARTITION_PLATFORM AND CONFIG_SOC_FAMILY_NRF)
   zephyr_library_named(tfm_api_nrf)
 
   # The non-secure API files are located in a folder associated with the TF-M
@@ -102,6 +102,12 @@ endif()
 if (CONFIG_TFM_SECURE_UART1)
   set_property(TARGET zephyr_property_target
     APPEND PROPERTY TFM_CMAKE_OPTIONS -DNRF_SECURE_UART_INSTANCE=1
+  )
+endif()
+
+if (CONFIG_TFM_SECURE_UART22)
+  set_property(TARGET zephyr_property_target
+    APPEND PROPERTY TFM_CMAKE_OPTIONS -DNRF_SECURE_UART_INSTANCE=22
   )
 endif()
 
@@ -210,6 +216,15 @@ set_property(TARGET zephyr_property_target
     -DPYTHON_PREFER=${Python3_EXECUTABLE}
 )
 
+# CONN_HANDLE_MAX_NUM is only needed if IPC mode is used
+# The maximal number of secure services that are connected or requested at the same time
+if (CONFIG_TFM_CONN_HANDLE_MAX_NUM)
+  set_property(TARGET zephyr_property_target
+  APPEND PROPERTY TFM_CMAKE_OPTIONS
+    -DCONFIG_TFM_DOORBELL_API=${CONFIG_TFM_CONN_HANDLE_MAX_NUM}
+  )
+endif()
+
 zephyr_include_directories(${ZEPHYR_NRF_MODULE_DIR}/include/tfm)
 
 # Default values from config_base.h in TF-M.
@@ -228,6 +243,7 @@ set(CRYPTO_CIPHER_MODULE_ENABLED           ${CONFIG_TFM_CRYPTO_CIPHER_MODULE_ENA
 set(CRYPTO_ASYM_SIGN_MODULE_ENABLED        ${CONFIG_TFM_CRYPTO_ASYM_SIGN_MODULE_ENABLED})
 set(CRYPTO_ASYM_ENCRYPT_MODULE_ENABLED     ${CONFIG_TFM_CRYPTO_ASYM_ENCRYPT_MODULE_ENABLED})
 set(CRYPTO_KEY_DERIVATION_MODULE_ENABLED   ${CONFIG_TFM_CRYPTO_KEY_DERIVATION_MODULE_ENABLED})
+set(CRYPTO_PAKE_MODULE_ENABLED             ${CONFIG_TFM_CRYPTO_PAKE_MODULE_ENABLED})
 set(CRYPTO_IOVEC_BUFFER_SIZE               ${CONFIG_TFM_CRYPTO_IOVEC_BUFFER_SIZE})
 set(CRYPTO_NV_SEED                         ${CONFIG_TFM_CRYPTO_NV_SEED})
 set(CRYPTO_SINGLE_PART_FUNCS_DISABLED      ${CONFIG_TFM_CRYPTO_SINGLE_PART_FUNCS_DISABLED})
@@ -254,7 +270,6 @@ set(PS_VALIDATE_METADATA_FROM_FLASH        ${CONFIG_TFM_PS_VALIDATE_METADATA_FRO
 set(PS_MAX_ASSET_SIZE                      ${CONFIG_TFM_PS_MAX_ASSET_SIZE})
 set(PS_NUM_ASSETS                          ${CONFIG_TFM_PS_NUM_ASSETS})
 set(PS_STACK_SIZE                          ${CONFIG_TFM_PS_STACK_SIZE})
-set(CONFIG_TFM_CONN_HANDLE_MAX_NUM         ${CONFIG_TFM_CONN_HANDLE_MAX_NUM})
 set(CONFIG_TFM_DOORBELL_API                ${CONFIG_TFM_DOORBELL_API})
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/tfm_config.h.in

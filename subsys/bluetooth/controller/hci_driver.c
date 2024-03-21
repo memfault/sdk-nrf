@@ -127,14 +127,14 @@ BUILD_ASSERT(!IS_ENABLED(CONFIG_BT_PERIPHERAL) ||
 
 #if defined(CONFIG_BT_OBSERVER)
 	#if defined(CONFIG_BT_CTLR_ADV_EXT)
-		#define SDC_SCAN_BUF_SIZE \
-			SDC_MEM_SCAN_BUFFER_EXT(CONFIG_BT_CTLR_SDC_SCAN_BUFFER_COUNT)
+		#define SDC_SCAN_SIZE \
+			SDC_MEM_SCAN_EXT(CONFIG_BT_CTLR_SDC_SCAN_BUFFER_COUNT)
 	#else
-		#define SDC_SCAN_BUF_SIZE \
-			SDC_MEM_SCAN_BUFFER(CONFIG_BT_CTLR_SDC_SCAN_BUFFER_COUNT)
+		#define SDC_SCAN_SIZE \
+			SDC_MEM_SCAN(CONFIG_BT_CTLR_SDC_SCAN_BUFFER_COUNT)
 	#endif
 #else
-	#define SDC_SCAN_BUF_SIZE 0
+	#define SDC_SCAN_SIZE 0
 #endif
 
 #ifdef CONFIG_BT_CTLR_DATA_LENGTH_MAX
@@ -216,6 +216,12 @@ BUILD_ASSERT(!IS_ENABLED(CONFIG_BT_PERIPHERAL) ||
 #define SDC_MEM_ISO_TX_POOL 0
 #endif
 
+#if defined(CONFIG_BT_CTLR_SDC_QOS_CHANNEL_SURVEY)
+#define SDC_MEM_CHAN_SURV SDC_MEM_QOS_CHANNEL_SURVEY
+#else
+#define SDC_MEM_CHAN_SURV 0
+#endif
+
 #define MEMPOOL_SIZE ((PERIPHERAL_COUNT * PERIPHERAL_MEM_SIZE) + \
 		      (SDC_CENTRAL_COUNT * CENTRAL_MEM_SIZE) + \
 		      (SDC_ADV_SET_MEM_SIZE) + \
@@ -223,8 +229,9 @@ BUILD_ASSERT(!IS_ENABLED(CONFIG_BT_PERIPHERAL) ||
 		      (SDC_PERIODIC_ADV_RSP_MEM_SIZE) + \
 		      (SDC_PERIODIC_SYNC_MEM_SIZE) + \
 		      (SDC_PERIODIC_ADV_LIST_MEM_SIZE) + \
-		      (SDC_SCAN_BUF_SIZE) + \
+		      (SDC_SCAN_SIZE) + \
 		      (SDC_FAL_MEM_SIZE) + \
+		      (SDC_MEM_CHAN_SURV) + \
 		      (SDC_MEM_CIG) + \
 		      (SDC_MEM_CIS) + \
 		      (SDC_MEM_BIS_SINK) + \
@@ -550,23 +557,7 @@ static void receive_work_handler(struct k_work *work)
 	hci_driver_receive_process();
 }
 
-static const struct device *entropy_source = DEVICE_DT_GET(DT_NODELABEL(rng));
-
-static uint8_t rand_prio_low_vector_get(uint8_t *p_buff, uint8_t length)
-{
-	int ret = entropy_get_entropy_isr(entropy_source, p_buff, length, 0);
-
-	__ASSERT(ret >= 0, "The entropy source returned an error in the low priority context");
-	return ret >= 0 ? ret : 0;
-}
-
-static uint8_t rand_prio_high_vector_get(uint8_t *p_buff, uint8_t length)
-{
-	int ret = entropy_get_entropy_isr(entropy_source, p_buff, length, 0);
-
-	__ASSERT(ret >= 0, "The entropy source returned an error in the high priority context");
-	return ret >= 0 ? ret : 0;
-}
+static const struct device *entropy_source = DEVICE_DT_GET(DT_CHOSEN(zephyr_entropy));
 
 static void rand_prio_low_vector_get_blocking(uint8_t *p_buff, uint8_t length)
 {
@@ -825,6 +816,13 @@ static int configure_supported_features(void)
 
 	if (IS_ENABLED(CONFIG_BT_CTLR_ADV_ISO)) {
 		err = sdc_support_bis_source();
+		if (err) {
+			return -ENOTSUP;
+		}
+	}
+
+	if (IS_ENABLED(CONFIG_BT_CTLR_SDC_IGNORE_HCI_ISO_DATA_TS_FROM_HOST)) {
+		err = sdc_iso_host_timestamps_ignore(true);
 		if (err) {
 			return -ENOTSUP;
 		}
@@ -1142,8 +1140,6 @@ static int hci_driver_open(void)
 	}
 
 	sdc_rand_source_t rand_functions = {
-		.rand_prio_low_get = rand_prio_low_vector_get,
-		.rand_prio_high_get = rand_prio_high_vector_get,
 		.rand_poll = rand_prio_low_vector_get_blocking
 	};
 
@@ -1187,6 +1183,39 @@ static int hci_driver_open(void)
 			.event_length_us = CONFIG_BT_CTLR_SDC_PERIODIC_ADV_EVENT_LEN_DEFAULT
 		};
 		err = sdc_hci_cmd_vs_periodic_adv_event_length_set(&params);
+		if (err) {
+			MULTITHREADING_LOCK_RELEASE();
+			return -ENOTSUP;
+		}
+	}
+
+	if (IS_ENABLED(CONFIG_BT_ISO_BROADCASTER)) {
+		sdc_hci_cmd_vs_big_reserved_time_set_t params = {
+			.reserved_time_us = CONFIG_BT_CTLR_SDC_BIG_RESERVED_TIME_US
+		};
+		err = sdc_hci_cmd_vs_big_reserved_time_set(&params);
+		if (err) {
+			MULTITHREADING_LOCK_RELEASE();
+			return -ENOTSUP;
+		}
+	}
+
+	if (IS_ENABLED(CONFIG_BT_CTLR_CONN_ISO)) {
+		sdc_hci_cmd_vs_cig_reserved_time_set_t params = {
+			.reserved_time_us = CONFIG_BT_CTLR_SDC_CIG_RESERVED_TIME_US
+		};
+		err = sdc_hci_cmd_vs_cig_reserved_time_set(&params);
+		if (err) {
+			MULTITHREADING_LOCK_RELEASE();
+			return -ENOTSUP;
+		}
+	}
+
+	if (IS_ENABLED(CONFIG_BT_CTLR_CONN_ISO)) {
+		sdc_hci_cmd_vs_cis_subevent_length_set_t params = {
+			.cis_subevent_length_us = CONFIG_BT_CTLR_SDC_CIS_SUBEVENT_LENGTH_US
+		};
+		err = sdc_hci_cmd_vs_cis_subevent_length_set(&params);
 		if (err) {
 			MULTITHREADING_LOCK_RELEASE();
 			return -ENOTSUP;

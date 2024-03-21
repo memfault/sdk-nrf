@@ -15,7 +15,7 @@ The kit can be used to provide Wi-Fi® connectivity and Wi-Fi-based locationing 
 The nRF7002 EK features the nRF7002 companion IC.
 In addition, the shield may be used to emulate the nRF7001 and nRF7000 companion IC variants.
 
-If this is your first time developing with a Nordic DK, read the appropriate getting started tutorial first:
+If this is your first time developing with a Nordic Semiconductor DK, read the appropriate getting started tutorial first:
 
 * :ref:`ug_nrf7002_gs`
 * :ref:`ug_nrf52_gs`
@@ -41,45 +41,54 @@ Pin assignment for Arduino interface connector
 The Arduino interface of the nRF7002 EK is compatible with the nRF52840 DK, the nRF5340 DK, and an nRF91 Series DK.
 The interface connectors are described in the following table:
 
-+------------------+-----------------------+----------------------------------+
-| Arduino pin name | nRF7002 Signal        | Function                         |
-+==================+=======================+==================================+
-| D0               | IOVDD_EN              | Enable power to I/O interface    |
-+------------------+-----------------------+----------------------------------+
-| D1               | BUCK_EN               | Enable power to nRF7002          |
-+------------------+-----------------------+----------------------------------+
-| D2               | COEX_STATUS0          | Coexistence status 0             |
-+------------------+-----------------------+----------------------------------+
-| D3               | COEX_REQ              | Coexistence request from host    |
-+------------------+-----------------------+----------------------------------+
-| D4               | COEX_GRANT            | Coexistence grant to host        |
-+------------------+-----------------------+----------------------------------+
-| D5               | SW_CTRL0              | Switch control 0                 |
-+------------------+-----------------------+----------------------------------+
-| D6               | COEX_STATUS1          | Coexistence status 1             |
-+------------------+-----------------------+----------------------------------+
-| D7               | HOST_IRQ              | Interrupt request to host        |
-+------------------+-----------------------+----------------------------------+
-| D8               | DATA2                 | QSPI data line 2                 |
-+------------------+-----------------------+----------------------------------+
-| D9               | DATA3                 | QSPI data line 3                 |
-+------------------+-----------------------+----------------------------------+
-| D10              | SS                    | Slave select                     |
-+------------------+-----------------------+----------------------------------+
-| D11              | MISO/DATA1            | QSPI/SPI Data line 1/ Slave Out  |
-+------------------+-----------------------+----------------------------------+
-| D12              | MOSI/DATA0            | QSPI/SPI Data line 0/ Slave In   |
-+------------------+-----------------------+----------------------------------+
-| D13              | CLK                   | QSPI/SPI Clock                   |
-+------------------+-----------------------+----------------------------------+
-| GND              | GND                   | Ground                           |
-+------------------+-----------------------+----------------------------------+
-| AREF             | N.C.                  | Not used                         |
-+------------------+-----------------------+----------------------------------+
-| SDA              | N.C.                  | Not used                         |
-+------------------+-----------------------+----------------------------------+
-| SCL              | N.C.                  | Not used                         |
-+------------------+-----------------------+----------------------------------+
++----------------------+-----------------------+----------------------------------+
+| Arduino pin name     | nRF7002 Signal        | Function                         |
++======================+=======================+==================================+
+| **D0**               | IOVDD_EN              | Enable power to I/O interface    |
++----------------------+-----------------------+----------------------------------+
+| **D1**               | BUCK_EN               | Enable power to nRF7002          |
++----------------------+-----------------------+----------------------------------+
+| **D2**               | COEX_STATUS0          | Coexistence status 0             |
++----------------------+-----------------------+----------------------------------+
+| **D3**               | COEX_REQ              | Coexistence request from host    |
++----------------------+-----------------------+----------------------------------+
+| **D4**               | COEX_GRANT            | Coexistence grant to host        |
++----------------------+-----------------------+----------------------------------+
+| **D5**               | SW_CTRL0              | Switch control 0                 |
++----------------------+-----------------------+----------------------------------+
+| **D6**               | COEX_STATUS1          | Coexistence status 1             |
++----------------------+-----------------------+----------------------------------+
+| **D7**               | HOST_IRQ              | Interrupt request to host        |
++----------------------+-----------------------+----------------------------------+
+| **D8**               | DATA2                 | QSPI data line 2                 |
++----------------------+-----------------------+----------------------------------+
+| **D9**               | DATA3                 | QSPI data line 3                 |
++----------------------+-----------------------+----------------------------------+
+| **D10**              | SS                    | Slave select                     |
++----------------------+-----------------------+----------------------------------+
+| **D11**              | MISO/DATA1            | QSPI/SPI Data line 1/ Slave Out  |
++----------------------+-----------------------+----------------------------------+
+| **D12**              | MOSI/DATA0            | QSPI/SPI Data line 0/ Slave In   |
++----------------------+-----------------------+----------------------------------+
+| **D13**              | CLK                   | QSPI/SPI Clock                   |
++----------------------+-----------------------+----------------------------------+
+| **GND**              | GND                   | Ground                           |
++----------------------+-----------------------+----------------------------------+
+| **AREF**             | N.C.                  | Not used                         |
++----------------------+-----------------------+----------------------------------+
+| **SDA**              | N.C.                  | Not used                         |
++----------------------+-----------------------+----------------------------------+
+| **SCL**              | N.C.                  | Not used                         |
++----------------------+-----------------------+----------------------------------+
+
+.. note::
+   ``UART1`` cannot be used and must be disabled on the nRF9160 DK, as ``UART1`` ``RXD`` and ``TXD`` conflict with pins **P0.00** and **P0.01** (Arduino pins **D0** and **D1**).
+   These correspond to the IOVDD-CTRL-GPIOS and BUCKEN-GPIOS signals in the nRF7002 EK, respectively.
+
+   For an nRF7002 EK connected to an nRF9160 DK, you can find example overlays at the following paths:
+
+   * :file:`sdk-nrf/boards/shields/nrf7002ek/boards/nrf9160dk_nrf9160_ns.overlay`
+   * :file:`sdk-nrf/samples/cellular/lwm2m_client/boards/nrf9160dk_with_nrf7002ek.overlay`
 
 Minimum requirements
 ********************

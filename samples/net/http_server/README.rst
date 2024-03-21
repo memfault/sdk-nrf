@@ -9,6 +9,8 @@ HTTP Server
 
 The HTTP Server sample demonstrates how to host an HTTP server on a Nordic Semiconductor device that is connected to the Internet through LTE or Wi-Fi®.
 
+.. |wifi| replace:: Wi-Fi
+
 .. include:: /includes/net_connection_manager.txt
 
 Requirements
@@ -135,14 +137,8 @@ To generate new credentials, run the following commands:
          # Sign the client's CSR with the server's private key and certificate, creating a client certificate.
          openssl x509 -req -in client.csr -CA server_certificate.pem -CAkey server_private_key.pem -CAcreateserial -out client.crt -days 365
 
-To provision the generated credentials to the server's TLS stack, the credentials need to be converted into C header files that are readable by the server code.
-To do this, you can use the following script :file:`sdk-nrf/scripts/cert_to_header.py`.
-Replace the generated header files with the pregenerated header files in the :file:`http_server/credentials` folder.
-
-.. code-block:: console
-
-   python3 cert_to_header.py server_certificate.pem
-   python3 cert_to_header.py server_private_key.pem
+To provision the generated credentials to the server's TLS stack, replace the pregenerated certificates with the newly generated one in the :file:`http_server/credentials` folder in PEM format.
+Provisioning happens automatically after the firmware boots by the sample.
 
 Configuration
 *************
@@ -199,6 +195,7 @@ The sample includes pre-configured configuration files for the development kits 
 
 * :file:`prj.conf` - For all devices.
 * :file:`boards/nrf7002dk_nrf5340_cpuapp_ns.conf` - For the nRF7002 DK.
+* :file:`boards/nrf9151dk_nrf9151_ns.conf` - For the nRF9151 DK.
 * :file:`boards/nrf9161dk_nrf9161_ns.conf` - For the nRF9161 DK.
 * :file:`boards/nrf9160dk_nrf9160_ns.conf` - For the nRF9160 DK.
 * :file:`boards/thingy91_nrf9160_ns.conf` - For the Thingy:91.
@@ -331,7 +328,7 @@ Troubleshooting
 ***************
 
 If you have issues with connectivity on nRF91 Series devices, see the `Cellular Monitor`_ documentation to learn how to capture modem traces to debug network traffic in Wireshark.
-Modem traces can be enabled by providing a snippet with the west build command using the ``-S`` argument:
+Modem traces can be enabled by providing a snippet with the west build command using the ``-S`` argument as shown in the following example for nRF9161 DK:
 
 .. code-block:: console
 

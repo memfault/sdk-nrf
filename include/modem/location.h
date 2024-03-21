@@ -43,6 +43,19 @@ enum location_method {
 	LOCATION_METHOD_GNSS,
 	/** Wi-Fi positioning. */
 	LOCATION_METHOD_WIFI,
+	/**
+	 * Wi-Fi and cellular positioning combined into one cloud request.
+	 *
+	 * Cannot be used in the method list passed to location_request(),
+	 * but this method can appear in the location event (@ref location_event_data.id)
+	 * to indicate that Wi-Fi and cellular positioning methods have been combined
+	 * into a single cloud location method.
+	 *
+	 * If the combined method is desired, set Wi-Fi and cellular methods next to each other
+	 * in the method list passed to location_request(). This also happens by default if
+	 * NULL configuration is passed to location_request().
+	 */
+	LOCATION_METHOD_WIFI_CELLULAR,
 };
 
 /** Location acquisition mode. */
@@ -94,6 +107,14 @@ enum location_event_id {
 	 * This event is only sent if @kconfig{CONFIG_LOCATION_DATA_DETAILS} is set.
 	 */
 	LOCATION_EVT_STARTED,
+	/**
+	 * A fallback from one method to another has occurred,
+	 * and the positioning procedure continues.
+	 *
+	 * This event is only sent if @kconfig{CONFIG_LOCATION_DATA_DETAILS} is set and
+	 * @ref location_config.mode is @ref LOCATION_REQ_MODE_FALLBACK.
+	 */
+	LOCATION_EVT_FALLBACK,
 };
 
 /** Result of the external cloud location request. */
@@ -161,14 +182,64 @@ struct location_datetime {
 struct location_data_details_gnss {
 	/** Number of satellites tracked at the time of event. */
 	uint8_t satellites_tracked;
+	/** Number of satellites used at the time of event. */
+	uint8_t satellites_used;
 	/** PVT data. */
 	struct nrf_modem_gnss_pvt_data_frame pvt_data;
+	/**
+	 * Elapsed GNSS time in milliseconds.
+	 *
+	 * This is the time since last start of GNSS operation until the fix or timeout
+	 * including any time LTE has blocked GNSS.
+	 *
+	 * @ref pvt_data member has ``execution_time``, which indicates cumulative GNSS
+	 * execution time since last start excluding any time LTE has blocked GNSS.
+	 */
+	uint32_t elapsed_time_gnss;
 };
 
-/** Location details. */
+/** Location details for cellular. */
+struct location_data_details_cellular {
+	/** Number of neighbor cells. */
+	uint8_t ncells_count;
+	/** Number of GCI (surrounding) cells. */
+	uint8_t gci_cells_count;
+};
+
+/** Location details for Wi-Fi. */
+struct location_data_details_wifi {
+	/** Number of Wi-Fi APs. */
+	uint16_t ap_count;
+};
+
+/**
+ * Location details.
+ *
+ * Only one of the child structures is filled most of the time depending on the method
+ * found in @ref location_event_data.method member of the parent structure.
+ * For a combined method @ref LOCATION_METHOD_WIFI_CELLULAR both @ref cellular and
+ * @ref wifi are filled.
+ */
 struct location_data_details {
+	/**
+	 * Elapsed method time in milliseconds.
+	 *
+	 * This is the time from method start until it completes and includes any time
+	 * spent waiting for some conditions to happen before proceeding, such as
+	 * waiting for LTE connection to go idle for some methods.
+	 */
+	uint32_t elapsed_time_method;
+
 	/** Location details for GNSS. */
 	struct location_data_details_gnss gnss;
+#if defined(CONFIG_LOCATION_METHOD_CELLULAR)
+	/** Location details for cellular. */
+	struct location_data_details_cellular cellular;
+#endif
+#if defined(CONFIG_LOCATION_METHOD_WIFI)
+	/** Location details for Wi-Fi. */
+	struct location_data_details_wifi wifi;
+#endif
 };
 #endif
 
@@ -195,6 +266,20 @@ struct location_data_error {
 	/** Data details at the time of error. */
 	struct location_data_details details;
 };
+
+/** Location fallback information. */
+struct location_data_fallback {
+	/** New location method that is tried next. */
+	enum location_method next_method;
+	/**
+	 * Event ID indicating the cause for the fallback.
+	 *
+	 * Either @ref LOCATION_EVT_TIMEOUT and @ref LOCATION_EVT_ERROR.
+	 */
+	enum location_event_id cause;
+	/** Data details at the time of a timeout or an error that caused the fallback. */
+	struct location_data_details details;
+};
 #endif
 
 /** Cloud location information. */
@@ -213,13 +298,7 @@ struct location_data_cloud {
 struct location_event_data {
 	/** Event ID. */
 	enum location_event_id id;
-	/**
-	 * Used location method.
-	 *
-	 * When cellular and Wi-Fi positioning are used and they are combined into a single
-	 * cloud request by the library, the method is not known so there is some uncertainty
-	 * on the reported location method.
-	 */
+	/** Used location method. */
 	enum location_method method;
 
 	/** Event specific data. */
@@ -233,6 +312,15 @@ struct location_event_data {
 		 * Used with events @ref LOCATION_EVT_TIMEOUT and @ref LOCATION_EVT_ERROR.
 		 */
 		struct location_data_error error;
+#endif
+
+#if defined(CONFIG_LOCATION_DATA_DETAILS)
+		/**
+		 * Relevant location data when a fallback to another method occurs
+		 * due to a timeout or an error.
+		 * Used with event @ref LOCATION_EVT_FALLBACK.
+		 */
+		struct location_data_fallback fallback;
 #endif
 
 #if defined(CONFIG_LOCATION_SERVICE_EXTERNAL) && defined(CONFIG_NRF_CLOUD_AGNSS)

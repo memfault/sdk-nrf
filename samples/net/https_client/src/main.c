@@ -38,7 +38,12 @@ static char recv_buf[RECV_BUF_SIZE];
 static K_SEM_DEFINE(network_connected_sem, 0, 1);
 /* Certificate for `example.com` */
 static const char cert[] = {
-#include "DigiCertGlobalG2.pem.inc"
+	#include "DigiCertGlobalG2.pem.inc"
+
+	/* Null terminate certificate if running Mbed TLS on the application core.
+	 * Required by TLS credentials API.
+	 */
+	IF_ENABLED(CONFIG_TLS_CREDENTIALS, (0x00))
 };
 
 /* Zephyr NET management event callback structures. */
@@ -98,7 +103,9 @@ int cert_provision(void)
 				 TLS_CREDENTIAL_CA_CERTIFICATE,
 				 cert,
 				 sizeof(cert));
-	if (err < 0) {
+	if (err == -EEXIST) {
+		printk("CA certificate already exists, sec tag: %d\n", TLS_SEC_TAG);
+	} else if (err < 0) {
 		printk("Failed to register CA certificate: %d\n", err);
 		return err;
 	}

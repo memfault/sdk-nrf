@@ -25,6 +25,7 @@
 #endif
 
 #include <modem/nrf_modem_lib.h>
+#include <modem/nrf_modem_lib_trace.h>
 #include <modem/at_monitor.h>
 #include <modem/modem_info.h>
 #include <modem/lte_lc.h>
@@ -147,6 +148,17 @@ void nrf_modem_fault_handler(struct nrf_modem_fault_info *fault_info)
 
 	__ASSERT(false, "Modem crash detected, halting application execution");
 }
+
+#if defined(CONFIG_NRF_MODEM_LIB_SHELL_TRACE)
+void nrf_modem_lib_trace_callback(enum nrf_modem_lib_trace_event evt)
+{
+	if (evt == NRF_MODEM_LIB_TRACE_EVT_FULL) {
+		mosh_warn("Modem trace storage is full.");
+		mosh_print("It is recommended to stop modem tracing before sending.");
+		mosh_print("Send or clear modem traces before re-starting.");
+	}
+}
+#endif
 
 static void reset_reason_str_get(char *str, uint32_t reason)
 {
@@ -325,9 +337,10 @@ int main(void)
 	}
 #endif
 	/* Application started successfully, mark image as OK to prevent
-	 * revert at next reboot.
+	 * revert at next reboot. If LwM2M Carrier library is enabled, allow
+	 * the library to do it.
 	 */
-#if defined(CONFIG_BOOTLOADER_MCUBOOT)
+#if (defined(CONFIG_BOOTLOADER_MCUBOOT) && !defined(CONFIG_LWM2M_CARRIER))
 	boot_write_img_confirmed();
 #endif
 	k_poll_signal_init(&mosh_signal);

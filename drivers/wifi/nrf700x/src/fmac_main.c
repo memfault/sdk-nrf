@@ -38,6 +38,7 @@
 
 #endif /* !CONFIG_NRF700X_RADIO_TEST */
 
+#define DT_DRV_COMPAT nordic_wlan0
 LOG_MODULE_DECLARE(wifi_nrf, CONFIG_WIFI_NRF700X_LOG_LEVEL);
 
 struct nrf_wifi_drv_priv_zep rpu_drv_priv_zep;
@@ -363,7 +364,7 @@ int nrf_wifi_reg_domain(const struct device *dev, struct wifi_reg_domain *reg_do
 			reg_domain_chan_info = &(reg_domain_info.reg_chan_info[chan_idx]);
 			chan_info->center_frequency = reg_domain_chan_info->center_frequency;
 			chan_info->dfs = !!reg_domain_chan_info->dfs;
-			chan_info->max_power = !!reg_domain_chan_info->max_power;
+			chan_info->max_power = reg_domain_chan_info->max_power;
 			chan_info->passive_only = !!reg_domain_chan_info->passive_channel;
 			chan_info->supported = !!reg_domain_chan_info->supported;
 		}
@@ -412,28 +413,46 @@ void nrf_wifi_event_proc_cookie_rsp(void *vif_ctx,
 	 */
 }
 #endif /* CONFIG_NRF700X_STA_MODE */
-#endif /* !CONFIG_NRF700X_RADIO_TEST */
 
-
-void set_tx_pwr_ceil_default(struct nrf_wifi_tx_pwr_ceil_params *pwr_ceil_params)
+void reg_change_callbk_fn(void *vif_ctx,
+			  struct nrf_wifi_event_regulatory_change *reg_change_event,
+			  unsigned int event_len)
 {
-	memset(pwr_ceil_params, 0, sizeof(*pwr_ceil_params));
-#if defined(CONFIG_BOARD_NRF7002DK_NRF7001_NRF5340_CPUAPP) || \
-defined(CONFIG_BOARD_NRF7002DK_NRF5340_CPUAPP) || \
-defined(CONFIG_BOARD_NRF5340DK_NRF5340_CPUAPP)
-	pwr_ceil_params->max_pwr_2g_dsss = 0x54;
-	pwr_ceil_params->max_pwr_2g_mcs7 = 0x40;
-	pwr_ceil_params->max_pwr_2g_mcs0 = 0x40;
-#endif
-#if defined(CONFIG_BOARD_NRF7002DK_NRF5340_CPUAPP) || defined(CONFIG_BOARD_NRF5340DK_NRF5340_CPUAPP)
-	pwr_ceil_params->max_pwr_5g_low_mcs7 = 0x38;
-	pwr_ceil_params->max_pwr_5g_mid_mcs7 = 0x38;
-	pwr_ceil_params->max_pwr_5g_high_mcs7 = 0x38;
-	pwr_ceil_params->max_pwr_5g_low_mcs0 = 0x38;
-	pwr_ceil_params->max_pwr_5g_mid_mcs0 = 0x38;
-	pwr_ceil_params->max_pwr_5g_high_mcs0 = 0x38;
-#endif
+	struct nrf_wifi_vif_ctx_zep *vif_ctx_zep = NULL;
+	struct nrf_wifi_ctx_zep *rpu_ctx_zep = NULL;
+	struct nrf_wifi_fmac_dev_ctx *fmac_dev_ctx = NULL;
+
+	vif_ctx_zep = vif_ctx;
+
+	if (!vif_ctx_zep) {
+		LOG_ERR("%s: vif_ctx_zep is NULL", __func__);
+		return;
+	}
+
+	rpu_ctx_zep = vif_ctx_zep->rpu_ctx_zep;
+	if (!rpu_ctx_zep) {
+		LOG_ERR("%s: rpu_ctx_zep is NULL", __func__);
+		return;
+	}
+
+	fmac_dev_ctx = rpu_ctx_zep->rpu_ctx;
+	if (!fmac_dev_ctx) {
+		LOG_ERR("%s: fmac_dev_ctx is NULL", __func__);
+		return;
+	}
+
+	fmac_dev_ctx->reg_change = k_malloc(sizeof(struct nrf_wifi_event_regulatory_change));
+	if (!fmac_dev_ctx->reg_change) {
+		LOG_ERR("%s: Failed to allocate memory for reg_change", __func__);
+		return;
+	}
+
+	memcpy(fmac_dev_ctx->reg_change,
+		   reg_change_event,
+		   sizeof(struct nrf_wifi_event_regulatory_change));
+	fmac_dev_ctx->reg_set_status = true;
 }
+#endif /* !CONFIG_NRF700X_RADIO_TEST */
 
 void configure_tx_pwr_settings(struct nrf_wifi_tx_pwr_ctrl_params *tx_pwr_ctrl_params,
 				struct nrf_wifi_tx_pwr_ceil_params *tx_pwr_ceil_params)
@@ -442,81 +461,82 @@ void configure_tx_pwr_settings(struct nrf_wifi_tx_pwr_ctrl_params *tx_pwr_ctrl_p
 	tx_pwr_ctrl_params->ant_gain_5g_band1 = CONFIG_NRF700X_ANT_GAIN_5G_BAND1;
 	tx_pwr_ctrl_params->ant_gain_5g_band2 = CONFIG_NRF700X_ANT_GAIN_5G_BAND2;
 	tx_pwr_ctrl_params->ant_gain_5g_band3 = CONFIG_NRF700X_ANT_GAIN_5G_BAND3;
-	tx_pwr_ctrl_params->band_edge_2g_lo = CONFIG_NRF700X_BAND_2G_LOWER_EDGE_BACKOFF;
-	tx_pwr_ctrl_params->band_edge_2g_hi = CONFIG_NRF700X_BAND_2G_UPPER_EDGE_BACKOFF;
-	tx_pwr_ctrl_params->band_edge_5g_unii_1_lo = CONFIG_NRF700X_BAND_UNII_1_LOWER_EDGE_BACKOFF;
-	tx_pwr_ctrl_params->band_edge_5g_unii_1_hi = CONFIG_NRF700X_BAND_UNII_1_UPPER_EDGE_BACKOFF;
-	tx_pwr_ctrl_params->band_edge_5g_unii_2a_lo =
-					CONFIG_NRF700X_BAND_UNII_2A_LOWER_EDGE_BACKOFF;
-	tx_pwr_ctrl_params->band_edge_5g_unii_2a_hi =
-					CONFIG_NRF700X_BAND_UNII_2A_UPPER_EDGE_BACKOFF;
-	tx_pwr_ctrl_params->band_edge_5g_unii_2c_lo =
-					CONFIG_NRF700X_BAND_UNII_2C_LOWER_EDGE_BACKOFF;
-	tx_pwr_ctrl_params->band_edge_5g_unii_2c_hi =
-					CONFIG_NRF700X_BAND_UNII_2C_UPPER_EDGE_BACKOFF;
-	tx_pwr_ctrl_params->band_edge_5g_unii_3_lo = CONFIG_NRF700X_BAND_UNII_3_LOWER_EDGE_BACKOFF;
-	tx_pwr_ctrl_params->band_edge_5g_unii_3_hi = CONFIG_NRF700X_BAND_UNII_3_UPPER_EDGE_BACKOFF;
-	tx_pwr_ctrl_params->band_edge_5g_unii_4_lo = CONFIG_NRF700X_BAND_UNII_4_LOWER_EDGE_BACKOFF;
-	tx_pwr_ctrl_params->band_edge_5g_unii_4_hi = CONFIG_NRF700X_BAND_UNII_4_UPPER_EDGE_BACKOFF;
+	tx_pwr_ctrl_params->band_edge_2g_lo_dss = CONFIG_NRF700X_BAND_2G_LOWER_EDGE_BACKOFF_DSSS;
+	tx_pwr_ctrl_params->band_edge_2g_lo_ht = CONFIG_NRF700X_BAND_2G_LOWER_EDGE_BACKOFF_HT;
+	tx_pwr_ctrl_params->band_edge_2g_lo_he = CONFIG_NRF700X_BAND_2G_LOWER_EDGE_BACKOFF_HE;
+	tx_pwr_ctrl_params->band_edge_2g_hi_dsss = CONFIG_NRF700X_BAND_2G_UPPER_EDGE_BACKOFF_DSSS;
+	tx_pwr_ctrl_params->band_edge_2g_hi_ht = CONFIG_NRF700X_BAND_2G_UPPER_EDGE_BACKOFF_HT;
+	tx_pwr_ctrl_params->band_edge_2g_hi_he = CONFIG_NRF700X_BAND_2G_UPPER_EDGE_BACKOFF_HE;
+	tx_pwr_ctrl_params->band_edge_5g_unii_1_lo_ht =
+		CONFIG_NRF700X_BAND_UNII_1_LOWER_EDGE_BACKOFF_HT;
+	tx_pwr_ctrl_params->band_edge_5g_unii_1_lo_he =
+		CONFIG_NRF700X_BAND_UNII_1_LOWER_EDGE_BACKOFF_HE;
+	tx_pwr_ctrl_params->band_edge_5g_unii_1_hi_ht =
+		CONFIG_NRF700X_BAND_UNII_1_UPPER_EDGE_BACKOFF_HT;
+	tx_pwr_ctrl_params->band_edge_5g_unii_1_hi_he =
+		CONFIG_NRF700X_BAND_UNII_1_UPPER_EDGE_BACKOFF_HE;
+	tx_pwr_ctrl_params->band_edge_5g_unii_2a_lo_ht =
+		CONFIG_NRF700X_BAND_UNII_2A_LOWER_EDGE_BACKOFF_HT;
+	tx_pwr_ctrl_params->band_edge_5g_unii_2a_lo_he =
+		CONFIG_NRF700X_BAND_UNII_2A_LOWER_EDGE_BACKOFF_HE;
+	tx_pwr_ctrl_params->band_edge_5g_unii_2a_hi_ht =
+		CONFIG_NRF700X_BAND_UNII_2A_UPPER_EDGE_BACKOFF_HT;
+	tx_pwr_ctrl_params->band_edge_5g_unii_2a_hi_he =
+		CONFIG_NRF700X_BAND_UNII_2A_UPPER_EDGE_BACKOFF_HE;
+	tx_pwr_ctrl_params->band_edge_5g_unii_2c_lo_ht =
+		CONFIG_NRF700X_BAND_UNII_2C_LOWER_EDGE_BACKOFF_HT;
+	tx_pwr_ctrl_params->band_edge_5g_unii_2c_lo_he =
+		CONFIG_NRF700X_BAND_UNII_2C_LOWER_EDGE_BACKOFF_HE;
+	tx_pwr_ctrl_params->band_edge_5g_unii_2c_hi_ht =
+		CONFIG_NRF700X_BAND_UNII_2C_UPPER_EDGE_BACKOFF_HT;
+	tx_pwr_ctrl_params->band_edge_5g_unii_2c_hi_he =
+		CONFIG_NRF700X_BAND_UNII_2C_UPPER_EDGE_BACKOFF_HE;
+	tx_pwr_ctrl_params->band_edge_5g_unii_3_lo_ht =
+		CONFIG_NRF700X_BAND_UNII_3_LOWER_EDGE_BACKOFF_HT;
+	tx_pwr_ctrl_params->band_edge_5g_unii_3_lo_he =
+		CONFIG_NRF700X_BAND_UNII_3_LOWER_EDGE_BACKOFF_HE;
+	tx_pwr_ctrl_params->band_edge_5g_unii_3_hi_ht =
+		CONFIG_NRF700X_BAND_UNII_3_UPPER_EDGE_BACKOFF_HT;
+	tx_pwr_ctrl_params->band_edge_5g_unii_3_hi_he =
+		CONFIG_NRF700X_BAND_UNII_3_UPPER_EDGE_BACKOFF_HE;
+	tx_pwr_ctrl_params->band_edge_5g_unii_4_lo_ht =
+		CONFIG_NRF700X_BAND_UNII_4_LOWER_EDGE_BACKOFF_HT;
+	tx_pwr_ctrl_params->band_edge_5g_unii_4_lo_he =
+		CONFIG_NRF700X_BAND_UNII_4_LOWER_EDGE_BACKOFF_HE;
+	tx_pwr_ctrl_params->band_edge_5g_unii_4_hi_ht =
+		CONFIG_NRF700X_BAND_UNII_4_UPPER_EDGE_BACKOFF_HT;
+	tx_pwr_ctrl_params->band_edge_5g_unii_4_hi_he =
+		CONFIG_NRF700X_BAND_UNII_4_UPPER_EDGE_BACKOFF_HE;
 
-#if defined(CONFIG_BOARD_NRF7002DK_NRF7001_NRF5340_CPUAPP) || \
-defined(CONFIG_BOARD_NRF7002DK_NRF5340_CPUAPP) || \
-defined(CONFIG_BOARD_NRF5340DK_NRF5340_CPUAPP)
-	set_tx_pwr_ceil_default(tx_pwr_ceil_params);
-	#if DT_NODE_HAS_PROP(DT_NODELABEL(nrf70_tx_power_ceiling), max_pwr_2g_dsss)
-		tx_pwr_ceil_params->max_pwr_2g_dsss =
+
+	tx_pwr_ceil_params->max_pwr_2g_dsss =
 			DT_PROP(DT_NODELABEL(nrf70_tx_power_ceiling), max_pwr_2g_dsss);
-	#endif
 
-	#if DT_NODE_HAS_PROP(DT_NODELABEL(nrf70_tx_power_ceiling), max_pwr_2g_mcs7)
-		tx_pwr_ceil_params->max_pwr_2g_mcs7 =
-			DT_PROP(DT_NODELABEL(nrf70_tx_power_ceiling), max_pwr_2g_mcs7);
-	#endif
+	tx_pwr_ceil_params->max_pwr_2g_mcs7 =
+		DT_PROP(DT_NODELABEL(nrf70_tx_power_ceiling), max_pwr_2g_mcs7);
 
-	#if DT_NODE_HAS_PROP(DT_NODELABEL(nrf70_tx_power_ceiling), max_pwr_2g_mcs0)
-		tx_pwr_ceil_params->max_pwr_2g_mcs0 =
-			DT_PROP(DT_NODELABEL(nrf70_tx_power_ceiling), max_pwr_2g_mcs0);
-	#endif
+	tx_pwr_ceil_params->max_pwr_2g_mcs0 =
+		DT_PROP(DT_NODELABEL(nrf70_tx_power_ceiling), max_pwr_2g_mcs0);
 
-	#if DT_NODE_EXISTS(DT_NODELABEL(nrf70_tx_power_ceiling))
-		tx_pwr_ceil_params->rf_tx_pwr_ceil_params_override = 1;
-	#else
-		tx_pwr_ceil_params->rf_tx_pwr_ceil_params_override = 0;
-	#endif
-#endif
+#ifndef CONFIG_NRF70_2_4G_ONLY
+	tx_pwr_ceil_params->max_pwr_5g_low_mcs7 =
+		DT_PROP(DT_NODELABEL(nrf70_tx_power_ceiling), max_pwr_5g_low_mcs7);
 
-#if defined(CONFIG_BOARD_NRF7002DK_NRF5340_CPUAPP) || defined(CONFIG_BOARD_NRF5340DK_NRF5340_CPUAPP)
+	tx_pwr_ceil_params->max_pwr_5g_mid_mcs7 =
+		DT_PROP(DT_NODELABEL(nrf70_tx_power_ceiling), max_pwr_5g_mid_mcs7);
 
-	#if DT_NODE_HAS_PROP(DT_NODELABEL(nrf70_tx_power_ceiling), max_pwr_5g_low_mcs7)
-		tx_pwr_ceil_params->max_pwr_5g_low_mcs7 =
-			DT_PROP(DT_NODELABEL(nrf70_tx_power_ceiling), max_pwr_5g_low_mcs7);
-	#endif
+	tx_pwr_ceil_params->max_pwr_5g_high_mcs7 =
+		DT_PROP(DT_NODELABEL(nrf70_tx_power_ceiling), max_pwr_5g_high_mcs7);
 
-	#if DT_NODE_HAS_PROP(DT_NODELABEL(nrf70_tx_power_ceiling), max_pwr_5g_mid_mcs7)
-		tx_pwr_ceil_params->max_pwr_5g_mid_mcs7 =
-			DT_PROP(DT_NODELABEL(nrf70_tx_power_ceiling), max_pwr_5g_mid_mcs7);
-	#endif
+	tx_pwr_ceil_params->max_pwr_5g_low_mcs0 =
+		DT_PROP(DT_NODELABEL(nrf70_tx_power_ceiling), max_pwr_5g_low_mcs0);
 
-	#if DT_NODE_HAS_PROP(DT_NODELABEL(nrf70_tx_power_ceiling), max_pwr_5g_high_mcs7)
-		tx_pwr_ceil_params->max_pwr_5g_high_mcs7 =
-			DT_PROP(DT_NODELABEL(nrf70_tx_power_ceiling), max_pwr_5g_high_mcs7);
-	#endif
+	tx_pwr_ceil_params->max_pwr_5g_mid_mcs0 =
+		DT_PROP(DT_NODELABEL(nrf70_tx_power_ceiling), max_pwr_5g_mid_mcs0);
 
-	#if DT_NODE_HAS_PROP(DT_NODELABEL(nrf70_tx_power_ceiling), max_pwr_5g_low_mcs0)
-		tx_pwr_ceil_params->max_pwr_5g_low_mcs0 =
-			DT_PROP(DT_NODELABEL(nrf70_tx_power_ceiling), max_pwr_5g_low_mcs0);
-	#endif
-
-	#if DT_NODE_HAS_PROP(DT_NODELABEL(nrf70_tx_power_ceiling), max_pwr_5g_mid_mcs0)
-		tx_pwr_ceil_params->max_pwr_5g_mid_mcs0 =
-			DT_PROP(DT_NODELABEL(nrf70_tx_power_ceiling), max_pwr_5g_mid_mcs0);
-	#endif
-
-	#if DT_NODE_HAS_PROP(DT_NODELABEL(nrf70_tx_power_ceiling), max_pwr_5g_high_mcs0)
-		tx_pwr_ceil_params->max_pwr_5g_high_mcs0 =
-			DT_PROP(DT_NODELABEL(nrf70_tx_power_ceiling), max_pwr_5g_high_mcs0);
-	#endif
-#endif
+	tx_pwr_ceil_params->max_pwr_5g_high_mcs0 =
+		DT_PROP(DT_NODELABEL(nrf70_tx_power_ceiling), max_pwr_5g_high_mcs0);
+#endif /* CONFIG_NRF70_2_4G_ONLY */
 }
 
 enum nrf_wifi_status nrf_wifi_fmac_dev_add_zep(struct nrf_wifi_drv_priv_zep *drv_priv_zep)
@@ -585,7 +605,8 @@ enum nrf_wifi_status nrf_wifi_fmac_dev_add_zep(struct nrf_wifi_drv_priv_zep *drv
 					NRF_WIFI_DEF_PHY_CALIB,
 					op_band,
 					IS_ENABLED(CONFIG_NRF_WIFI_BEAMFORMING),
-					&tx_pwr_ctrl_params);
+					&tx_pwr_ctrl_params,
+					&tx_pwr_ceil_params);
 #else
 	status = nrf_wifi_fmac_dev_init(rpu_ctx_zep->rpu_ctx,
 #ifdef CONFIG_NRF_WIFI_LOW_POWER
@@ -657,6 +678,9 @@ static int nrf_wifi_drv_main_zep(const struct device *dev)
 	data_config.rate_protection_type = rate_protection_type;
 	callbk_fns.if_carr_state_chg_callbk_fn = nrf_wifi_if_carr_state_chg;
 	callbk_fns.rx_frm_callbk_fn = nrf_wifi_if_rx_frm;
+#if defined(CONFIG_NRF700X_RAW_DATA_RX) || defined(CONFIG_NRF700X_PROMISC_DATA_RX)
+	callbk_fns.rx_sniffer_frm_callbk_fn = nrf_wifi_if_sniffer_rx_frm;
+#endif /* CONFIG_NRF700X_RAW_DATA_RX || CONFIG_NRF700X_PROMISC_DATA_RX */
 #endif
 	rx_buf_pools[0].num_bufs = rx1_num_bufs;
 	rx_buf_pools[1].num_bufs = rx2_num_bufs;
@@ -667,6 +691,7 @@ static int nrf_wifi_drv_main_zep(const struct device *dev)
 
 	callbk_fns.scan_start_callbk_fn = nrf_wifi_event_proc_scan_start_zep;
 	callbk_fns.scan_done_callbk_fn = nrf_wifi_event_proc_scan_done_zep;
+	callbk_fns.reg_change_callbk_fn = reg_change_callbk_fn;
 #ifdef CONFIG_NET_L2_WIFI_MGMT
 	callbk_fns.disp_scan_res_callbk_fn = nrf_wifi_event_proc_disp_scan_res_zep;
 #endif /* CONFIG_NET_L2_WIFI_MGMT */
@@ -762,12 +787,15 @@ static struct wifi_mgmt_ops nrf_wifi_mgmt_ops = {
 	.reg_domain = nrf_wifi_reg_domain,
 	.get_power_save_config = nrf_wifi_get_power_save_config,
 #endif /* CONFIG_NRF700X_STA_MODE */
-#ifdef CONFIG_NRF700X_SYSTEM_MODE
+#ifdef CONFIG_NRF700X_SYSTEM_WITH_RAW_MODES
 	.mode = nrf_wifi_mode,
 #endif
-#ifdef CONFIG_NRF700X_RAW_DATA_TX
+#if defined(CONFIG_NRF700X_RAW_DATA_TX) || defined(CONFIG_NRF700X_RAW_DATA_RX)
 	.channel = nrf_wifi_channel,
-#endif /* CONFIG_NRF700X_RAW_DATA_TX */
+#endif /* CONFIG_NRF700X_RAW_DATA_TX || CONFIG_NRF700X_RAW_DATA_RX */
+#if defined(CONFIG_NRF700X_RAW_DATA_RX) || defined(CONFIG_NRF700X_PROMISC_DATA_RX)
+	.filter = nrf_wifi_filter,
+#endif /* CONFIG_NRF700X_RAW_DATA_RX || CONFIG_NRF700X_PROMISC_DATA_RX */
 };
 #endif /* CONFIG_NET_L2_WIFI_MGMT */
 
@@ -778,6 +806,7 @@ static const struct net_wifi_mgmt_offload wifi_offload_ops = {
 	.wifi_iface.start = nrf_wifi_if_start_zep,
 	.wifi_iface.stop = nrf_wifi_if_stop_zep,
 	.wifi_iface.set_config = nrf_wifi_if_set_config_zep,
+	.wifi_iface.get_config = nrf_wifi_if_get_config_zep,
 	.wifi_iface.get_capabilities = nrf_wifi_if_caps_get,
 	.wifi_iface.send = nrf_wifi_if_send,
 #ifdef CONFIG_NET_STATISTICS_ETHERNET
@@ -825,8 +854,7 @@ static const struct zep_wpa_supp_dev_ops wpa_supp_ops = {
 
 
 #ifdef CONFIG_NET_L2_ETHERNET
-ETH_NET_DEVICE_INIT(wlan0, /* name - token */
-		    "wlan0", /* driver name - dev->name */
+ETH_NET_DEVICE_DT_INST_DEFINE(0,
 		    nrf_wifi_drv_main_zep, /* init_fn */
 		    NULL, /* pm_action_cb */
 		    &rpu_drv_priv_zep.rpu_ctx_zep.vif_ctx_zep[0], /* data */
@@ -839,8 +867,7 @@ ETH_NET_DEVICE_INIT(wlan0, /* name - token */
 		    &wifi_offload_ops, /* api */
 		    CONFIG_NRF_WIFI_IFACE_MTU); /*mtu */
 #else
-DEVICE_DEFINE(wlan0, /* name - token */
-	      "wlan0", /* driver name - dev->name */
+DEVICE_DT_INST_DEFINE(0,
 	      nrf_wifi_drv_main_zep, /* init_fn */
 	      NULL, /* pm_action_cb */
 #ifndef CONFIG_NRF700X_RADIO_TEST
@@ -855,5 +882,5 @@ DEVICE_DEFINE(wlan0, /* name - token */
 #endif /* CONFIG_NRF700X_STA_MODE */
 
 #ifdef CONFIG_L2_WIFI_CONNECTIVITY
-CONN_MGR_BIND_CONN(wlan0, L2_CONN_WLAN0);
+CONN_MGR_BIND_CONN(Z_DEVICE_DT_DEV_ID(DT_DRV_INST(0)), L2_CONN_WLAN0);
 #endif /* CONFIG_L2_WIFI_CONNECTIVITY */

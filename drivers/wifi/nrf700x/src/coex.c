@@ -40,16 +40,15 @@ static struct nrf_wifi_ctx_zep *rpu_ctx = &rpu_drv_priv_zep.rpu_ctx_zep;
 /* copied from uccp530_77_registers.h of UCCP toolkit */
 #define ABS_PMB_WLAN_MAC_CTRL_PULSED_SOFTWARE_RESET 0xA5009A00UL
 
-#if defined(CONFIG_BOARD_NRF7002DK_NRF7001_NRF5340_CPUAPP) || \
-	defined(CONFIG_BOARD_NRF7002DK_NRF5340_CPUAPP)
+#ifdef CONFIG_NRF700X_RADIO_COEX
 	#define NRF_RADIO_COEX_NODE DT_NODELABEL(nrf_radio_coex)
-	static const struct gpio_dt_spec btrf_switch_spec =
+	static const struct gpio_dt_spec sr_rf_switch_spec =
 	GPIO_DT_SPEC_GET(NRF_RADIO_COEX_NODE, btrf_switch_gpios);
-#endif
+#endif /* CONFIG_NRF700X_RADIO_COEX */
 
 /* PTA registers configuration of Coexistence Hardware */
-/* Separate antenna configuration, WLAN in 2.4GHz*/
-const uint16_t config_buffer_SEA[] = {
+/* Separate antenna configuration, WLAN in 2.4GHz. For BLE protocol. */
+const uint16_t config_buffer_SEA_ble[] = {
 	0x0019, 0x00F6, 0x0008, 0x0062, 0x00F5,
 	0x00F5, 0x0019, 0x0019, 0x0074, 0x0074,
 	0x0008, 0x01E2, 0x00D5, 0x00D5, 0x01F6,
@@ -61,7 +60,20 @@ const uint16_t config_buffer_SEA[] = {
 	0x00F6, 0x0008, 0x0062, 0x0008, 0x001A
 };
 
-/* Shared antenna configuration, WLAN in 2.4GHz */
+/* Separate antenna configuration, WLAN in 2.4GHz. For non BLE protocol */
+const uint16_t config_buffer_SEA_non_ble[] = {
+	0x0019, 0x00F6, 0x0008, 0x0062, 0x00F5,
+	0x00F5, 0x0061, 0x0061, 0x0074, 0x0074,
+	0x01E2, 0x01E2, 0x00D5, 0x00D5, 0x01F6,
+	0x01F6, 0x0061, 0x0061, 0x01E2, 0x01E2,
+	0x00C4, 0x00C4, 0x0061, 0x0061, 0x0008,
+	0x0008, 0x00F5, 0x00F5, 0x00D5, 0x00D5,
+	0x0162, 0x0162, 0x0019, 0x0019, 0x01F6,
+	0x01F6, 0x00F6, 0x0019, 0x0062, 0x0019,
+	0x00F6, 0x0008, 0x0062, 0x0008, 0x001A
+};
+
+/* Shared antenna configuration, WLAN in 2.4GHz. */
 const uint16_t config_buffer_SHA[] = {
 	0x0019, 0x00F6, 0x0008, 0x00E2, 0x0015,
 	0x00F5, 0x0019, 0x0019, 0x0004, 0x01F6,
@@ -96,15 +108,23 @@ const uint32_t ch_config_sha[] = {
 	0x00000000
 };
 
-/* Separate antennas */
-const uint32_t ch_config_sep[] = {
+/* Separate antennas. For BLE protocol. */
+const uint32_t ch_config_sep_ble[] = {
 	0x00000028, 0x00000000, 0x001e1023, 0x00000000, 0x00000000,
 	0x00000000, 0x00000021, 0x000002ca, 0x00000055, 0x00000000,
 	0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
 	0x00000000
 };
 
-int nrf_wifi_coex_config_non_pta(bool separate_antennas)
+/* Separate antennas. For non BLE protocol. */
+const uint32_t ch_config_sep_non_ble[] = {
+	0x00000028, 0x00000000, 0x001e1023, 0x00000000, 0x00000000,
+	0x00000000, 0x00000021, 0x000002ca, 0x00000055, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000
+};
+
+int nrf_wifi_coex_config_non_pta(bool separate_antennas, bool is_sr_protocol_ble)
 {
 	enum nrf_wifi_status status = NRF_WIFI_STATUS_FAIL;
 	struct coex_ch_configuration params  = { 0 };
@@ -121,7 +141,11 @@ int nrf_wifi_coex_config_non_pta(bool separate_antennas)
 	EXT_SYS_WLANSYSCOEX_CH_TIME_REFERENCE) >> 2) + 1;
 
 	if (separate_antennas) {
-		config_buffer_ptr = ch_config_sep;
+		if (is_sr_protocol_ble) {
+			config_buffer_ptr = ch_config_sep_ble;
+		} else {
+			config_buffer_ptr = ch_config_sep_non_ble;
+		}
 	} else {
 		config_buffer_ptr = ch_config_sha;
 	}
@@ -138,10 +162,8 @@ int nrf_wifi_coex_config_non_pta(bool separate_antennas)
 	}
 
 	cmd_len = (COEX_CONFIG_FIXED_PARAMS + num_reg_to_config) * sizeof(uint32_t);
-
-	status = nrf_wifi_fmac_conf_btcoex(rpu_ctx->rpu_ctx,
+	status = nrf_wifi_fmac_conf_srcoex(rpu_ctx->rpu_ctx,
 					   (void *)(&params), cmd_len);
-
 	if (status != NRF_WIFI_STATUS_SUCCESS) {
 		return -1;
 	}
@@ -149,7 +171,8 @@ int nrf_wifi_coex_config_non_pta(bool separate_antennas)
 	return 0;
 }
 
-int nrf_wifi_coex_config_pta(enum nrf_wifi_pta_wlan_op_band wlan_band, bool separate_antennas)
+int nrf_wifi_coex_config_pta(enum nrf_wifi_pta_wlan_op_band wlan_band, bool separate_antennas,
+	bool is_sr_protocol_ble)
 {
 	enum nrf_wifi_status status = NRF_WIFI_STATUS_FAIL;
 	struct coex_ch_configuration params  = { 0 };
@@ -170,7 +193,11 @@ int nrf_wifi_coex_config_pta(enum nrf_wifi_pta_wlan_op_band wlan_band, bool sepa
 		/* WLAN operating in 2.4GHz */
 		if (separate_antennas) {
 			/* separate antennas configuration */
-			config_buffer_ptr = config_buffer_SEA;
+			if (is_sr_protocol_ble) {
+				config_buffer_ptr = config_buffer_SEA_ble;
+			} else {
+				config_buffer_ptr = config_buffer_SEA_non_ble;
+			}
 		} else {
 			/* Shared antenna configuration */
 			config_buffer_ptr = config_buffer_SHA;
@@ -194,47 +221,41 @@ int nrf_wifi_coex_config_pta(enum nrf_wifi_pta_wlan_op_band wlan_band, bool sepa
 	}
 
 	cmd_len = (COEX_CONFIG_FIXED_PARAMS + num_reg_to_config) * sizeof(uint32_t);
-
-	status = nrf_wifi_fmac_conf_btcoex(rpu_ctx->rpu_ctx,
+	status = nrf_wifi_fmac_conf_srcoex(rpu_ctx->rpu_ctx,
 					   (void *)(&params), cmd_len);
-
 	if (status != NRF_WIFI_STATUS_SUCCESS) {
 		return -1;
 	}
 
 	return 0;
 }
-
-#if defined(CONFIG_BOARD_NRF7002DK_NRF7001_NRF5340_CPUAPP) || \
-	defined(CONFIG_BOARD_NRF7002DK_NRF5340_CPUAPP)
+#ifdef CONFIG_NRF700X_RADIO_COEX
 int nrf_wifi_config_sr_switch(bool separate_antennas)
 {
 	int ret;
 
-	if (!device_is_ready(btrf_switch_spec.port)) {
+	if (!device_is_ready(sr_rf_switch_spec.port)) {
 		LOG_ERR("Unable to open GPIO device");
 		return -ENODEV;
 	}
 
-	ret = gpio_pin_configure_dt(&btrf_switch_spec, GPIO_OUTPUT);
+	ret = gpio_pin_configure_dt(&sr_rf_switch_spec, GPIO_OUTPUT);
 	if (ret < 0) {
 		LOG_ERR("Unable to configure GPIO device");
 		return -1;
 	}
 
 	if (separate_antennas) {
-		gpio_pin_set_dt(&btrf_switch_spec, 0x0);
+		gpio_pin_set_dt(&sr_rf_switch_spec, 0x0);
 		LOG_INF("GPIO P1.10 set to 0");
 	} else {
-		gpio_pin_set_dt(&btrf_switch_spec, 0x1);
+		gpio_pin_set_dt(&sr_rf_switch_spec, 0x1);
 		LOG_INF("GPIO P1.10 set to 1");
 	}
 
-	LOG_DBG("Successfully configured GPIO P1.10");
-
 	return 0;
 }
-#endif
+#endif /* CONFIG_NRF700X_RADIO_COEX */
 
 int nrf_wifi_coex_hw_reset(void)
 {
@@ -258,7 +279,7 @@ int nrf_wifi_coex_hw_reset(void)
 
 	cmd_len = (COEX_CONFIG_FIXED_PARAMS + num_reg_to_config) * sizeof(uint32_t);
 
-	status = nrf_wifi_fmac_conf_btcoex(rpu_ctx->rpu_ctx,
+	status = nrf_wifi_fmac_conf_srcoex(rpu_ctx->rpu_ctx,
 				(void *)(&params), cmd_len);
 
 	if (status != NRF_WIFI_STATUS_SUCCESS) {

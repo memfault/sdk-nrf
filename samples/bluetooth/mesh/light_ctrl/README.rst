@@ -7,7 +7,7 @@ Bluetooth Mesh: Light fixture
    :local:
    :depth: 2
 
-The Bluetooth® mesh light fixture sample demonstrates how to set up a light control mesh server model application, and control a dimmable LED with Bluetooth Mesh using the :ref:`bt_mesh_onoff_readme`.
+The Bluetooth® Mesh light fixture sample demonstrates how to set up a light control mesh server model application, and control a dimmable LED with Bluetooth Mesh using the :ref:`bt_mesh_onoff_readme`.
 
 This sample demonstrates how to implement the following :ref:`ug_bt_mesh_nlc`:
 
@@ -142,6 +142,9 @@ LEDs:
 .. note::
    :ref:`zephyr:thingy53_nrf5340` supports only one RGB LED.
    Each RGB LED channel is used as separate LED.
+
+.. note::
+   :ref:`zephyr:thingy53_nrf5340` and the :ref:`zephyr:nrf52840dongle_nrf52840` do not support emergency data storage.
 
 Configuration
 *************

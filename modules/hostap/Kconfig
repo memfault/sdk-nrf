@@ -16,10 +16,18 @@ menuconfig WPA_SUPP
 	select NET_L2_WIFI_MGMT
 	select WIFI_NM
 	select EXPERIMENTAL if !SOC_SERIES_NRF53X && !SOC_SERIES_NRF91X
+	select COMMON_LIBC_MALLOC
 	help
 	  WPA supplicant implements 802.1X related functions.
 
 if WPA_SUPP
+
+config COMMON_LIBC_MALLOC_ARENA_SIZE
+	default 40000 if WPA_SUPP_AP
+	# 8192 for MbedTLS heap
+	default 21808 if MBEDTLS_ENABLE_HEAP
+	# 30K is mandatory, but might need more for long duration use cases
+	default 30000
 
 # Hidden as these are mandatory for WFA certification
 config WPA_SUPP_WMM_AC
@@ -53,6 +61,10 @@ endif
 choice LIBC_IMPLEMENTATION
 	default NEWLIB_LIBC
 endchoice
+
+config WPA_SUPP_MGD_IFACES_PREFIXES
+	string "WPA supplicant managed interfaces prefixes"
+	default "wlan,esp,nordic_wlan"
 
 config WPA_SUPP_THREAD_STACK_SIZE
 	int "Stack size for wpa_supplicant thread"
@@ -102,6 +114,7 @@ config WPA_SUPP_CRYPTO_PSA
 	select MBEDTLS_CMAC_C
 	select MBEDTLS_GCM_C
 	select MBEDTLS_TLS_LIBRARY
+	select MBEDTLS_PK_C
 	select MBEDTLS_PK_WRITE_C
 	select MBEDTLS_X509_LIBRARY
 	select MBEDTLS_X509_CRT_PARSE_C
@@ -122,20 +135,11 @@ config WPA_SUPP_CRYPTO_LEGACY
 	select MBEDTLS_LEGACY_CRYPTO_C
 	select MBEDTLS_ECP_C
 	select MBEDTLS_CTR_DRBG_C
+	select MBEDTLS_PK_C
+	select MBEDTLS_PKCS5_C
+	select MBEDTLS_CIPHER_PADDING_PKCS7
 	select MBEDTLS_PK_WRITE_C
 	select MBEDTLS_KEY_EXCHANGE_ALL_ENABLED
-
-config WPA_SUPP_CRYPTO_LEGACY_BUILTIN
-	bool "Legacy Crypto support for WiFi using builtin MbedTLS"
-	select MBEDTLS
-	select MBEDTLS_CIPHER_MODE_CTR_ENABLED
-	select MBEDTLS_CIPHER_MODE_CBC_ENABLED
-	select MBEDTLS_PK_WRITE_C
-	select MBEDTLS_ECP_C
-	select MBEDTLS_ECP_ALL_ENABLED
-	select MBEDTLS_PKCS5_C
-	select MBEDTLS_MAC_CMAC_ENABLED
-
 
 config WPA_SUPP_CRYPTO_NONE
 	bool "No Crypto support for WiFi"

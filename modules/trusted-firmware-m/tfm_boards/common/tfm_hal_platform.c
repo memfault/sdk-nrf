@@ -6,8 +6,12 @@
 
 #if defined(TFM_PARTITION_CRYPTO)
 #include <autoconf.h>
+
+#ifdef CONFIG_HAS_HW_NRF_CC3XX
 #include <nrf_cc3xx_platform.h>
 #include <nrf_cc3xx_platform_ctr_drbg.h>
+#endif
+
 #endif
 
 #if defined(NRF_PROVISIONING)
@@ -19,7 +23,11 @@
 #include "cmsis.h"
 #include "uart_stdout.h"
 #include "tfm_spm_log.h"
+
+#ifdef CONFIG_HW_UNIQUE_KEY
 #include "hw_unique_key.h"
+#endif
+
 #include "config_tfm.h"
 #include "exception_info.h"
 #include "tfm_arch.h"
@@ -27,24 +35,24 @@
 #if defined(TFM_PARTITION_CRYPTO)
 static enum tfm_hal_status_t crypto_platform_init(void)
 {
-	int err;
+	int err = 0;
+#ifdef CONFIG_HAS_HW_NRF_CC3XX
 
 	/* Initialize the nrf_cc3xx runtime */
 #if !CRYPTO_RNG_MODULE_ENABLED
 	err = nrf_cc3xx_platform_init_no_rng();
-#else
-#if defined(CONFIG_PSA_NEED_CC3XX_CTR_DRBG_DRIVER)
+#elif defined(CONFIG_PSA_NEED_CC3XX_CTR_DRBG_DRIVER)
 	err = nrf_cc3xx_platform_init();
 #elif defined(CONFIG_PSA_NEED_CC3XX_HMAC_DRBG_DRIVER)
 	err = nrf_cc3xx_platform_init_hmac_drbg();
 #else
-	#error "Please enable either PSA_WANT_ALG_CTR_DRBG or PSA_WANT_ALG_HMAC_DRBG"
-#endif
+#error "Please enable either PSA_WANT_ALG_CTR_DRBG or PSA_WANT_ALG_HMAC_DRBG"
 #endif
 
-	if (err != NRF_CC3XX_PLATFORM_SUCCESS) {
+	if (err) {
 		return TFM_HAL_ERROR_BAD_STATE;
 	}
+#endif /* CONFIG_HAS_HW_NRF_CC3XX */
 
 #ifdef CONFIG_HW_UNIQUE_KEY_RANDOM
 	if (!hw_unique_key_are_any_written()) {
@@ -56,7 +64,7 @@ static enum tfm_hal_status_t crypto_platform_init(void)
 		}
 		SPMLOG_INFMSG("Success\r\n");
 	}
-#endif
+#endif /* CONFIG_HW_UNIQUE_KEY_RANDOM */
 
 	return TFM_HAL_SUCCESS;
 }
@@ -69,18 +77,18 @@ static enum tfm_hal_status_t crypto_platform_init(void)
 
 static void allow_nonsecure_reset(void)
 {
-    uint32_t reg_value = SCB->AIRCR;
+	uint32_t reg_value = SCB->AIRCR;
 
-    /* Clear SCB_AIRCR_VECTKEY value */
-    reg_value &= ~(uint32_t)(SCB_AIRCR_VECTKEY_Msk);
+	/* Clear SCB_AIRCR_VECTKEY value */
+	reg_value &= ~(uint32_t)(SCB_AIRCR_VECTKEY_Msk);
 
-    /* Clear SCB_AIRC_SYSRESETREQS value */
-    reg_value &= ~(uint32_t)(SCB_AIRCR_SYSRESETREQS_Msk);
+	/* Clear SCB_AIRC_SYSRESETREQS value */
+	reg_value &= ~(uint32_t)(SCB_AIRCR_SYSRESETREQS_Msk);
 
-    /* Add VECTKEY value needed to write the register. */
-    reg_value |= (uint32_t)(AIRCR_VECTKEY_PERMIT_WRITE);
+	/* Add VECTKEY value needed to write the register. */
+	reg_value |= (uint32_t)(AIRCR_VECTKEY_PERMIT_WRITE);
 
-    SCB->AIRCR = reg_value;
+	SCB->AIRCR = reg_value;
 }
 
 enum tfm_hal_status_t tfm_hal_platform_init(void)
@@ -94,8 +102,7 @@ enum tfm_hal_status_t tfm_hal_platform_init(void)
 
 #if defined(TFM_PARTITION_CRYPTO)
 	status = crypto_platform_init();
-	if (status != TFM_HAL_SUCCESS)
-	{
+	if (status != TFM_HAL_SUCCESS) {
 		return status;
 	}
 #endif /* defined(TFM_PARTITION_CRYPTO) */
@@ -110,7 +117,8 @@ enum tfm_hal_status_t tfm_hal_platform_init(void)
  */
 #if defined(NRF_PROVISIONING)
 	enum tfm_security_lifecycle_t lcs = tfm_attest_hal_get_security_lifecycle();
-	if(lcs != TFM_SLC_PSA_ROT_PROVISIONING && lcs != TFM_SLC_SECURED) {
+
+	if (lcs != TFM_SLC_PSA_ROT_PROVISIONING && lcs != TFM_SLC_SECURED) {
 		return TFM_HAL_ERROR_BAD_STATE;
 	}
 #endif /* defined(NRF_PROVISIONING) */

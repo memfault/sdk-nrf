@@ -101,7 +101,16 @@ tests:
     integration_platforms:
       - nrf9160dk_nrf9160_ns
       - nrf9161dk_nrf9161_ns
-    platform_allow: nrf9160dk_nrf9160_ns nrf9161dk_nrf9161_ns
+    platform_allow:
+      - nrf9160dk_nrf9160_ns
+      - nrf9161dk_nrf9161_ns
+      - nrf9151dk_nrf9151_ns
+    tags: ci_build
+  sample.nrf7002.shell.scan_only_thingy91x:
+    build_only: true
+    extra_args: OVERLAY_CONFIG=overlay-scan-only.conf CONFIG_WPA_SUPP=n
+    platform_allow:
+      - thingy91x_nrf9151_ns
     tags: ci_build
   sample.nrf7002.shell.otbr:
     build_only: true
@@ -222,4 +231,32 @@ tests:
     integration_platforms:
       - nrf7002dk_nrf5340_cpuapp
     platform_allow: nrf7002dk_nrf5340_cpuapp
+    tags: ci_build
+  sample.nrf7002.with_overlay_raw_tx_packet:
+    build_only: true
+    extra_args: OVERLAY_CONFIG=overlay-raw-tx.conf
+    integration_platforms:
+      - nrf7002dk_nrf5340_cpuapp
+    platform_allow: nrf7002dk_nrf5340_cpuapp
+    tags: ci_build
+  sample.nrf7002.with_overlay_monitor:
+    build_only: true
+    extra_args: OVERLAY_CONFIG=overlay-monitor-mode.conf
+    integration_platforms:
+      - nrf7002dk_nrf5340_cpuapp
+    platform_allow: nrf7002dk_nrf5340_cpuapp
+    tags: ci_build
+  sample.nrf7002.promiscuous_mode:
+    build_only: true
+    extra_args: OVERLAY_CONFIG=overlay-promiscuous-mode.conf
+    integration_platforms:
+      - nrf7002dk_nrf5340_cpuapp
+    platform_allow: nrf7002dk_nrf5340_cpuapp
+    tags: ci_build
+  sample.nrf7001.promiscuous_mode_7001:
+    build_only: true
+    extra_args: OVERLAY_CONFIG=overlay-promiscuous-mode.conf
+    integration_platforms:
+      - nrf7002dk_nrf7001_nrf5340_cpuapp
+    platform_allow: nrf7002dk_nrf7001_nrf5340_cpuapp
     tags: ci_build

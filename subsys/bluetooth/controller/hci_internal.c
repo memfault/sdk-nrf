@@ -620,7 +620,9 @@ static void vs_zephyr_supported_commands(sdc_hci_vs_zephyr_supported_commands_t 
 	cmds->write_bd_addr = 1;
 	cmds->read_static_addresses = 1;
 	cmds->read_key_hierarchy_roots = 1;
+#ifdef CONFIG_DT_HAS_NORDIC_NRF_TEMP_ENABLED
 	cmds->read_chip_temperature = 1;
+#endif
 
 #if defined(CONFIG_BT_CTLR_TX_PWR_DYNAMIC_CONTROL)
 	cmds->write_tx_power_level = 1;
@@ -665,6 +667,13 @@ static void vs_supported_commands(sdc_hci_vs_supported_vs_commands_t *cmds)
 #endif
 #if defined(CONFIG_BT_CTLR_ISO_TX_BUFFERS)
 	cmds->iso_read_tx_timestamp = 1;
+#endif
+#if defined(CONFIG_BT_CTLR_ADV_ISO)
+	cmds->big_reserved_time_set = 1;
+#endif
+#if defined(CONFIG_BT_CTLR_CONN_ISO)
+	cmds->cig_reserved_time_set = 1;
+	cmds->cis_subevent_length_set = 1;
 #endif
 }
 #endif	/* CONFIG_BT_HCI_VS */
@@ -1532,9 +1541,11 @@ static uint8_t vs_cmd_put(uint8_t const *const cmd, uint8_t *const raw_event_out
 	case SDC_HCI_OPCODE_CMD_VS_ZEPHYR_WRITE_BD_ADDR:
 		return sdc_hci_cmd_vs_zephyr_write_bd_addr((void *)cmd_params);
 
+#if defined(CONFIG_DT_HAS_NORDIC_NRF_TEMP_ENABLED)
 	case SDC_HCI_OPCODE_CMD_VS_ZEPHYR_READ_CHIP_TEMP:
 		*param_length_out += sizeof(sdc_hci_cmd_vs_zephyr_read_chip_temp_return_t);
 		return sdc_hci_cmd_vs_zephyr_read_chip_temp((void *)event_out_params);
+#endif
 
 #if defined(CONFIG_BT_CTLR_TX_PWR_DYNAMIC_CONTROL)
 	case SDC_HCI_OPCODE_CMD_VS_ZEPHYR_WRITE_TX_POWER:
@@ -1612,6 +1623,19 @@ static uint8_t vs_cmd_put(uint8_t const *const cmd, uint8_t *const raw_event_out
 			(sdc_hci_cmd_vs_iso_read_tx_timestamp_t const *)cmd_params,
 			(sdc_hci_cmd_vs_iso_read_tx_timestamp_return_t *)event_out_params);
 #endif /* CONFIG_BT_CTLR_ISO_TX_BUFFERS */
+#if defined(CONFIG_BT_ISO_BROADCASTER)
+	case SDC_HCI_OPCODE_CMD_VS_BIG_RESERVED_TIME_SET:
+		return sdc_hci_cmd_vs_big_reserved_time_set(
+			(sdc_hci_cmd_vs_big_reserved_time_set_t const *)cmd_params);
+#endif
+#if defined(CONFIG_BT_CTLR_CONN_ISO)
+	case SDC_HCI_OPCODE_CMD_VS_CIG_RESERVED_TIME_SET:
+		return sdc_hci_cmd_vs_cig_reserved_time_set(
+			(sdc_hci_cmd_vs_cig_reserved_time_set_t const *)cmd_params);
+	case SDC_HCI_OPCODE_CMD_VS_CIS_SUBEVENT_LENGTH_SET:
+		return sdc_hci_cmd_vs_cis_subevent_length_set(
+			(sdc_hci_cmd_vs_cis_subevent_length_set_t const *)cmd_params);
+#endif
 	default:
 		return BT_HCI_ERR_UNKNOWN_CMD;
 	}

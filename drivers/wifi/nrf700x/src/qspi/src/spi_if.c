@@ -17,7 +17,7 @@
 #include "qspi_if.h"
 #include "spi_if.h"
 
-LOG_MODULE_DECLARE(wifi_nrf, CONFIG_WIFI_NRF700X_BUS_LOG_LEVEL);
+LOG_MODULE_DECLARE(wifi_nrf_bus, CONFIG_WIFI_NRF700X_BUS_LOG_LEVEL);
 
 #define NRF7002_NODE DT_NODELABEL(nrf700x)
 
@@ -164,6 +164,11 @@ int _spim_wait_while_rpu_awake(void)
 		k_msleep(1);
 	}
 
+	if (ret || !(val & RPU_AWAKE_BIT)) {
+		LOG_ERR("RPU is not awake even after 10ms");
+		return -1;
+	}
+
 	return val;
 }
 
@@ -184,6 +189,11 @@ int spim_wait_while_rpu_wake_write(void)
 		}
 
 		k_msleep(1);
+	}
+
+	if (ret || !(val & RPU_WAKEUP_NOW)) {
+		LOG_ERR("RPU wakeup write ACK failed even after 10ms");
+		return -1;
 	}
 
 	return ret;

@@ -1,13 +1,13 @@
 .. _ug_bt_fast_pair:
 
-Using Google Fast Pair with the |NCS|
-#####################################
+Google Fast Pair integration
+############################
 
 .. contents::
    :local:
    :depth: 2
 
-Google Fast Pair is a standard for pairing Bluetooth® and Bluetooth Low Energy (LE) devices with as little user interaction required as possible.
+Google Fast Pair is a standard for pairing *Bluetooth®* and Bluetooth Low Energy (LE) devices with as little user interaction required as possible.
 Google also provides additional features built upon the Fast Pair standard.
 For detailed information about supported functionalities, see the official `Fast Pair`_ documentation.
 
@@ -17,6 +17,27 @@ For detailed information about supported functionalities, see the official `Fast
 
    The implementation passes tests of `Fast Pair Validator app`_ (beta version).
    The procedure triggered in Android settings is successful (tested with Android 11).
+
+Integration prerequisites
+*************************
+
+Before you start the |NCS| integration with Fast Pair, make sure that the following prerequisites are fulfilled:
+
+* :ref:`Install the nRF Connect SDK <installation>`.
+* Set up a supported :term:`Development Kit (DK)`.
+  See :ref:`device_guides` for more information on setting up the DK you are using.
+* Install the requirements mentioned in the :ref:`bt_fast_pair_provision_script`.
+  The script is automatically invoked by the build system during application build to generate Fast Pair provisioning data hex file.
+* During the early stages of development, you can use the debug Model ID and Anti-Spoofing Public/Private Key pair obtained by Nordic Semiconductor for local tests.
+  Later on, you need to register your own Fast Pair Provider device with Google.
+  The :ref:`ug_bt_fast_pair_provisioning_register` section in this document explains how to register the device and obtain the Model ID and Anti-Spoofing Public/Private Key pair.
+
+Solution architecture
+*********************
+
+The |NCS| integrates the Fast Pair Provider role, facilitating communication between the Fast Pair Seeker (typically a smartphone) and the Provider (your device).
+The integration involves following the instructions outlined in the :ref:`ug_integrating_fast_pair` section.
+The SDK supports extensions such as Battery Notification and Personalized Name, which can be included based on the specific use case requirements.
 
 .. _ug_fast_pair_extensions:
 
@@ -51,8 +72,8 @@ For more details on this extension, see the `Fast Pair Personalized Name extensi
 
 .. _ug_integrating_fast_pair:
 
-Integrating Fast Pair
-*********************
+Integration steps
+*****************
 
 The Fast Pair standard integration in the |NCS| consists of the following steps:
 
@@ -87,8 +108,8 @@ See the official `Fast Pair Model Registration`_ documentation for information o
 Alternatively, you can use the debug Model ID and Anti-Spoofing Public/Private Key pair obtained by Nordic Semiconductor for the development purposes.
 See the following samples and applications for details about the debug Fast Pair Providers registered by Nordic:
 
-* the :ref:`fast_pair_input_device` sample
-* the :ref:`nrf_desktop` application
+* The :ref:`fast_pair_input_device` sample
+* The :ref:`nrf_desktop` application
 
 .. _ug_bt_fast_pair_provisioning_register_device_type:
 
@@ -136,16 +157,22 @@ You must enable the :kconfig:option:`CONFIG_BT_FAST_PAIR` Kconfig option to supp
 An application can communicate with the Fast Pair subsystem using API calls and registered callbacks.
 The Fast Pair subsystem uses the registered callbacks to inform the application about the Fast Pair related events.
 
-The application must register the callbacks before it starts to operate as the Fast Pair Provider and advertise Bluetooth LE packets.
+The application must register the callbacks before it enables the Fast Pair subsystem and starts to operate as the Fast Pair Provider and advertise Bluetooth LE packets.
 To identify the callback registration functions in the Fast Pair API, look for the ``_register`` suffix.
 Set your application-specific callback functions in the callback structure that is the input parameter for the ``..._register`` API function.
 The callback structure must persist in the application memory (static declaration), as during the registration, the Fast Pair module stores only the memory pointer to it.
 
-The standard Fast Pair API (without extensions) currently supports the :c:func:`bt_fast_pair_info_cb` function (optional) for registering application callbacks.
+The standard Fast Pair API (without extensions) currently supports the :c:func:`bt_fast_pair_info_cb_register` function (optional) for registering application callbacks.
 
 The standard Fast Pair (without extensions) does not require registration of any callback type, meaning all callbacks are optional.
 
-Apart from the callback registration, no additional operations are needed to integrate the standard Fast Pair implementation.
+After the callback registration, the Fast Pair subsystem must be enabled with the :c:func:`bt_fast_pair_enable` function.
+Before performing the :c:func:`bt_fast_pair_enable` operation, you must enable Bluetooth with the :c:func:`bt_enable` function and load Zephyr's :ref:`zephyr:settings_api` with the :c:func:`settings_load` function.
+The Fast Pair subsystem readiness can be checked with the :c:func:`bt_fast_pair_is_ready` function.
+The Fast Pair subsystem can be disabled with the :c:func:`bt_fast_pair_disable` function.
+In the Fast Pair subsystem disabled state, most of the Fast Pair APIs are not available.
+
+Apart from the callback registration and enabling the Fast Pair subsystem, no additional operations are needed to integrate the standard Fast Pair implementation.
 
 Personalized Name extension
 ===========================
@@ -242,6 +269,9 @@ The service implements functionalities required by the `Fast Pair Procedure`_.
 The procedure is initiated by the Fast Pair Seeker after Bluetooth LE connection is established.
 No application interaction is required.
 
+The Fast Pair GATT service is statically defined, so it is still present in the GATT database after the Fast Pair subsystem is disabled.
+In the Fast Pair subsystem disabled state, GATT operations on the Fast Pair service are rejected.
+
 The Fast Pair GATT service modifies default values of related Kconfig options to follow Fast Pair requirements.
 The service also enables the needed functionalities using Kconfig select statement.
 For details, see the :ref:`bt_fast_pair_readme` Bluetooth service documentation in the |NCS|.
@@ -269,6 +299,9 @@ Managing factory resets
 
 The Fast Pair GATT service uses a non-volatile memory to store the Fast Pair user data such as Account Keys and the Personalized Name.
 This data can be cleared by calling the :c:func:`bt_fast_pair_factory_reset` function.
+Calling the :c:func:`bt_fast_pair_factory_reset` function does not affect the Fast Pair subsystem's readiness.
+If the subsystem is enabled with the :c:func:`bt_fast_pair_enable` function, it stays enabled after calling the :c:func:`bt_fast_pair_factory_reset` function.
+The same applies for the Fast Pair subsystem disabled state.
 For details, see the :c:func:`bt_fast_pair_factory_reset` function documentation.
 
 .. _ug_bt_fast_pair_factory_reset_custom_user_reset_action:
@@ -282,8 +315,8 @@ Optionally, you can also define the :c:func:`bt_fast_pair_factory_reset_user_act
 Both functions are defined as weak no-op functions.
 Ensure that your reset action implementation executes correctly in the following execution contexts:
 
-* In the :c:func:`bt_fast_pair_factory_reset` function context: the factory reset action is triggered by calling the :c:func:`bt_fast_pair_factory_reset` function.
-* In the :c:func:`settings_load` function context during the commit phase (after data is loaded from the non-volatile memory): the factory reset action using the :c:func:`bt_fast_pair_factory_reset` function was interrupted and the factory reset is retried on the system bootup.
+* In the :c:func:`bt_fast_pair_factory_reset` function context - The factory reset action is triggered by calling the :c:func:`bt_fast_pair_factory_reset` function.
+* In the :c:func:`bt_fast_pair_enable` function context - The factory reset action using the :c:func:`bt_fast_pair_factory_reset` function was interrupted, and the factory reset is retried when enabling the Fast Pair subsystem.
 
 .. caution::
    If the factory reset operation constantly fails due to an error in the custom user reset action, the system may never be able to properly boot-up.
@@ -302,3 +335,42 @@ The specific use case of the Google Fast Pair application is indicated by the ch
 Different use cases may require implementation of additional guidelines for your accessory firmware or specific configuration of your device model in the Google Nearby Devices console.
 These requirements typically help to improve user experience or security properties for the chosen use case.
 To learn more, see the official `Fast Pair`_ documentation.
+
+Applications and samples
+************************
+
+The following application and sample use the Fast Pair integration in the |NCS|:
+
+* :ref:`nrf_desktop` application
+* :ref:`fast_pair_input_device` sample
+
+Library support
+***************
+
+The following |NCS| libraries support the Fast Pair integration:
+
+* :ref:`bt_fast_pair_readme` library implements the Fast Pair GATT Service and provides the APIs required for :ref:`ug_bt_fast_pair` with the |NCS|.
+* :ref:`bt_le_adv_prov_readme` library - Google Fast Pair advertising data provider (:kconfig:option:`CONFIG_BT_ADV_PROV_FAST_PAIR`) can be used to integrate Fast Pair advertising payload to this library.
+  The Bluetooth LE advertising provider subsystem can be used to manage advertising and scan response data.
+
+Required scripts
+****************
+
+The :ref:`bt_fast_pair_provision_script` is required to generate the provisioning data for the device.
+The script is automatically invoked by the build system during application build when the :kconfig:option:`CONFIG_BT_FAST_PAIR` Kconfig option is enabled.
+
+Terms and licensing
+*******************
+
+The use of Google Fast Pair may be subject to Google's terms and licensing.
+Refer to the official `Fast Pair`_ documentation for development-related licensing information.
+
+Dependencies
+************
+
+The following are the required dependencies for the Fast Pair integration:
+
+* :ref:`nrfxlib:crypto`
+* :ref:`zephyr:bluetooth`
+* :ref:`zephyr:settings_api`
+* :ref:`partition_manager`

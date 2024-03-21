@@ -10,6 +10,8 @@ AWS IoT
 The Amazon Web Services Internet-of-Things (AWS IoT) sample demonstrates how to connect an nRF91 Series or nRF70 Series device to the `AWS IoT Core`_ service over MQTT to publish and receive messages.
 This sample showcases the use of the :ref:`lib_aws_iot` library, which includes support for FOTA using the :ref:`lib_aws_fota` library.
 
+.. |wifi| replace:: Wi-Fi®
+
 .. include:: /includes/net_connection_manager.txt
 
 Before this sample can be used, an AWS IoT server instance needs to be setup in order for the device to connect to it.
@@ -66,7 +68,7 @@ In addition to publishing data to the AWS IoT shadow, the sample also subscribes
 +--------------------------------------------------+----------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------+
 | ``my-custom-topic/example``                      | NA - Non-shadow topic                                          | Dummy application-specific topic. Can be used for anything.                                                         |
 +--------------------------------------------------+----------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------+
-| ``my-custom-topic/example``                      | NA - Non-shadow topic                                          | Dummy application-specific topic. Can be used for anything.                                                         |
+| ``my-custom-topic/example_2``                    | NA - Non-shadow topic                                          | Dummy application-specific topic. Can be used for anything.                                                         |
 +--------------------------------------------------+----------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------+
 
 The application-specific topics are not part of the AWS IoT shadow service and must therefore be passed to the :ref:`lib_aws_iot` library using the :c:func:`aws_iot_application_topics_set` function before connecting.
@@ -145,14 +147,16 @@ Configuration files
 The sample includes pre-configured configuration files for the development kits that are supported:
 
 * :file:`prj.conf` - General configuration file for all devices.
+* :file:`boards/nrf9151dk_nrf9151_ns.conf` - Configuration file for the nRF9151 DK.
+* :file:`boards/nrf9161dk_nrf9161_ns.conf` - Configuration file for the nRF9161 DK.
 * :file:`boards/nrf9160dk_nrf9160_ns.conf` - Configuration file for the nRF9160 DK.
 * :file:`boards/thingy91_nrf9160_ns.conf` - Configuration file for the Thingy:91.
-* :file:`boards/nrf7002dk_nrf5340_cpuapp.conf` - Configuration file for the nRF7002 DK.
+* :file:`boards/nrf7002dk_nrf5340_cpuapp_ns.conf` - Configuration file for the nRF7002 DK.
 * :file:`boards/qemu_x86.conf` - Configuration file for QEMU x86.
 
 The following configuration and DTS overlay files are included to host the MCUboot secondary image slot on external flash for the nRF7002 DK:
 
-* :file:`boards/nrf7002dk_nrf5340_cpuapp.overlay` - DTS overlay file for the application image.
+* :file:`boards/nrf7002dk_nrf5340_cpuapp_ns.overlay` - DTS overlay file for the application image.
 * :file:`child_image/mcuboot/nrf7002dk_nrf5340_cpuapp.overlay` - DTS overlay file for the MCUboot child image.
 * :file:`child_image/mcuboot/nrf7002dk_nrf5340_cpuapp.conf` - Configuration file for the MCUboot child image.
 
@@ -205,7 +209,7 @@ The *modem_version* parameter in messages published to AWS IoT will not be prese
 .. note::
    For nRF91 Series devices, the output differs from the above example output.
    This is because the sample enables the :ref:`lib_at_host` library using the :kconfig:option:`CONFIG_AT_HOST_LIBRARY` option.
-   This library makes it possible to send AT commands to the cellular modem and receive responses using the `Cellular Monitor`_ app from nRF Connect for Desktop.
+   This library makes it possible to send AT commands to the nRF91 Series modem and receive responses using the `Cellular Monitor`_ app from nRF Connect for Desktop.
    The additional logs are AT command responses that the modem sends to the application core that are forwarded over UART to be displayed on any of these nRF Connect for Desktop apps.
 
 To observe incoming messages in the AWS IoT console, follow the steps documented in :ref:`aws_iot_testing_and_debugging`.

@@ -5,6 +5,7 @@
  */
 
 #include "sensor.h"
+#include <bluetooth/mesh/sensor_types.h>
 #include <bluetooth/mesh/properties.h>
 #include <stdlib.h>
 #include <string.h>
@@ -63,7 +64,7 @@ sensor_cadence(const struct bt_mesh_sensor_threshold *threshold,
 		return BT_MESH_SENSOR_CADENCE_NORMAL;
 	}
 
-	bool in_range = SENSOR_VALUE_IN_RANGE(curr, low, high);
+	bool in_range = BT_MESH_SENSOR_VALUE_IN_RANGE(curr, low, high);
 #endif
 	return in_range ? threshold->range.cadence : !threshold->range.cadence;
 }
@@ -91,9 +92,17 @@ bool bt_mesh_sensor_delta_threshold(const struct bt_mesh_sensor *sensor,
 	 */
 	if (sensor->state.threshold.delta.type ==
 	    BT_MESH_SENSOR_DELTA_PERCENT) {
-		int64_t prev_mill = llabs(SENSOR_MILL(&sensor->state.prev));
+		/* Store the Status Delta Trigger threshold in sensor_value first to avoid int64_t
+		 * overflow caused by multiplication of values converted by the SENSOR_MILL() macro.
+		 */
+		struct sensor_value thrsh_delta = delta_mill >= 0 ?
+			sensor->state.threshold.delta.up : sensor->state.threshold.delta.down;
+		struct sensor_value thrsh = {
+			.val1 = thrsh_delta.val1 * sensor->state.prev.val1,
+			.val2 = thrsh_delta.val2 * sensor->state.prev.val2,
+		};
 
-		thrsh_mill = (prev_mill * thrsh_mill) / (100LL * 1000000LL);
+		thrsh_mill = llabs(SENSOR_MILL(&thrsh)) / 100LL;
 	}
 
 	if (IS_ENABLED(CONFIG_BT_MESH_MODEL_LOG_LEVEL_DBG)) {
@@ -291,6 +300,11 @@ int sensor_ch_encode(struct net_buf_simple *buf,
 	if (format != value->format) {
 		return -EINVAL;
 	}
+
+	if (net_buf_simple_tailroom(buf) < format->size) {
+		return -ENOMEM;
+	}
+
 	net_buf_simple_add_mem(buf, value->raw, value->format->size);
 	return 0;
 #endif
@@ -303,6 +317,9 @@ int sensor_ch_decode(struct net_buf_simple *buf,
 #ifdef CONFIG_BT_MESH_SENSOR_USE_LEGACY_SENSOR_VALUE
 	return format->decode(format, buf, value);
 #else
+	if (buf->len < format->size) {
+		return -ENOMEM;
+	}
 	value->format = format;
 	memcpy(value->raw, net_buf_simple_pull_mem(buf, format->size),
 	       format->size);
@@ -728,6 +745,41 @@ bool bt_mesh_sensor_value_in_column(const struct sensor_value *value,
 	       (value->val1 < col->end.val1 ||
 		(value->val1 == col->end.val1 && value->val2 <= col->end.val2));
 }
+#else
+bool bt_mesh_sensor_value_in_column(const struct bt_mesh_sensor_value *value,
+				    const struct bt_mesh_sensor_column *col)
+{
+	if (value->format == col->start.format &&
+	    value->format == col->width.format &&
+	    value->format->cb->value_in_column) {
+		return value->format->cb->value_in_column(value, col);
+	}
+
+	if (bt_mesh_sensor_value_compare(&col->start, value) > 0) {
+		return false;
+	}
+
+	/* Fall back to comparing end using float */
+	float widthf, startf, valuef;
+	enum bt_mesh_sensor_value_status status;
+
+	status = bt_mesh_sensor_value_to_float(&col->width, &widthf);
+	if (!bt_mesh_sensor_value_status_is_numeric(status)) {
+		return false;
+	}
+
+	status = bt_mesh_sensor_value_to_float(&col->start, &startf);
+	if (!bt_mesh_sensor_value_status_is_numeric(status)) {
+		return false;
+	}
+
+	status = bt_mesh_sensor_value_to_float(value, &valuef);
+	if (!bt_mesh_sensor_value_status_is_numeric(status)) {
+		return false;
+	}
+
+	return valuef <= (startf + widthf);
+}
 #endif
 
 void sensor_cadence_update(struct bt_mesh_sensor *sensor,
@@ -828,6 +880,10 @@ enum bt_mesh_sensor_value_status
 bt_mesh_sensor_value_to_float(const struct bt_mesh_sensor_value *sensor_val,
 			      float *val)
 {
+	if (!sensor_val->format) {
+		return BT_MESH_SENSOR_VALUE_CONVERSION_ERROR;
+	}
+
 	return sensor_val->format->cb->to_float(sensor_val, val);
 }
 
@@ -843,6 +899,10 @@ bt_mesh_sensor_value_to_micro(
 	const struct bt_mesh_sensor_value *sensor_val,
 	int64_t *val)
 {
+	if (!sensor_val->format) {
+		return BT_MESH_SENSOR_VALUE_CONVERSION_ERROR;
+	}
+
 	if (sensor_val->format->cb->to_micro) {
 		return sensor_val->format->cb->to_micro(sensor_val, val);
 	}
@@ -852,7 +912,24 @@ bt_mesh_sensor_value_to_micro(
 
 	status = sensor_val->format->cb->to_float(sensor_val, &f);
 	if (bt_mesh_sensor_value_status_is_numeric(status)) {
-		*val = f * 1000000.0f;
+		float micro_f = f * 1000000.0f;
+
+		/* Clamp to max range for int64_t.
+		 * (Can't use CLAMP here because it uses ternary which
+		 * implicitly converts the return type to float which is then
+		 * converted back again, causing overflow)
+		 */
+		if (micro_f >= INT64_MAX) {
+			*val = INT64_MAX;
+		} else if (micro_f <= INT64_MIN) {
+			*val = INT64_MIN;
+		} else {
+			*val = micro_f;
+		}
+
+		if (micro_f > INT64_MAX || micro_f < INT64_MIN) {
+			return BT_MESH_SENSOR_VALUE_CLAMPED;
+		}
 	}
 	return status;
 }
@@ -862,7 +939,7 @@ int bt_mesh_sensor_value_from_micro(
 	int64_t val,
 	struct bt_mesh_sensor_value *sensor_val)
 {
-	if (sensor_val->format->cb->from_micro) {
+	if (format->cb->from_micro) {
 		return format->cb->from_micro(format, val, sensor_val);
 	}
 
@@ -879,7 +956,18 @@ bt_mesh_sensor_value_to_sensor_value(
 
 	status = bt_mesh_sensor_value_to_micro(sensor_val, &micro);
 	if (bt_mesh_sensor_value_status_is_numeric(status)) {
-		val->val1 = micro / 1000000;
+		int64_t val1 = micro / 1000000;
+
+		if (val1 > INT32_MAX) {
+			val->val1 = INT32_MAX;
+			val->val2 = 999999;
+			return BT_MESH_SENSOR_VALUE_CLAMPED;
+		} else if (val1 < INT32_MIN) {
+			val->val1 = INT32_MIN;
+			val->val2 = -999999;
+			return BT_MESH_SENSOR_VALUE_CLAMPED;
+		}
+		val->val1 = val1;
 		val->val2 = micro % 1000000;
 	}
 	return status;

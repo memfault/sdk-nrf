@@ -15,7 +15,12 @@
 #define INVALID_ROLE         -1
 #define INVALID_DTLS_CID     -1
 
-#define UNKNOWN_AT_COMMAND_RET __ELASTERROR
+enum {
+	/* The command is not a known (or activated) SLM-proprietary AT command. */
+	UNKNOWN_AT_COMMAND_RET = __ELASTERROR,
+	/* The command ran successfully and doesn't want the automatic response to be sent. */
+	SILENT_AT_COMMAND_RET,
+};
 
 /** The maximum allowed length of an AT command/response passed through the SLM */
 #define SLM_AT_MAX_CMD_LEN   4096
@@ -32,5 +37,8 @@
 
 #define SLM_NRF52_BLK_SIZE   4096 /** nRF52 flash block size for write operation */
 #define SLM_NRF52_BLK_TIME   2000 /** nRF52 flash block write time in millisecond (1.x second) */
+
+#define POWER_PIN_IS_ENABLED (CONFIG_SLM_POWER_PIN != -1)
+#define INDICATE_PIN_IS_ENABLED (CONFIG_SLM_INDICATE_PIN != -1)
 
 #endif

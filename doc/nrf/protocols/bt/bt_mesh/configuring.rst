@@ -7,11 +7,16 @@ Configuring Bluetooth Mesh in |NCS|
    :local:
    :depth: 2
 
-The Bluetooth® mesh support is controlled by :kconfig:option:`CONFIG_BT_MESH`, which depends on the following configuration options:
+The Bluetooth® Mesh support is controlled by :kconfig:option:`CONFIG_BT_MESH`, which depends on the following configuration options:
 
 * :kconfig:option:`CONFIG_BT` - Enables the Bluetooth subsystem.
 * :kconfig:option:`CONFIG_BT_OBSERVER` - Enables the Bluetooth Observer role.
 * :kconfig:option:`CONFIG_BT_PERIPHERAL` - Enables the Bluetooth Peripheral role.
+
+When the Bluetooth LE Controller is located on a separate image (like on the :ref:`zephyr:nrf5340dk_nrf5340` and :ref:`zephyr:thingy53_nrf5340` boards), the following configuration must be applied to the Bluetooth LE Controller configuration:
+
+* :kconfig:option:`CONFIG_BT_EXT_ADV` =y.
+* :kconfig:option:`CONFIG_BT_EXT_ADV_MAX_ADV_SET` =5.
 
 Optional features configuration
 *******************************
@@ -172,3 +177,28 @@ The following configuration options are relevant when using the LPN feature:
 * Reducing the Node ID advertisement timeout decreases the period where the device consumes power for advertising.
 
   * :kconfig:option:`CONFIG_BT_MESH_NODE_ID_TIMEOUT` =30.
+
+Persistent storage
+------------------
+
+Zephyr's Mesh implementation has been designed to use the :ref:`settings <zephyr:settings_api>` subsystem to store internal states and options in the :ref:`persistent storage <zephyr:bluetooth_mesh_persistent_storage>`.
+The settings subsystem can be used with different backends.
+Bluetooth Mesh is configured with the :ref:`non-volatile storage (NVS) <zephyr:nvs_api>` as the settings backend.
+
+Using the settings subsystem based on NVS can in some cases result in a significant store time increase.
+In a worst case scenario, the store time can be up to several minutes.
+This can for example happen when storing a large size replay protection list.
+It is recommended to configure the settings subsystem's internal caches to improve the performance.
+
+* The Settings NVS name cache reduces the number of search loops of internal parameter identifiers, keeping them in memory.
+
+  * :kconfig:option:`CONFIG_SETTINGS_NVS_NAME_CACHE`.
+
+* The size of the Settings NVS name cache is recommended to be set to the maximum number of devices the configured device communicates with.
+  For example, if a device communicates with 255 other devices, it is worth setting the cache to minimum 255.
+
+  * :kconfig:option:`CONFIG_SETTINGS_NVS_NAME_CACHE_SIZE`.
+
+* NVS lookup cache reduces the number of search loops within NVS' application table.
+
+  * :kconfig:option:`CONFIG_NVS_LOOKUP_CACHE`.

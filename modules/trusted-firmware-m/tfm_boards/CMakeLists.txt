@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2021 - 2023, Nordic Semiconductor ASA.
+# Copyright (c) 2021 - 2024, Nordic Semiconductor ASA.
 #
 # SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
 #
@@ -71,12 +71,6 @@ target_sources(tfm_sprt
         $<$<NOT:$<BOOL:${TFM_SP_LOG_RAW_ENABLED}>>:${CMAKE_CURRENT_SOURCE_DIR}/common/dummy_tfm_sp_log_raw.c>
 )
 
-# Disabling UART stdout not supported in NS Image, which is always built even when not needed.
-target_sources(platform_ns
-  PRIVATE
-  $<$<NOT:$<BOOL:${PLATFORM_DEFAULT_UART_STDOUT}>>:${CMAKE_CURRENT_SOURCE_DIR}/common/dummy_uart_stdout.c>
-  )
-
 if (${TFM_PARTITION_CRYPTO})
   target_sources(platform_crypto_keys
     PRIVATE
@@ -143,7 +137,6 @@ if (CRYPTO_STORAGE_DISABLED AND TFM_PARTITION_CRYPTO AND NOT TFM_PARTITION_INTER
     TFM_INTERNAL_TRUSTED_STORAGE_SERVICE_SID=0x00000070)
 endif()
 
-target_include_directories(platform_ns PUBLIC ${board_includes})
 
 if(BL2)
   message(FATAL_ERROR "BL2 is not supported")
@@ -165,23 +158,6 @@ if(TFM_PARTITION_PLATFORM)
     ${src_dir}/tfm_ioctl_s_api.c
     )
 
-  target_include_directories(platform_ns
-    PUBLIC
-    include
-    ${ZEPHYR_NRF_MODULE_DIR}/include/tfm
-    ${ZEPHYR_NRF_MODULE_DIR}/include
-    )
-
-  target_compile_definitions(platform_ns
-    PUBLIC
-    FIRMWARE_INFO_MAGIC=${FIRMWARE_INFO_MAGIC}
-    EXT_API_MAGIC=${EXT_API_MAGIC}
-    )
-
-  target_sources(platform_ns
-    PRIVATE
-    ${src_dir}/tfm_ioctl_ns_api.c
-    )
 endif()
 
 if(LOG_MEMORY_PROTECTION)
@@ -190,3 +166,17 @@ if(LOG_MEMORY_PROTECTION)
 	src/log_memory_protection.c
 	)
 endif()
+
+#======================= Non Secure image ===========================
+
+install(FILES       ns/CMakeLists.txt
+        DESTINATION ${INSTALL_PLATFORM_NS_DIR})
+
+if(TFM_PARTITION_PLATFORM)
+  file(COPY board/device_cfg.h
+            board/RTE_Device.h
+       DESTINATION ${INSTALL_INTERFACE_INC_DIR})
+endif()
+
+file(COPY ${CMAKE_CURRENT_LIST_DIR}/common
+     DESTINATION ${INSTALL_PLATFORM_NS_DIR})

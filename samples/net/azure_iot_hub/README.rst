@@ -10,6 +10,8 @@ Azure IoT Hub
 The Azure IoT Hub sample shows the communication of an Internet-connected device with an `Azure IoT Hub`_ instance.
 This sample uses the :ref:`lib_azure_iot_hub` library to communicate with the IoT hub and the :ref:`lib_azure_fota` library to provide firmware over-the-air (FOTA) functionality.
 
+.. |wifi| replace:: Wi-Fi®
+
 .. include:: /includes/net_connection_manager.txt
 
 Requirements
@@ -88,7 +90,7 @@ Check and configure the following library options that are used by the sample:
 * :kconfig:option:`CONFIG_AZURE_IOT_HUB_HOSTNAME` - Sets the Azure IoT Hub host name. If DPS is used, the sample assumes that the IoT hub host name is unknown, and the configuration is ignored. The configuration can also be omitted and the hostname provided at run time.
 
 If DPS is used, use the Kconfig fragment found in the :file:`overlay-dps.conf` file and change the desired configurations there.
-As an example, the following compiles with DPS for nRF9160DK:
+As an example, the following compiles with DPS for the nRF9160 DK:
 
 .. code-block:: console
 

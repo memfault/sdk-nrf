@@ -22,7 +22,7 @@ if(NOT SYSBUILD)
 endif()
 
 add_subdirectory_ifdef(CONFIG_NRF_SECURITY nrf_security)
-add_subdirectory_ifdef(CONFIG_SECURE_STORAGE secure_storage)
+add_subdirectory_ifdef(CONFIG_TRUSTED_STORAGE trusted_storage)
 
 add_subdirectory(net)
 add_subdirectory_ifdef(CONFIG_ESB		esb)
@@ -68,3 +68,4 @@ add_subdirectory_ifdef(CONFIG_NRF_DM dm)
 add_subdirectory_ifdef(CONFIG_EMDS emds)
 add_subdirectory_ifdef(CONFIG_NET_CORE_MONITOR net_core_monitor)
 add_subdirectory_ifdef(CONFIG_AUDIO_MODULE audio_module)
+add_subdirectory_ifdef(CONFIG_UART_ASYNC_ADAPTER uart_async_adapter)

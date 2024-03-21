@@ -26,11 +26,34 @@ struct BLEBridgedDeviceProvider;
 
 class BLEConnectivityManager {
 public:
-	static constexpr uint16_t kScanTimeoutMs = 10000;
-	static constexpr uint16_t kMaxScannedDevices = 16;
+	static constexpr uint16_t kScanTimeoutMs = CONFIG_BRIDGE_BT_SCAN_TIMEOUT_MS;
+	static constexpr uint16_t kMaxScannedDevices = CONFIG_BRIDGE_BT_MAX_SCANNED_DEVICES;
 	/* One BT connection is reserved for the Matter service purposes. */
 	static constexpr uint16_t kMaxConnectedDevices = CONFIG_BT_MAX_CONN - 1;
 	static constexpr uint8_t kMaxServiceUuids = CONFIG_BT_SCAN_UUID_CNT;
+
+	/**
+	 * States for indicating the most important BLE Connectivity Manager states.
+	 * The priority is defined by the value in descending order, so Scanning (0) state has the highest one.
+	 * Only the active state with the highest priority is being signalized.
+	 *
+	 * Scanning - The Bluetooth scan is in progress.
+	 * Pairing - The pairing to the new device has been requested and Bridge is awaiting for PIN code.
+	 * LostDevice - The Bridge device lost connection to at least one bridged device.
+	 * Connected - At least one connection to bridged devices is stable.
+	 * Idle - There is no connections to bridged devices.
+	 * Unknown - None of those states are set.
+	 */
+	enum State : uint8_t { Start = 0, Scanning = 0, Pairing, LostDevice, Connected, Idle, Unknown, End };
+	/**
+	 * @brief Callback to indicate the bridge's Bluetooth LE connectivity state of the highest priority.
+	 *
+	 * Implement it in the application and register in the BLE Connectivity Manager to visualize the state utilizing
+	 * LEDs, LCDs, etc.
+	 *
+	 * @param state - the current state with the highest priority
+	 */
+	using StateChangedCallback = void (*)(State state);
 
 	struct ScannedDevice {
 		bt_addr_le_t mAddr;
@@ -63,8 +86,9 @@ private:
 		void NotifyProviderToRecover(BLEBridgedDeviceProvider *provider);
 
 	private:
-		BLEBridgedDeviceProvider *GetProvider(sys_slist_t *list);
-		bool PutProvider(BLEBridgedDeviceProvider *provider, sys_slist_t *list);
+		static bool EntryExists(BLEBridgedDeviceProvider *provider, sys_slist_t *list);
+		static BLEBridgedDeviceProvider *GetProvider(sys_slist_t *list);
+		static bool PutProvider(BLEBridgedDeviceProvider *provider, sys_slist_t *list);
 		bool IsNeeded() { return !sys_slist_is_empty(&mListToRecover); }
 		void StartTimer();
 		void CancelTimer() { k_timer_stop(&mRecoveryTimer); }
@@ -198,6 +222,16 @@ public:
 	 */
 	void Recover(BLEBridgedDeviceProvider *provider) { mRecovery.NotifyProviderToRecover(provider); }
 
+	/**
+	 * @brief Register a callback to notify application about current status change.
+	 *
+	 * The state callback is optional and can be used to indicate current ble connectivity manager state using
+	 * available interfaces such as LEDs, LCDs, ect.
+	 *
+	 * @param callback a StateChangedCallback method to be implemented in the application.
+	 */
+	void RegisterStateCallback(StateChangedCallback callback) { mStateChangedCb = callback; }
+
 	CHIP_ERROR PrepareFilterForUuid();
 	CHIP_ERROR PrepareFilterForAddress(bt_addr_le_t *addr);
 
@@ -237,7 +271,12 @@ public:
 
 private:
 	bt_le_conn_param *GetScannedDeviceConnParams(bt_addr_le_t address);
+	State GetCurrentState();
+	void UpdateStateFlag(State state, bool enabled);
+	void UpdateRecovery();
 
+	StateChangedCallback mStateChangedCb = nullptr;
+	uint8_t mStateBitmask = 0;
 	bool mScanActive;
 	k_timer mScanTimer;
 	uint8_t mScannedDevicesCounter;

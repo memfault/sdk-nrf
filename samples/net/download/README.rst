@@ -10,6 +10,8 @@ Download client
 The Download client sample demonstrates how to download a file from an HTTP or a CoAP server, with optional TLS or DTLS.
 It uses the :ref:`lib_download_client` library.
 
+.. |wifi| replace:: Wi-Fi®
+
 .. include:: /includes/net_connection_manager.txt
 
 Requirements
@@ -49,8 +51,7 @@ The certificate file name is indicated by the :ref:`CONFIG_SAMPLE_CERT_FILE <CON
 This certificate will work for the default test files.
 If you are using a custom download test file, you must provision the correct certificate for the servers from which the certificates will be downloaded.
 
-The certificate is automatically converted to a hex file in :file:`CMakeLists.txt`.
-This hex file is included in :file:`main.c`, where it is provisioned to the modem.
+|hex_format|
 
 See :ref:`cert_dwload` for more information.
 
@@ -115,8 +116,10 @@ Testing
 
 After programming the sample to your development kit, test it by performing the following steps:
 
-1. Connect the development kit to your PC using a USB cable and power on or reset the kit.
-#. Open a terminal emulator |ANSI| and observe that the sample starts, provisions certificates, and starts to download.
+1. |connect_kit|
+#. Power on or reset the kit.
+#. |connect_terminal_ANSI|
+#. Observe that the sample starts, provisions certificates, and starts to download.
 #. Observe that the progress bar fills up as the download progresses.
 #. Observe that the sample displays the message "Download completed" on the terminal when the download completes.
 

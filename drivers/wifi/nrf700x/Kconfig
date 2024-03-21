@@ -31,8 +31,9 @@ config WIFI_NRF700X_BUS_LOG_LEVEL
 
 choice NRF700X_OPER_MODES
 	bool "nRF700x operating modes"
-	default NRF700X_SYSTEM_MODE if WPA_SUPP
+	default NRF700X_SYSTEM_MODE if WPA_SUPP && !(NRF700X_RAW_DATA_TX || NRF700X_RAW_DATA_RX || NRF700X_PROMISC_DATA_RX)
 	default NRF700X_SCAN_ONLY if !WPA_SUPP
+	default NRF700X_SYSTEM_WITH_RAW_MODES
 	help
 	  Select the operating mode of the nRF700x driver
 
@@ -52,9 +53,15 @@ config NRF700X_SCAN_ONLY
 config NRF700X_RADIO_TEST
 	bool "Radio test mode of the nRF700x driver"
 
+config NRF700X_SYSTEM_WITH_RAW_MODES
+	bool "Enable nRF700X system mode with raw modes"
+	depends on WPA_SUPP
+	help
+	  Select this option to enable system mode of the nRF700x driver with raw modes
+
 endchoice
 
-if NRF700X_SYSTEM_MODE
+if NRF700X_SYSTEM_MODE || NRF700X_SYSTEM_WITH_RAW_MODES
 
 config NRF700X_STA_MODE
 	bool "Enable nRF700X STA mode"
@@ -69,16 +76,23 @@ config NRF700X_AP_MODE
 
 config NRF700X_P2P_MODE
 	bool "Enable P2P support in driver"
-
-endif # NRF700X_SYSTEM_MODE
-
-config NRF700X_DATA_TX
-	bool "Enable TX data path in the driver"
-	default y if NRF700X_SYSTEM_MODE
+endif # NRF700X_SYSTEM_MODE || NRF700X_SYSTEM_WITH_RAW_MODES
 
 config NRF700X_RAW_DATA_TX
 	bool "Enable RAW TX data path in the driver"
-	depends on NRF700X_SYSTEM_MODE
+	select EXPERIMENTAL
+
+config NRF700X_RAW_DATA_RX
+	bool "Enable RAW RX sniffer operation in the driver"
+	select EXPERIMENTAL
+
+config NRF700X_PROMISC_DATA_RX
+	bool "Enable promiscuous RX sniffer operation in the driver"
+	select EXPERIMENTAL
+
+config NRF700X_DATA_TX
+	bool "Enable TX data path in the driver"
+	default y if NRF700X_SYSTEM_MODE || NRF700X_SYSTEM_WITH_RAW_MODES
 
 config NRF_WIFI_IF_AUTO_START
 	bool "Enable Wi-Fi interface auto start on boot"
@@ -148,6 +162,30 @@ config NRF_WIFI_FW_PATCH_INTEGRITY_CHECK
 	  SHA-256 verification algorithm.This option impacts the loading time of the
 	  nRF70 FW patches but protects against corrupted FW patches.
 
+config NRF_WIFI_FW_PATCH_DFU
+	bool "Direct Firmware Update of nRF70 FW patch"
+	depends on PARTITION_MANAGER_ENABLED
+	depends on BOOTLOADER_MCUBOOT
+	depends on !XIP_SPLIT_IMAGE
+	help
+	  Enabling this option adds support for Device Firmware Update (DFU)
+	  for the nRF70 Series Firmware Patch.
+
+	  This feature requires the addition of an MCUBoot partition pair:
+	  a primary and a secondary partition. These partitions are used to
+	  store the new firmware patch. The specific partition numbers to be used
+	  depend on the number of partitions already in use.
+
+	  The "nrf70_wifi_fw" partition must be added to the newly created
+	  MCUBoot primary partition. Once this Kconfig option is enabled,
+	  the nRF70.hex file will be signed by MCUBoot. The signed image
+	  will then be merged with the application image and flashed onto
+	  the target board.
+
+	  Ensure that the required MCUBoot partitions are properly configured
+	  before enabling this option. Refer to the documentation for detailed
+	  instructions on partition configuration and the DFU process.
+
 # TC is the default but Wi-Fi uses MbedTLS, so, to avoid loading another library.
 if NRF_WIFI_FW_PATCH_INTEGRITY_CHECK
 choice FLASH_AREA_CHECK_INTEGRITY_BACKEND
@@ -166,7 +204,7 @@ config NRF_WIFI_LOW_POWER
 
 config NRF700X_TCP_IP_CHECKSUM_OFFLOAD
 	bool "Enable TCP/IP checksum offload"
-	default y if !(NET_IPV4_FRAGMENT || NET_IPV6_FRAGMENT)
+	default y
 
 config NRF700X_REG_DOMAIN
 	string "The ISO/IEC alpha2 country code for the country in which this device is currently operating. Default 00 (World regulatory)"
@@ -222,9 +260,8 @@ config NRF700X_UTIL
 	depends on SHELL
 	bool "Enable Utility shell in nRF700x driver"
 
-config NRF700X_BT_COEX
-	bool "Enable Wi-Fi Bluetooth coexistence support"
-	depends on SOC_NRF5340_CPUAPP_QKAA
+config NRF700X_SR_COEX
+	bool "Enable Wi-Fi and SR coexistence support"
 	default y if SOC_NRF5340_CPUAPP_QKAA
 
 config NRF700X_QSPI_LOW_POWER
@@ -251,63 +288,133 @@ config NRF700X_ANT_GAIN_5G_BAND3
 	default 0
 	range 0 6
 
-config NRF700X_BAND_2G_LOWER_EDGE_BACKOFF
-	int "Transmit power backoff (in dB) for lower edge of 2.4 GHz frequency band"
+config NRF700X_BAND_2G_LOWER_EDGE_BACKOFF_DSSS
+	int "DSSS Transmit power backoff (in dB) for lower edge of 2.4 GHz frequency band"
 	default 0
 	range 0 10
 
-config NRF700X_BAND_2G_UPPER_EDGE_BACKOFF
-	int "Transmit power backoff (in dB) for upper edge of 2.4 GHz frequency band"
+config NRF700X_BAND_2G_LOWER_EDGE_BACKOFF_HT
+	int "HT/VHT Transmit power backoff (in dB) for lower edge of 2.4 GHz frequency band"
 	default 0
 	range 0 10
 
-config NRF700X_BAND_UNII_1_LOWER_EDGE_BACKOFF
-	int "Transmit power backoff (in dB) for lower edge of UNII-1 frequency band"
+config NRF700X_BAND_2G_LOWER_EDGE_BACKOFF_HE
+	int "HE Transmit power backoff (in dB) for lower edge of 2.4 GHz frequency band"
 	default 0
 	range 0 10
 
-config NRF700X_BAND_UNII_1_UPPER_EDGE_BACKOFF
-	int "Transmit power backoff (in dB) for upper edge of UNII-1 frequency band"
+config NRF700X_BAND_2G_UPPER_EDGE_BACKOFF_DSSS
+	int "DSSS Transmit power backoff (in dB) for upper edge of 2.4 GHz frequency band"
 	default 0
 	range 0 10
 
-config NRF700X_BAND_UNII_2A_LOWER_EDGE_BACKOFF
-	int "Transmit power backoff (in dB) for lower edge of UNII-2A frequency band"
+config NRF700X_BAND_2G_UPPER_EDGE_BACKOFF_HT
+	int "HT/VHT Transmit power backoff (in dB) for upper edge of 2.4 GHz frequency band"
 	default 0
 	range 0 10
 
-config NRF700X_BAND_UNII_2A_UPPER_EDGE_BACKOFF
-	int "Transmit power backoff (in dB) for upper edge of UNII-2A frequency band"
+config NRF700X_BAND_2G_UPPER_EDGE_BACKOFF_HE
+	int "HE Transmit power backoff (in dB) for upper edge of 2.4 GHz frequency band"
 	default 0
 	range 0 10
 
-config NRF700X_BAND_UNII_2C_LOWER_EDGE_BACKOFF
-	int "Transmit power backoff (in dB) for lower edge of UNII-2C frequency band"
+config NRF700X_BAND_UNII_1_LOWER_EDGE_BACKOFF_HT
+	int "HT/VHT Transmit power backoff (in dB) for lower edge of UNII-1 frequency band"
 	default 0
 	range 0 10
 
-config NRF700X_BAND_UNII_2C_UPPER_EDGE_BACKOFF
-	int "Transmit power backoff (in dB) for upper edge of UNII-2C frequency band"
+config NRF700X_BAND_UNII_1_LOWER_EDGE_BACKOFF_HE
+	int "HE Transmit power backoff (in dB) for lower edge of UNII-1 frequency band"
 	default 0
 	range 0 10
 
-config NRF700X_BAND_UNII_3_LOWER_EDGE_BACKOFF
-	int "Transmit power backoff (in dB) for lower edge of UNII-3 frequency band"
+config NRF700X_BAND_UNII_1_UPPER_EDGE_BACKOFF_HT
+	int "HT/VHT Transmit power backoff (in dB) for upper edge of UNII-1 frequency band"
 	default 0
 	range 0 10
 
-config NRF700X_BAND_UNII_3_UPPER_EDGE_BACKOFF
-	int "Transmit power backoff (in dB) for upper edge of UNII-3 frequency band"
+config NRF700X_BAND_UNII_1_UPPER_EDGE_BACKOFF_HE
+	int "HE Transmit power backoff (in dB) for upper edge of UNII-1 frequency band"
 	default 0
 	range 0 10
 
-config NRF700X_BAND_UNII_4_LOWER_EDGE_BACKOFF
-	int "Transmit power backoff (in dB) for lower edge of UNII-4 frequency band"
+config NRF700X_BAND_UNII_2A_LOWER_EDGE_BACKOFF_HT
+	int "HT/VHT Transmit power backoff (in dB) for lower edge of UNII-2A frequency band"
 	default 0
 	range 0 10
 
-config NRF700X_BAND_UNII_4_UPPER_EDGE_BACKOFF
-	int "Transmit power backoff (in dB) for upper edge of UNII-4 frequency band"
+config NRF700X_BAND_UNII_2A_LOWER_EDGE_BACKOFF_HE
+	int "HE Transmit power backoff (in dB) for lower edge of UNII-2A frequency band"
+	default 0
+	range 0 10
+
+config NRF700X_BAND_UNII_2A_UPPER_EDGE_BACKOFF_HT
+	int "HT/VHT Transmit power backoff (in dB) for upper edge of UNII-2A frequency band"
+	default 0
+	range 0 10
+
+config NRF700X_BAND_UNII_2A_UPPER_EDGE_BACKOFF_HE
+	int "HE Transmit power backoff (in dB) for upper edge of UNII-2A frequency band"
+	default 0
+	range 0 10
+
+config NRF700X_BAND_UNII_2C_LOWER_EDGE_BACKOFF_HT
+	int "HT/VHT Transmit power backoff (in dB) for lower edge of UNII-2C frequency band"
+	default 0
+	range 0 10
+
+config NRF700X_BAND_UNII_2C_LOWER_EDGE_BACKOFF_HE
+	int "HE Transmit power backoff (in dB) for lower edge of UNII-2C frequency band"
+	default 0
+	range 0 10
+
+config NRF700X_BAND_UNII_2C_UPPER_EDGE_BACKOFF_HT
+	int "HT/VHT Transmit power backoff (in dB) for upper edge of UNII-2C frequency band"
+	default 0
+	range 0 10
+
+config NRF700X_BAND_UNII_2C_UPPER_EDGE_BACKOFF_HE
+	int "HE Transmit power backoff (in dB) for upper edge of UNII-2C frequency band"
+	default 0
+	range 0 10
+
+config NRF700X_BAND_UNII_3_LOWER_EDGE_BACKOFF_HT
+	int "HT/VHT Transmit power backoff (in dB) for lower edge of UNII-3 frequency band"
+	default 0
+	range 0 10
+
+config NRF700X_BAND_UNII_3_LOWER_EDGE_BACKOFF_HE
+	int "HE Transmit power backoff (in dB) for lower edge of UNII-3 frequency band"
+	default 0
+	range 0 10
+
+config NRF700X_BAND_UNII_3_UPPER_EDGE_BACKOFF_HT
+	int "HT/VHT Transmit power backoff (in dB) for upper edge of UNII-3 frequency band"
+	default 0
+	range 0 10
+
+config NRF700X_BAND_UNII_3_UPPER_EDGE_BACKOFF_HE
+	int "HE Transmit power backoff (in dB) for upper edge of UNII-3 frequency band"
+	default 0
+	range 0 10
+
+config NRF700X_BAND_UNII_4_LOWER_EDGE_BACKOFF_HT
+	int "HT/VHT Transmit power backoff (in dB) for lower edge of UNII-4 frequency band"
+	default 0
+	range 0 10
+
+config NRF700X_BAND_UNII_4_LOWER_EDGE_BACKOFF_HE
+	int "HE Transmit power backoff (in dB) for lower edge of UNII-4 frequency band"
+	default 0
+	range 0 10
+
+config NRF700X_BAND_UNII_4_UPPER_EDGE_BACKOFF_HT
+	int "HT/VHT Transmit power backoff (in dB) for upper edge of UNII-4 frequency band"
+	default 0
+	range 0 10
+
+config NRF700X_BAND_UNII_4_UPPER_EDGE_BACKOFF_HE
+	int "HE Transmit power backoff (in dB) for upper edge of UNII-4 frequency band"
 	default 0
 	range 0 10
 
@@ -468,11 +575,11 @@ config WIFI_NRF700X_SCAN_TIMEOUT_S
 
 config NRF_WIFI_2G_BAND
 	bool "Set operation band to 2.4GHz"
-	default y if BOARD_NRF7001
+	default y if NRF70_2_4G_ONLY
 
 config NRF_WIFI_5G_BAND
 	bool "Set operation band to 5GHz"
-	depends on !BOARD_NRF7001
+	depends on !NRF70_2_4G_ONLY
 
 config NRF_WIFI_OP_BAND
 	int "Options to set operation band"
@@ -504,3 +611,7 @@ config WIFI_NRF700X_SCAN_DISABLE_DFS_CHANNELS
 	help
 	  This option disables inclusion of DFS channels in scan operation.
 	  This is useful to reduce the scan time, as DFS channels are seldom used.
+
+config NET_INTERFACE_NAME_LEN
+	# nordic_wlanN
+	default 15

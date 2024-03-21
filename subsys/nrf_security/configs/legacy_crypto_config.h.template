@@ -943,7 +943,7 @@
  *
  * Disable if you only need to support RFC 5915 + 5480 key formats.
  */
-#define MBEDTLS_PK_PARSE_EC_EXTENDED
+#cmakedefine MBEDTLS_PK_PARSE_EC_EXTENDED
 
 /**
  * \def MBEDTLS_ERROR_STRERROR_DUMMY
@@ -3226,7 +3226,7 @@ it is (2^48 - 1), our restriction is :  (int - 0xFFFF - 0xF).*/
  * C standards (e.g using memset_s() in C11) or calling a secure memset() from
  * their system (e.g explicit_bzero() in BSD).
  */
-#cmakedefine MBEDTLS_PLATFORM_ZEROIZE_ALT
+//#define MBEDTLS_PLATFORM_ZEROIZE_ALT
 
 /**
  * Uncomment the macro to let Mbed TLS use your alternate implementation of

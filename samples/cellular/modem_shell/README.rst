@@ -319,6 +319,16 @@ Examples
 
      sock connect -a 1a2b:1a2b:1a2b:1a2b::1 -p 20000 -f inet6 -t dgram
 
+* Open an IPv6 DTLS socket:
+
+  .. code-block:: console
+
+     sock connect -a 1a2b:1a2b:1a2b:1a2b::1 -p 20000 -f inet6 -t dgram -S -T 123
+
+  .. note::
+     The certificate must have been written beforehand to security tag ``123``.
+     See the `Credential storage management %CMNG`_ section in the nRF9160 AT Commands Reference Guide or the `same section <nRF91x1 credential storage management %CMNG_>`_ in the nRF91x1 AT Commands Reference Guide, depending on the SiP you are using.
+
 * Open a raw socket:
 
   .. code-block:: console
@@ -464,80 +474,14 @@ Modem traces
 
 MoSh command: ``modem_trace``
 
+Enable the ``modem_trace`` command using the :kconfig:option:`CONFIG_NRF_MODEM_LIB_SHELL_TRACE` and :kconfig:option:`CONFIG_NRF_MODEM_LIB_TRACE` Kconfig options.
+
 You can use the modem trace commands to control the trace functionality in the modem.
 See :ref:`modem_trace_module` for more information on how to configure modem tracing and the built-in trace backends available.
+See :ref:`modem_trace_shell_command` for details about the shell command.
 
-You need a trace backend that can store modem traces if you want to upload modem traces to the cloud.
-The flash backend can store modem traces to the external flash on the nRF91 Series DK and can be retrieved for uploading.
-
-To enable modem traces with the flash backend, use the :file:`overlay-modem-trace-flash.conf` configuration file.
-This also requires a devicetree overlay for the external flash (:file:`nrf9160dk_ext_flash.overlay` for the nRF9160 DK or :file:`nrf9161dk_ext_flash.overlay` for the nRF9161 DK, depending on the DK you are using).
-
-Send to Memfault
-----------------
-
-To register an account and obtain the project key, refer to the :ref:`using_memfault` section of the :ref:`ug_memfault` guide.
-The Memfault overlay config (:file:`overlay-memfault.conf`) includes the most common configuration options for using the Memfault with modem traces.
-
-After a modem trace session, prepare sending the trace data to Memfault using ``modem_trace send memfault``.
-This informs the `Memfault-SDK`_ about a Custom Data Recording (CDR) that will be sent as part of the next data transfer to Memfault.
-To trigger sending immediately, it's possible to use the Memfault shell command ``mflt post_chunks``.
-
-Follow these steps to download the modem trace data:
-
-   a. In a web browser, navigate to `Memfault`_.
-   #. Log in to your account and select the project you created earlier.
-   #. Navigate to :guilabel:`Fleet` > :guilabel:`Devices` in the left side menu.
-   #. Select the **device** that sent a modem trace.
-   #. Navigate to the :guilabel:`Timeline` tab.
-   #. Find the CDR in the timeline and click on it.
-   #. Select :guilabel:`Download` from the pop-up window.
-
-See the following figure, which shows how to download the modem trace data in the `Memfault`_:
-
-.. figure:: /images/modem_shell_trace_download.png
-   :alt: Modem trace download
-
-   Modem trace download
-
-.. note::
-   The conversion of modem trace file to a Wireshark-compatible format is available in the `Cellular Monitor`_ tool of the nRF Connect for Desktop.
-
-To build the MoSh sample for an nRF91 Series DK with modem trace flash backend support, see :ref:`modem_shell_trace_flash_support`.
-
-Examples
---------
-
-* Modem trace everything (LTE, IP and GNSS):
-
-  .. code-block:: console
-
-     modem_trace start full
-     <test using gnss-, lte-, or ip-commands>
-     modem_trace stop
-
-* Read out the size of stored modem traces:
-
-  .. code-block:: console
-
-     modem_trace size
-
-* Delete all stored modem traces:
-
-  .. code-block:: console
-
-     modem_trace clear
-
-* Send modem traces to Memfault:
-  (This will free up the stored traces as they are sent)
-
-  .. code-block:: console
-
-     modem_trace send memfault
-     mflt post_chunks
-
-
-----
+To enable modem traces with the flash backend, build with the ``nrf91-modem-trace-ext-flash`` snippet for an nRF91 Series DK that has external flash.
+For more information on snippets, see :ref:`zephyr:using-snippets`.
 
 GNSS
 ====
@@ -1013,17 +957,9 @@ Testing
 
 After programming the application and all prerequisites to your development kit, test it by performing the following steps:
 
-1. Connect the development kit to the computer using a USB cable.
-   The development kit is assigned a COM port (Windows) or ttyACM device (Linux), which is visible in the Device Manager.
-
-#. Create a serial connection to the development kit (J-Link COM port) with a terminal |ANSI| using the following settings:
-
-   * Hardware flow control: disabled
-   * Baud rate: 115200
-   * Parity bit: no
-
+1. |connect_kit|
+#. |connect_terminal_ANSI|
 #. Reset the development kit.
-
 #. Observe in the terminal window that the application starts.
    This is indicated by output similar to the following (there is also a lot of additional information about the LTE connection):
 
@@ -1053,23 +989,15 @@ To program the certificates and connect to nRF Cloud, complete the following ste
 #. Update the modem firmware on the on-board modem of the nRF91 Series DK to the latest version as instructed in :ref:`nrf9160_updating_fw_modem`.
 #. Build and program the MoSh to the nRF91 Series DK using the default MoSh configuration (with REST as the transport):
 
-   .. tabs::
+.. parsed-literal::
+   :class: highlight
 
-      .. group-tab:: nRF9161 DK
+   west build -p -b *build_target* -d build
+   west flash -d build
 
-         .. code-block:: console
+|build_target|
 
-            $ west build -p -b nrf9161dk_nrf9161_ns -d build
-            $ west flash -d build
-
-      .. group-tab:: nRF9160 DK
-
-         .. code-block:: console
-
-            $ west build -p -b nrf9160dk_nrf9160_ns -d build
-            $ west flash -d build
-
-#. Get certificates from nRF Cloud as explained in the documentation for the :ref:`nRF9161 DK <downloading_cloud_certificate_nRF9161>` or the :ref:`nRF9160 DK <downloading_cloud_certificate_nRF9160>`, depending on the DK you are using.
+#. Get certificates from nRF Cloud as explained in the documentation for the :ref:`nRF91x1 DK <downloading_cloud_certificate_nRF91x1>` or the :ref:`nRF9160 DK <downloading_cloud_certificate_nRF9160>`, depending on the DK you are using.
 #. In the MoSH terminal, power off the modem and start the AT command mode:
 
    .. code-block:: console
@@ -1130,19 +1058,12 @@ nRF91 Series DK with nRF7002 EK Wi-Fi support
 To build the MoSh sample for an nRF91 Series DK with nRF7002 EK Wi-Fi support, use the ``-DSHIELD=nrf7002ek`` and  ``-DOVERLAY_CONFIG=overlay-nrf7002ek-wifi-scan-only.conf`` options.
 For example:
 
-.. tabs::
+.. parsed-literal::
+   :class: highlight
 
-   .. group-tab:: nRF9161 DK
+   west build -p -b *build_target* -- -DSHIELD=nrf7002ek -DOVERLAY_CONFIG=overlay-nrf7002ek-wifi-scan-only.conf
 
-      .. code-block:: console
-
-         west build -p -b nrf9161dk_nrf9161_ns -- -DSHIELD=nrf7002ek -DOVERLAY_CONFIG=overlay-nrf7002ek-wifi-scan-only.conf
-
-   .. group-tab:: nRF9160 DK
-
-      .. code-block:: console
-
-         west build -p -b nrf9160dk_nrf9160_ns -- -DSHIELD=nrf7002ek -DOVERLAY_CONFIG=overlay-nrf7002ek-wifi-scan-only.conf
+|build_target|
 
 See :ref:`cmake_options` for more instructions on how to add these options.
 
@@ -1164,19 +1085,12 @@ PPP support
 To build the MoSh sample with PPP/dial up support, use the ``-DDTC_OVERLAY_FILE=ppp.overlay`` and ``-DOVERLAY_CONFIG=overlay-ppp.conf`` options.
 For example:
 
-.. tabs::
+.. parsed-literal::
+   :class: highlight
 
-   .. group-tab:: nRF9161 DK
+   west build -p -b *build_target* -- -DDTC_OVERLAY_FILE=ppp.overlay -DOVERLAY_CONFIG=overlay-ppp.conf
 
-      .. code-block:: console
-
-         west build -p -b nrf9161dk_nrf9161_ns -- -DDTC_OVERLAY_FILE=ppp.overlay -DOVERLAY_CONFIG=overlay-ppp.conf
-
-   .. group-tab:: nRF9160 DK
-
-      .. code-block:: console
-
-         west build -p -b nrf9160dk_nrf9160_ns -- -DDTC_OVERLAY_FILE=ppp.overlay -DOVERLAY_CONFIG=overlay-ppp.conf
+|build_target|
 
 After programming the development kit, test it in the Linux environment by performing the following steps:
 
@@ -1238,39 +1152,22 @@ Application FOTA support
 To build the MoSh sample with application FOTA support, use the ``-DOVERLAY_CONFIG=overlay-app_fota.conf`` option.
 For example:
 
-.. tabs::
+.. parsed-literal::
+   :class: highlight
 
-   .. group-tab:: nRF9161 DK
+   west build -p -b *build_target* -d build -- -DOVERLAY_CONFIG=overlay-app_fota.conf
 
-      .. code-block:: console
-
-         west build -p -b nrf9161dk_nrf9161_ns -d build -- -DOVERLAY_CONFIG=overlay-app_fota.conf
-
-   .. group-tab:: nRF9160 DK
-
-      .. code-block:: console
-
-         west build -p -b nrf9160dk_nrf9160_ns -d build -- -DOVERLAY_CONFIG=overlay-app_fota.conf
+|build_target|
 
 nRF91 Series DK with full modem FOTA support
 ============================================
 
 To build the MoSh sample for an nRF91 Series DK with full modem FOTA support, use the devicetree overlay for external flash corresponding to your device and the ``-DOVERLAY_CONFIG=overlay-modem_fota_full.conf`` option.
-For example:
+The following is an example for the nRF9161 DK:
 
-.. tabs::
+.. code-block:: console
 
-   .. group-tab:: nRF9161 DK
-
-      .. code-block:: console
-
-         west build -p -b nrf9161dk_nrf9161_ns -d build -- -DOVERLAY_CONFIG=overlay-modem_fota_full.conf -DDTC_OVERLAY_FILE=nrf9161dk_ext_flash.overlay
-
-   .. group-tab:: nRF9160 DK
-
-      .. code-block:: console
-
-         west build -p -b nrf9160dk_nrf9160_ns -d build -- -DOVERLAY_CONFIG=overlay-modem_fota_full.conf -DDTC_OVERLAY_FILE=nrf9160dk_ext_flash.overlay
+   west build -p -b nrf9161dk_nrf9161_ns -d build -- -DOVERLAY_CONFIG=overlay-modem_fota_full.conf -DDTC_OVERLAY_FILE=nrf9161dk_ext_flash.overlay
 
 LwM2M carrier library support
 =============================
@@ -1278,19 +1175,12 @@ LwM2M carrier library support
 To build the MoSh sample with LwM2M carrier library support, use the ``-DOVERLAY_CONFIG=overlay-carrier.conf`` option.
 For example:
 
-.. tabs::
+.. parsed-literal::
+   :class: highlight
 
-   .. group-tab:: nRF9161 DK
+   west build -p -b *build_target* -d build -- -DOVERLAY_CONFIG=overlay-carrier.conf
 
-      .. code-block:: console
-
-         west build -p -b nrf9161dk_nrf9161_ns -d build -- -DOVERLAY_CONFIG=overlay-carrier.conf
-
-   .. group-tab:: nRF9160 DK
-
-      .. code-block:: console
-
-         west build -p -b nrf9160dk_nrf9160_ns -d build -- -DOVERLAY_CONFIG=overlay-carrier.conf
+|build_target|
 
 P-GPS support
 =============
@@ -1298,19 +1188,12 @@ P-GPS support
 To build the MoSh sample with P-GPS support, use the ``-DOVERLAY_CONFIG=overlay-pgps.conf`` option.
 For example:
 
-.. tabs::
+.. parsed-literal::
+   :class: highlight
 
-   .. group-tab:: nRF9161 DK
+   west build -p -b *build_target* -d build -- -DOVERLAY_CONFIG=overlay-pgps.conf
 
-      .. code-block:: console
-
-         west build -p -b nrf9161dk_nrf9161_ns -d build -- -DOVERLAY_CONFIG=overlay-pgps.conf
-
-   .. group-tab:: nRF9160 DK
-
-      .. code-block:: console
-
-         west build -p -b nrf9160dk_nrf9160_ns -d build -- -DOVERLAY_CONFIG=overlay-pgps.conf
+|build_target|
 
 .. _cloud_build:
 
@@ -1320,19 +1203,12 @@ Cloud over MQTT
 To build the MoSh sample with cloud connectivity over MQTT, use the ``-DOVERLAY_CONFIG=overlay-cloud_mqtt.conf`` option.
 For example:
 
-.. tabs::
+.. parsed-literal::
+   :class: highlight
 
-   .. group-tab:: nRF9161 DK
+   west build -p -b *build_target* -d build -- -DOVERLAY_CONFIG=overlay-cloud_mqtt.conf
 
-      .. code-block:: console
-
-         west build -p -b nrf9161dk_nrf9161_ns -d build -- -DOVERLAY_CONFIG=overlay-cloud_mqtt.conf
-
-   .. group-tab:: nRF9160 DK
-
-      .. code-block:: console
-
-         west build -p -b nrf9160dk_nrf9160_ns -d build -- -DOVERLAY_CONFIG=overlay-cloud_mqtt.conf
+|build_target|
 
 Cloud over CoAP
 ===============
@@ -1340,19 +1216,12 @@ Cloud over CoAP
 To build the MoSh sample with cloud connectivity over CoAP, use the ``-DOVERLAY_CONFIG=overlay-cloud_coap.conf`` option.
 For example:
 
-.. tabs::
+.. parsed-literal::
+   :class: highlight
 
-   .. group-tab:: nRF9161 DK
+   west build -p -b *build_target* -d build -- -DOVERLAY_CONFIG=overlay-cloud_coap.conf
 
-      .. code-block:: console
-
-         west build -p -b nrf9161dk_nrf9161_ns -d build -- -DOVERLAY_CONFIG=overlay-cloud_coap.conf
-
-   .. group-tab:: nRF9160 DK
-
-      .. code-block:: console
-
-         west build -p -b nrf9160dk_nrf9160_ns -d build -- -DOVERLAY_CONFIG=overlay-cloud_coap.conf
+|build_target|
 
 Location service handled in application
 =======================================
@@ -1362,36 +1231,22 @@ To build the sample with location cloud services handled in the MoSh,
 use the ``-DOVERLAY_CONFIG="overlay-cloud_mqtt.conf"`` and ``-DCONFIG_LOCATION_SERVICE_EXTERNAL=y`` options.
 For example:
 
-.. tabs::
+.. parsed-literal::
+   :class: highlight
 
-   .. group-tab:: nRF9161 DK
+   west build -p -b *build_target* -d build -- -DOVERLAY_CONFIG=overlay-cloud_mqtt.conf -DCONFIG_LOCATION_SERVICE_EXTERNAL=y
 
-      .. code-block:: console
-
-         west build -p -b nrf9161dk_nrf9161_ns -d build -- -DOVERLAY_CONFIG="overlay-cloud_mqtt.conf" -DCONFIG_LOCATION_SERVICE_EXTERNAL=y
-
-   .. group-tab:: nRF9160 DK
-
-      .. code-block:: console
-
-         west build -p -b nrf9160dk_nrf9160_ns -d build -- -DOVERLAY_CONFIG="overlay-cloud_mqtt.conf" -DCONFIG_LOCATION_SERVICE_EXTERNAL=y
+|build_target|
 
 To add P-GPS on top of that, use the ``-DOVERLAY_CONFIG="overlay-cloud_mqtt.conf;overlay-pgps.conf"``, ``-DCONFIG_LOCATION_SERVICE_EXTERNAL=y`` and ``-DCONFIG_NRF_CLOUD_PGPS_TRANSPORT_NONE=y`` options.
 For example:
 
-.. tabs::
+.. parsed-literal::
+   :class: highlight
 
-   .. group-tab:: nRF9161 DK
+   west build -p -b *build_target* -d build -- -DOVERLAY_CONFIG="overlay-cloud_mqtt.conf;overlay-pgps.conf" -DCONFIG_LOCATION_SERVICE_EXTERNAL=y -DCONFIG_NRF_CLOUD_PGPS_TRANSPORT_NONE=y
 
-      .. code-block:: console
-
-         west build -p -b nrf9161dk_nrf9161_ns -d build -- -DOVERLAY_CONFIG="overlay-cloud_mqtt.conf;overlay-pgps.conf" -DCONFIG_LOCATION_SERVICE_EXTERNAL=y -DCONFIG_NRF_CLOUD_PGPS_TRANSPORT_NONE=y
-
-   .. group-tab:: nRF9160 DK
-
-      .. code-block:: console
-
-         west build -p -b nrf9160dk_nrf9160_ns -d build -- -DOVERLAY_CONFIG="overlay-cloud_mqtt.conf;overlay-pgps.conf" -DCONFIG_LOCATION_SERVICE_EXTERNAL=y -DCONFIG_NRF_CLOUD_PGPS_TRANSPORT_NONE=y
+|build_target|
 
 Remote control using nRF Cloud over MQTT
 ========================================
@@ -1405,19 +1260,12 @@ To build the MoSh sample for an nRF91 Series DK with the nRF91 device driver tha
 With this configuration, the configured MoSh commands, for example ``iperf3``, use the Zephyr native TCP/IP stack over the default LTE PDN context.
 For example:
 
-.. tabs::
+.. parsed-literal::
+   :class: highlight
 
-   .. group-tab:: nRF9161 DK
+   west build -p -b *build_target* -- -DOVERLAY_CONFIG=overlay-non-offloading.conf
 
-      .. code-block:: console
-
-         west build -p -b nrf9161dk_nrf9161_ns -- -DOVERLAY_CONFIG=overlay-non-offloading.conf
-
-   .. group-tab:: nRF9160 DK
-
-      .. code-block:: console
-
-         west build -p -b nrf9160dk_nrf9160_ns -- -DOVERLAY_CONFIG=overlay-non-offloading.conf
+|build_target|
 
 BT shell support
 ================
@@ -1481,7 +1329,7 @@ DK #2, where MoSh is used in observer (scanning) role:
       mosh:~$
 
 .. note::
-   The MoSh sample with Zephyr BT shell command is not supported by the nRF9161 DK.
+   The MoSh sample with Zephyr BT shell command is not supported by the nRF91x1 DK.
 
 SEGGER RTT support
 ==================
@@ -1490,30 +1338,23 @@ To build the MoSh sample with SEGGER's Real Time Transfer (RTT) support, use the
 When running this configuration, RTT is used as the shell backend instead of UART.
 For example:
 
-.. tabs::
+.. parsed-literal::
+   :class: highlight
 
-   .. group-tab:: nRF9161 DK
+   west build -p -b *build_target* -- -DOVERLAY_CONFIG=overlay-rtt.conf
 
-      .. code-block:: console
-
-         west build -p -b nrf9161dk_nrf9161_ns -- -DOVERLAY_CONFIG=overlay-rtt.conf
-
-   .. group-tab:: nRF9160 DK
-
-      .. code-block:: console
-
-         west build -p -b nrf9160dk_nrf9160_ns -- -DOVERLAY_CONFIG=overlay-rtt.conf
+|build_target|
 
 LwM2M support
 =============
 
-Before building and running the sample, select the LwM2M server for testing.
+Before building and running the sample, select the LwM2M Server for testing.
 Follow the instructions in :ref:`server_setup_lwm2m_client` to set up the server and register your device to the server.
 With the default LwM2M configuration, the device connects directly to the device management server without bootstrap support.
-You can change the LwM2M server address by setting the :kconfig:option:`CONFIG_LWM2M_CLIENT_UTILS_SERVER` Kconfig option.
+You can change the LwM2M Server address by setting the :kconfig:option:`CONFIG_LWM2M_CLIENT_UTILS_SERVER` Kconfig option.
 
-Location assistance uses a proprietary mechanism to fetch location assistance data from nRF Cloud by proxying it through the LwM2M server.
-As of now, you can only use AVSystem's Coiote LwM2M server for the location assistance data from nRF Cloud.
+Location assistance uses a proprietary mechanism to fetch location assistance data from nRF Cloud by proxying it through the LwM2M Server.
+As of now, you can only use AVSystem's Coiote LwM2M Server for the location assistance data from nRF Cloud.
 To know more about the AVSystem integration with |NCS|, see :ref:`ug_avsystem`.
 
 You can build the MoSh sample with different LwM2M configurations:
@@ -1524,35 +1365,22 @@ You can build the MoSh sample with different LwM2M configurations:
 
 To build the sample with LwM2M support, use the following command:
 
-.. tabs::
+.. parsed-literal::
+   :class: highlight
 
-   .. group-tab:: nRF9161 DK
-
-      .. code-block:: console
-
-         west build -p -b nrf9161dk_nrf9161_ns -- -DOVERLAY_CONFIG=overlay-lwm2m.conf -DCONFIG_MOSH_LWM2M_PSK=\"000102030405060708090a0b0c0d0e0f\"
+   west build -p -b *build_target* -- -DOVERLAY_CONFIG=overlay-lwm2m.conf -DCONFIG_MOSH_LWM2M_PSK=\"000102030405060708090a0b0c0d0e0f\"
 
 
-      To also enable P-GPS, use the following command:
+To also enable P-GPS, use the following command:
 
-      .. code-block:: console
+.. parsed-literal::
+   :class: highlight
 
-         west build -p -b nrf9160dk_nrf9160_ns -- -DOVERLAY_CONFIG="overlay-lwm2m.conf;overlay-lwm2m_pgps.conf;overlay-pgps.conf" -DCONFIG_MOSH_LWM2M_PSK=\"000102030405060708090a0b0c0d0e0f\"
+   west build -p -b *build_target* -- -DOVERLAY_CONFIG="overlay-lwm2m.conf;overlay-lwm2m_pgps.conf;overlay-pgps.conf" -DCONFIG_MOSH_LWM2M_PSK=\"000102030405060708090a0b0c0d0e0f\"
 
+|build_target|
 
-   .. group-tab:: nRF9160 DK
-
-      .. code-block:: console
-
-         west build -p -b nrf9160dk_nrf9160_ns -- -DOVERLAY_CONFIG=overlay-lwm2m.conf -DCONFIG_MOSH_LWM2M_PSK=\"000102030405060708090a0b0c0d0e0f\"
-
-      To also enable P-GPS, use the following command:
-
-      .. code-block:: console
-
-         west build -p -b nrf9160dk_nrf9160_ns -- -DOVERLAY_CONFIG="overlay-lwm2m.conf;overlay-lwm2m_pgps.conf;overlay-pgps.conf" -DCONFIG_MOSH_LWM2M_PSK=\"000102030405060708090a0b0c0d0e0f\"
-
-Use the following command to establish connection to the LwM2M server:
+Use the following command to establish connection to the LwM2M Server:
 
 .. code-block:: console
 
@@ -1560,7 +1388,7 @@ Use the following command to establish connection to the LwM2M server:
    LwM2M: Starting LwM2M client
    LwM2M: Registration complete
 
-Use the following command to disconnect from the LwM2M server:
+Use the following command to disconnect from the LwM2M Server:
 
 .. code-block:: console
 
@@ -1575,23 +1403,15 @@ When connected, the ``location`` and ``gnss`` commands use the LwM2M cloud conne
 nRF91 Series DK with modem trace flash backend support
 ======================================================
 
-To build the MoSh sample for an nRF91 Series DK with modem trace flash backend support, use the devicetree overlay for external flash corresponding to your device and the ``-DOVERLAY_CONFIG="overlay-modem-trace-flash.conf;overlay-memfault.conf"`` option.
-
+To build the MoSh sample for an nRF91 Series DK with modem trace flash backend support, use the snippet ``nrf91-modem-trace-ext-flash``.
 For example:
 
-.. tabs::
+.. parsed-literal::
+   :class: highlight
 
-   .. group-tab:: nRF9161 DK
+   west build -p -b *build_target* -S nrf91-modem-trace-ext-flash
 
-      .. code-block:: console
-
-         west build -p -b nrf9161dk_nrf9161_ns -- -DOVERLAY_CONFIG="overlay-modem-trace-flash.conf;overlay-memfault.conf" -DDTC_OVERLAY_FILE=nrf9161dk_ext_flash.overlay
-
-   .. group-tab:: nRF9160 DK
-
-      .. code-block:: console
-
-         west build -p -b nrf9160dk_nrf9160_ns -- -DOVERLAY_CONFIG="overlay-modem-trace-flash.conf;overlay-memfault.conf" -DDTC_OVERLAY_FILE=nrf9160dk_ext_flash.overlay
+|build_target|
 
 References
 **********

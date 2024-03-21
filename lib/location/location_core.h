@@ -7,8 +7,6 @@
 #ifndef LOCATION_CORE_H
 #define LOCATION_CORE_H
 
-#define LOCATION_METHOD_INTERNAL_WIFI_CELLULAR 100
-
 /** Information required to carry out a location request. */
 struct location_request_info {
 	const struct location_wifi_config *wifi;
@@ -36,6 +34,9 @@ struct location_request_info {
 
 	/** Whether to perform fallback for current location request processing. */
 	bool execute_fallback;
+
+	/** Uptime at the start of the positioning for the current method. */
+	int64_t elapsed_time_method_start_timestamp;
 
 	/**
 	 * Device uptime when location request timer expires.

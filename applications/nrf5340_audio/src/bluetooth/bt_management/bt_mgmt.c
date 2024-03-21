@@ -79,6 +79,19 @@ static void connected_cb(struct bt_conn *conn, uint8_t err)
 	uint8_t num_conn = 0;
 	struct bt_mgmt_msg msg;
 
+	if (err == BT_HCI_ERR_ADV_TIMEOUT && IS_ENABLED(CONFIG_BT_PERIPHERAL)) {
+		LOG_INF("Directed adv timed out with no connection, reverting to normal adv");
+
+		bt_mgmt_dir_adv_timed_out();
+
+		ret = bt_mgmt_adv_start(NULL, 0, NULL, 0, true);
+		if (ret) {
+			LOG_ERR("Failed to restart advertising: %d", ret);
+		}
+
+		return;
+	}
+
 	(void)bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
 
 	if (err) {
@@ -88,8 +101,9 @@ static void connected_cb(struct bt_conn *conn, uint8_t err)
 		bt_conn_unref(conn);
 
 		if (IS_ENABLED(CONFIG_BT_CENTRAL)) {
-			ret = bt_mgmt_scan_start(0, 0, BT_MGMT_SCAN_TYPE_CONN, NULL);
-			if (ret) {
+			ret = bt_mgmt_scan_start(0, 0, BT_MGMT_SCAN_TYPE_CONN, NULL,
+						 BRDCAST_ID_NOT_USED);
+			if (ret && ret != -EALREADY) {
 				LOG_ERR("Failed to restart scanning: %d", ret);
 			}
 		}
@@ -112,7 +126,7 @@ static void connected_cb(struct bt_conn *conn, uint8_t err)
 
 	if (IS_ENABLED(CONFIG_BT_CENTRAL) && (num_conn < MAX_CONN_NUM)) {
 		/* Room for more connections, start scanning again */
-		ret = bt_mgmt_scan_start(0, 0, BT_MGMT_SCAN_TYPE_CONN, NULL);
+		ret = bt_mgmt_scan_start(0, 0, BT_MGMT_SCAN_TYPE_CONN, NULL, BRDCAST_ID_NOT_USED);
 		if (ret) {
 			LOG_ERR("Failed to resume scanning: %d", ret);
 		}
@@ -156,6 +170,8 @@ static void connected_cb(struct bt_conn *conn, uint8_t err)
 	}
 }
 
+K_MUTEX_DEFINE(mtx_duplicate_scan);
+
 static void disconnected_cb(struct bt_conn *conn, uint8_t reason)
 {
 	int ret;
@@ -183,12 +199,18 @@ static void disconnected_cb(struct bt_conn *conn, uint8_t reason)
 		ERR_CHK(ret);
 	}
 
+	/* The mutex for preventing the racing condition if two headset disconnected too close,
+	 * cause the disconnected_cb() triggered in short time leads to duplicate scanning
+	 * operation.
+	 */
+	k_mutex_lock(&mtx_duplicate_scan, K_FOREVER);
 	if (IS_ENABLED(CONFIG_BT_CENTRAL)) {
-		ret = bt_mgmt_scan_start(0, 0, BT_MGMT_SCAN_TYPE_CONN, NULL);
-		if (ret) {
+		ret = bt_mgmt_scan_start(0, 0, BT_MGMT_SCAN_TYPE_CONN, NULL, BRDCAST_ID_NOT_USED);
+		if (ret && ret != -EALREADY) {
 			LOG_ERR("Failed to restart scanning: %d", ret);
 		}
 	}
+	k_mutex_unlock(&mtx_duplicate_scan);
 }
 
 #if defined(CONFIG_BT_SMP)
@@ -198,10 +220,10 @@ static void security_changed_cb(struct bt_conn *conn, bt_security_t level, enum 
 	struct bt_mgmt_msg msg;
 
 	if (err) {
-		LOG_ERR("Security failed: level %d err %d", level, err);
+		LOG_WRN("Security failed: level %d err %d", level, err);
 		ret = bt_conn_disconnect(conn, err);
 		if (ret) {
-			LOG_ERR("Failed to disconnect %d", ret);
+			LOG_WRN("Failed to disconnect %d", ret);
 		}
 	} else {
 		LOG_DBG("Security changed: level %d", level);

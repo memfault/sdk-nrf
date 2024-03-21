@@ -473,6 +473,12 @@ int lwm2m_carrier_event_handler(const lwm2m_carrier_event_t *event)
 	case LWM2M_CARRIER_EVENT_REBOOT:
 		printk("LWM2M_CARRIER_EVENT_REBOOT\n");
 		break;
+	case LWM2M_CARRIER_EVENT_MODEM_DOMAIN:
+		printk("LWM2M_CARRIER_EVENT_MODEM_DOMAIN\n");
+		break;
+	case LWM2M_CARRIER_EVENT_APP_DATA:
+		printk("LWM2M_CARRIER_EVENT_APP_DATA\n");
+		break;
 	case LWM2M_CARRIER_EVENT_MODEM_INIT:
 		printk("LWM2M_CARRIER_EVENT_MODEM_INIT\n");
 		err = nrf_modem_lib_init();
@@ -498,8 +504,12 @@ int main(void)
 	printk("HTTP application update sample started\n");
 	printk("Using version %d\n", CONFIG_APPLICATION_VERSION);
 
-	/* This is needed so that MCUBoot won't revert the update */
+#if !defined(CONFIG_LWM2M_CARRIER)
+	/* This is needed so that MCUBoot won't revert the update.
+	 * If the LwM2M Carrier library is enabled, allow the library to confirm the image.
+	 */
 	boot_write_img_confirmed();
+#endif
 
 	err = nrf_modem_lib_init();
 	if (err < 0) {

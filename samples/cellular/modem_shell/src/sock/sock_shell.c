@@ -38,7 +38,7 @@ enum sock_shell_command {
 
 static const char sock_connect_usage_str[] =
 	"Usage: sock connect -a <address> -p <port>\n"
-	"       [-f <family>] [-t <type>] [-b <port>] [-I <cid>]\n"
+	"       [-f <family>] [-t <type>] [-b <port>] [-I <cid>] [-K]\n"
 	"       [-S] [-T <sec_tag>] [-c] [-V <level>] [-H <hostname>]\n"
 	"Options:\n"
 	"  -a, --address, [str]      Address as ip address or hostname\n"
@@ -50,6 +50,7 @@ static const char sock_connect_usage_str[] =
 	"  -b, --bind_port, [int]    Local port to bind the socket to\n"
 	"  -I, --cid, [int]          Use this option to bind socket to specific\n"
 	"                            PDN CID. See link command for available CIDs.\n"
+	"  -K, --keep_open           Keep socket open when its PDN connection is lost.\n"
 	"  -S, --secure,             Enable secure connection (TLS 1.2/DTLS 1.2).\n"
 	"  -T, --sec_tag, [int]      Security tag for TLS certificate(s).\n"
 	"  -c, --cache,              Enable TLS session cache.\n"
@@ -80,7 +81,7 @@ static const char sock_getaddrinfo_usage_str[] =
 
 static const char sock_send_usage_str[] =
 	"Usage: sock send -i <socket id> [-d <data> | -l <data length>] [-e <interval>]\n"
-	"       [--packet_number_prefix] [-B <blocking>] [-s <size>] [-x]\n"
+	"       [--packet_number_prefix] [-B <blocking>] [-s <size>] [-x] [-W]\n"
 	"Options:\n"
 	"  -i, --id, [int]           Socket id. Use 'sock list' command to see open\n"
 	"                            sockets.\n"
@@ -96,8 +97,8 @@ static const char sock_send_usage_str[] =
 	"                            The number is between 0001..9999 and it can roll over.\n"
 	"                            Must be used with -d and -e options and without\n"
 	"                            -l and -x options.\n"
-	"  -B, --blocking, [int]     Blocking (1) or non-blocking (0) mode. This is only\n"
-	"                            valid when -l is given. Default value is 1.\n"
+	"  -B, --blocking, [int]     Blocking (1) or non-blocking (0) mode. This is not\n"
+	"                            valid when -e is given. Default value is 1.\n"
 	"  -s, --buffer_size, [int]  Send buffer size. This is only valid when -l is\n"
 	"                            given. Default value for 'stream' socket is 3540\n"
 	"                            and for 'dgram' socket 1200.\n"
@@ -111,6 +112,10 @@ static const char sock_send_usage_str[] =
 	"                                010203040506070809101112\n"
 	"                                01 02 03 04 05 06 07 08 09 10 11 12\n"
 	"                                01020304 05060708 09101112\n"
+	"  -W, --wait_ack            Request a blocking send operation until the data\n"
+	"                            has been sent on-air and acknowledged by the peer,\n"
+	"                            if required by the network protocol. This is not valid\n"
+	"                            when -B0 (non-blocking mode) is used.\n"
 	"  -h, --help,               Shows this help information";
 
 static const char sock_recv_usage_str[] =
@@ -135,27 +140,27 @@ static const char sock_rai_usage_str[] =
 	"Options:\n"
 	"  -i, --id, [int]           Socket id. Use 'sock list' command to see open\n"
 	"                            sockets.\n"
-	"      --rai_last,           Sets NRF_SO_RAI_LAST option.\n"
+	"      --rai_last,           Sets SO_RAI option with value RAI_LAST.\n"
 	"                            Indicates that the next call to send/sendto will be\n"
 	"                            the last one for some time, which means that the\n"
 	"                            modem can get out of connected mode quicker when\n"
 	"                            this data is sent.\n"
-	"      --rai_no_data,        Sets NRF_SO_RAI_NO_DATA option.\n"
+	"      --rai_no_data,        Sets SO_RAI option with value RAI_NO_DATA.\n"
 	"                            Indicates that the application will not send any\n"
 	"                            more data. This socket option will apply\n"
 	"                            immediately, and does not require a call to send\n"
 	"                            afterwards.\n"
-	"      --rai_one_resp,       Sets NRF_SO_RAI_ONE_RESP option.\n"
+	"      --rai_one_resp,       Sets SO_RAI option with value RAI_ONE_RESP.\n"
 	"                            Indicates that after the next call to send/sendto,\n"
 	"                            the application is expecting to receive one more\n"
 	"                            data packet before this socket will not be used\n"
 	"                            again for some time.\n"
-	"      --rai_ongoing,        Sets NRF_SO_RAI_ONGOING option.\n"
+	"      --rai_ongoing,        Sets SO_RAI option with value RAI_ONGOING.\n"
 	"                            If a client application expects to use the socket\n"
 	"                            more it can indicate that by setting this socket\n"
 	"                            option before the next send call which will keep\n"
 	"                            the modem in connected mode longer.\n"
-	"      --rai_wait_more,      Sets NRF_SO_RAI_WAIT_MORE option.\n"
+	"      --rai_wait_more,      Sets SO_RAI option with value RAI_WAIT_MORE.\n"
 	"                            If a server application expects to use the socket\n"
 	"                            more it can indicate that by setting this socket\n"
 	"                            option before the next send call.\n"
@@ -190,6 +195,8 @@ static struct option long_options[] = {
 	{ "hex",            no_argument,       0, 'x' },
 	{ "start",          no_argument,       0, 'r' },
 	{ "blocking",       required_argument, 0, 'B' },
+	{ "wait_ack",       no_argument,       0, 'W' },
+	{ "keep_open",      no_argument,       0, 'K' },
 	{ "print_format",   required_argument, 0, 'P' },
 	{ "packet_number_prefix", no_argument, 0, SOCK_SHELL_OPT_PACKET_NUMBER_PREFIX },
 	{ "rai_last",       no_argument,       0, SOCK_SHELL_OPT_RAI_LAST },
@@ -201,7 +208,7 @@ static struct option long_options[] = {
 	{ 0,                0,                 0, 0   }
 };
 
-static const char short_options[] = "i:I:a:p:f:t:b:ST:cV:H:d:l:e:s:xrB:P:h";
+static const char short_options[] = "i:I:a:p:f:t:b:ST:cV:H:d:l:e:s:xrB:WKP:h";
 
 static void sock_print_usage(enum sock_shell_command command)
 {
@@ -341,8 +348,9 @@ static int cmd_sock_connect(const struct shell *shell, size_t argc, char **argv)
 	int arg_bind_port = 0;
 	int arg_pdn_cid = 0;
 	bool arg_secure = false;
-	int arg_sec_tag = -1;
+	uint32_t arg_sec_tag = 0;
 	bool arg_session_cache = false;
+	bool arg_keep_open = false;
 	int arg_peer_verify = 2;
 	char arg_peer_hostname[SOCK_MAX_ADDR_LEN + 1];
 
@@ -425,15 +433,19 @@ static int cmd_sock_connect(const struct shell *shell, size_t argc, char **argv)
 				return -EINVAL;
 			}
 			break;
+		case 'K':
+			arg_keep_open = true;
+			break;
 		case 'S': /* Security */
 			arg_secure = true;
 			break;
 		case 'T': /* Security tag */
-			arg_sec_tag = atoi(optarg);
-			if (arg_sec_tag < 0) {
+			err = 0;
+			arg_sec_tag = shell_strtoul(optarg, 10, &err);
+			if (err) {
 				mosh_error(
-					"Valid range for security tag (%d) is 0 ... 2147483647.",
-					arg_sec_tag);
+					"Valid range for security tag (%s) is 0 .. %u.",
+					optarg, UINT32_MAX);
 				return -EINVAL;
 			}
 			break;
@@ -484,6 +496,7 @@ static int cmd_sock_connect(const struct shell *shell, size_t argc, char **argv)
 		arg_secure,
 		arg_sec_tag,
 		arg_session_cache,
+		arg_keep_open,
 		arg_peer_verify,
 		arg_peer_hostname);
 
@@ -557,6 +570,7 @@ static int cmd_sock_send(const struct shell *shell, size_t argc, char **argv)
 	bool arg_data_format_hex = false;
 	bool arg_blocking_send = true;
 	bool arg_blocking_recv = false;
+	int arg_flags = 0;
 
 	memset(arg_send_data, 0, SOCK_MAX_SEND_DATA_LEN + 1);
 
@@ -606,7 +620,7 @@ static int cmd_sock_send(const struct shell *shell, size_t argc, char **argv)
 
 			if (blocking != 0 && blocking != 1) {
 				mosh_error(
-					"Blocking (%d) must be either '0' (false) or '1' (true)",
+					"Blocking (%s) must be either '0' (false) or '1' (true)",
 					optarg);
 				return -EINVAL;
 			}
@@ -614,6 +628,9 @@ static int cmd_sock_send(const struct shell *shell, size_t argc, char **argv)
 			arg_blocking_send = blocking;
 			break;
 		}
+		case 'W':
+			arg_flags |= MSG_WAITACK;
+			break;
 		case SOCK_SHELL_OPT_PACKET_NUMBER_PREFIX:
 			arg_packet_number_prefix = true;
 			break;
@@ -639,6 +656,7 @@ static int cmd_sock_send(const struct shell *shell, size_t argc, char **argv)
 		arg_data_interval,
 		arg_packet_number_prefix,
 		arg_blocking_send,
+		arg_flags,
 		arg_buffer_size,
 		arg_data_format_hex);
 
@@ -687,7 +705,7 @@ static int cmd_sock_recv(const struct shell *shell, size_t argc, char **argv)
 
 			if (blocking != 0 && blocking != 1) {
 				mosh_error(
-					"Blocking (%d) must be either '0' (false) or '1' (true)",
+					"Blocking (%s) must be either '0' (false) or '1' (true)",
 					optarg);
 				return -EINVAL;
 			}

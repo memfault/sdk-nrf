@@ -69,18 +69,20 @@ config SLM_UART_TX_BUF_SIZE
 	  Amount of UART traffic waiting to be sent (TX), that can be held. If the buffers are full, will send synchronously.
 
 #
-# GPIO wakeup
+# GPIO functionality
 #
 config SLM_START_SLEEP
 	bool "Enter sleep on startup"
 	help
-	  Put nRF9160 into deep sleep mode after startup.
+	  If enabled, the SiP is put into deep sleep when powered on.
+	  It can then be started using SLM_POWER_PIN.
 
-config SLM_WAKEUP_PIN
-	int "Wakeup pin"
+config SLM_POWER_PIN
+	int "Power pin"
 	default -1
 	help
-	  Interface GPIO to wake up from sleep or exit idle
+	  Interface GPIO pin used to put the SiP into deep sleep and wake up from it or exit idle.
+	  The pin is configured with a pull up and must be pulled down shortly to perform one power off or wake up operation.
 
 config SLM_INDICATE_PIN
 	int "Indicate pin"
@@ -166,6 +168,18 @@ config SLM_PPP
 
 config SLM_CMUX
 	bool "CMUX support in SLM"
+
+if SLM_CMUX && SLM_PPP
+
+config SLM_CMUX_AUTOMATIC_FALLBACK_ON_PPP_STOPPAGE
+	bool "AT channel automatic fallback to DLCI 1 when PPP stops."
+	help
+	  This is mainly intended for compatibility with Zephyr's cellular modem driver.
+	  If enabled, when PPP stops (which happens automatically when the LTE link goes down)
+	  CMUX will make the AT channel be on DLCI 1. This only has an effect if it had been
+	  configured to be elsewhere, e.g. with AT#XCMUX=2.
+
+endif
 
 rsource "src/ftp_c/Kconfig"
 rsource "src/mqtt_c/Kconfig"

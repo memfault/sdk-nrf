@@ -13,20 +13,27 @@
 #define LE_AUDIO_ZBUS_EVENT_WAIT_TIME	  K_MSEC(5)
 #define LE_AUDIO_SDU_SIZE_OCTETS(bitrate) (bitrate / (1000000 / CONFIG_AUDIO_FRAME_DURATION_US) / 8)
 
-#if (CONFIG_AUDIO_SAMPLE_RATE_48000_HZ)
-#define BT_AUDIO_CODEC_CONFIG_FREQ    BT_AUDIO_CODEC_CONFIG_LC3_FREQ_48KHZ
-#define BT_AUDIO_CODEC_CAPABILIY_FREQ BT_AUDIO_CODEC_LC3_FREQ_48KHZ
-#elif (CONFIG_AUDIO_SAMPLE_RATE_24000_HZ)
-#define BT_AUDIO_CODEC_CONFIG_FREQ    BT_AUDIO_CODEC_CONFIG_LC3_FREQ_24KHZ
-#define BT_AUDIO_CODEC_CAPABILIY_FREQ BT_AUDIO_CODEC_LC3_FREQ_24KHZ
-#elif (CONFIG_AUDIO_SAMPLE_RATE_16000_HZ)
-#define BT_AUDIO_CODEC_CONFIG_FREQ    BT_AUDIO_CODEC_CONFIG_LC3_FREQ_16KHZ
+#if CONFIG_SAMPLE_RATE_CONVERTER
+#define BT_AUDIO_CODEC_CAPABILIY_FREQ                                                              \
+	BT_AUDIO_CODEC_LC3_FREQ_48KHZ | BT_AUDIO_CODEC_LC3_FREQ_24KHZ |                            \
+		BT_AUDIO_CODEC_LC3_FREQ_16KHZ
+
+#elif CONFIG_AUDIO_SAMPLE_RATE_16000_HZ
 #define BT_AUDIO_CODEC_CAPABILIY_FREQ BT_AUDIO_CODEC_LC3_FREQ_16KHZ
-#endif /* (CONFIG_AUDIO_SAMPLE_RATE_48000_HZ) */
+
+#elif CONFIG_AUDIO_SAMPLE_RATE_24000_HZ
+#define BT_AUDIO_CODEC_CAPABILIY_FREQ BT_AUDIO_CODEC_LC3_FREQ_24KHZ
+
+#elif CONFIG_AUDIO_SAMPLE_RATE_48000_HZ
+#define BT_AUDIO_CODEC_CAPABILIY_FREQ BT_AUDIO_CODEC_LC3_FREQ_48KHZ
+
+#else
+#error No sample rate supported
+#endif /* CONFIG_SAMPLE_RATE_CONVERTER */
 
 #define BT_BAP_LC3_PRESET_CONFIGURABLE(_loc, _stream_context, _bitrate)                            \
 	BT_BAP_LC3_PRESET(                                                                         \
-		BT_AUDIO_CODEC_LC3_CONFIG(BT_AUDIO_CODEC_CONFIG_FREQ,                              \
+		BT_AUDIO_CODEC_LC3_CONFIG(CONFIG_BT_AUDIO_PREF_SAMPLE_RATE_VALUE,                  \
 					  BT_AUDIO_CODEC_CONFIG_LC3_DURATION_10, _loc,             \
 					  LE_AUDIO_SDU_SIZE_OCTETS(_bitrate), 1, _stream_context), \
 		BT_AUDIO_CODEC_LC3_QOS_10_UNFRAMED(LE_AUDIO_SDU_SIZE_OCTETS(_bitrate),             \
@@ -111,7 +118,19 @@ int le_audio_octets_per_frame_get(const struct bt_audio_codec_cfg *codec, uint32
  */
 int le_audio_frame_blocks_per_sdu_get(const struct bt_audio_codec_cfg *codec,
 				      uint32_t *frame_blks_per_sdu);
-/*
+
+/**
+ * @brief	Get the bitrate for the codec configuration.
+ *
+ * @details	Decodes the audio frame duration and the number of octets per fram from the codec
+ *		configuration, and calculates the bitrate.
+ *
+ * @param[in]	codec	The audio codec structure.
+ * @param[out]	bitrate	Pointer to the bitrate in bps.
+ */
+int le_audio_bitrate_get(const struct bt_audio_codec_cfg *const codec, uint32_t *bitrate);
+
+/**
  * @brief	Get the direction of the @p stream provided
  *
  * @param	stream	Stream to check direction for.

@@ -6,6 +6,7 @@
 
 #include "streamctrl.h"
 
+#include <zephyr/bluetooth/audio/audio.h>
 #include <zephyr/kernel.h>
 #include <zephyr/zbus/zbus.h>
 
@@ -314,6 +315,8 @@ void streamctrl_send(void const *const data, size_t size, uint8_t num_ch)
 int main(void)
 {
 	int ret;
+	static const struct bt_data *ext_adv;
+	static const struct bt_data *per_adv;
 
 	LOG_DBG("nRF5340 APP core started");
 
@@ -325,8 +328,6 @@ int main(void)
 
 	size_t ext_adv_size = 0;
 	size_t per_adv_size = 0;
-	const struct bt_data *ext_adv = NULL;
-	const struct bt_data *per_adv = NULL;
 
 	ret = zbus_subscribers_create();
 	ERR_CHK_MSG(ret, "Failed to create zbus subscriber threads");
@@ -336,6 +337,11 @@ int main(void)
 
 	ret = broadcast_source_enable();
 	ERR_CHK_MSG(ret, "Failed to enable broadcaster");
+
+	ret = audio_system_config_set(
+		bt_audio_codec_cfg_freq_to_freq_hz(CONFIG_BT_AUDIO_PREF_SAMPLE_RATE_VALUE),
+		CONFIG_BT_AUDIO_BITRATE_BROADCAST_SRC, VALUE_NOT_SET);
+	ERR_CHK_MSG(ret, "Failed to set sample- and bitrate");
 
 	broadcast_source_adv_get(&ext_adv, &ext_adv_size, &per_adv, &per_adv_size);
 

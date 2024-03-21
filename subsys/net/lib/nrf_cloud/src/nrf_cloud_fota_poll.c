@@ -6,12 +6,14 @@
 
 #include <zephyr/kernel.h>
 #include <net/nrf_cloud.h>
+#include <net/nrf_cloud_fota_poll.h>
 #if defined(CONFIG_NRF_CLOUD_COAP)
 #include <net/nrf_cloud_coap.h>
 #endif
 #include <net/nrf_cloud_rest.h>
 #include <zephyr/logging/log.h>
 #include <net/fota_download.h>
+#include "nrf_cloud_download.h"
 #include "nrf_cloud_fota.h"
 
 LOG_MODULE_REGISTER(nrf_cloud_fota_poll, CONFIG_NRF_CLOUD_FOTA_POLL_LOG_LEVEL);
@@ -39,7 +41,7 @@ static K_SEM_DEFINE(fota_download_sem, 0, 1);
 static struct nrf_cloud_fota_job_info job;
 
 /* Pending job information saved to flash */
-static struct nrf_cloud_settings_fota_job pending_job;
+static struct nrf_cloud_settings_fota_job pending_job = { .type = NRF_CLOUD_FOTA_TYPE__INVALID };
 
 /* FOTA job status */
 static enum nrf_cloud_fota_status fota_status = NRF_CLOUD_FOTA_QUEUED;
@@ -120,7 +122,9 @@ static void http_fota_dl_handler(const struct fota_download_evt *evt)
 	switch (evt->id) {
 	case FOTA_DOWNLOAD_EVT_FINISHED:
 		LOG_INF("FOTA download finished");
+		nrf_cloud_download_end();
 		fota_status = NRF_CLOUD_FOTA_SUCCEEDED;
+		fota_status_details = FOTA_STATUS_DETAILS_SUCCESS;
 		k_sem_give(&fota_download_sem);
 		break;
 	case FOTA_DOWNLOAD_EVT_ERASE_PENDING:
@@ -133,6 +137,7 @@ static void http_fota_dl_handler(const struct fota_download_evt *evt)
 	case FOTA_DOWNLOAD_EVT_ERROR:
 		LOG_INF("FOTA download error: %d", evt->cause);
 
+		nrf_cloud_download_end();
 		fota_status = NRF_CLOUD_FOTA_FAILED;
 		fota_status_details = FOTA_STATUS_DETAILS_DL_ERR;
 
@@ -211,14 +216,18 @@ int nrf_cloud_fota_poll_init(struct nrf_cloud_fota_poll_ctx *ctx)
 	ctx->full_modem_fota_supported = true;
 #endif
 
+	err = fota_download_init(http_fota_dl_handler);
+	if (err) {
+		LOG_ERR("Failed to initialize FOTA download, error: %d", err);
+		return err;
+	}
+
 	initialized = true;
 	return 0;
 }
 
-int nrf_cloud_fota_poll_start(struct nrf_cloud_fota_poll_ctx *ctx)
+int nrf_cloud_fota_poll_process_pending(struct nrf_cloud_fota_poll_ctx *ctx)
 {
-	int err;
-
 	if (!check_ctx(ctx) || !initialized) {
 		return -EINVAL;
 	}
@@ -226,13 +235,7 @@ int nrf_cloud_fota_poll_start(struct nrf_cloud_fota_poll_ctx *ctx)
 	/* This function may perform a reboot if a FOTA update is in progress */
 	process_pending_job(ctx);
 
-	err = fota_download_init(http_fota_dl_handler);
-	if (err) {
-		LOG_ERR("Failed to initialize FOTA download, error: %d", err);
-		return err;
-	}
-
-	return 0;
+	return pending_job.type;
 }
 
 static bool validate_in_progress_job(void)
@@ -314,6 +317,8 @@ static int update_job_status(struct nrf_cloud_fota_poll_ctx *ctx)
 static int start_download(void)
 {
 	enum dfu_target_image_type img_type;
+	static const int sec_tag = CONFIG_NRF_CLOUD_SEC_TAG;
+	int ret = 0;
 
 	/* Start the FOTA download, specifying the job/image type */
 	switch (job.type) {
@@ -325,20 +330,42 @@ static int start_download(void)
 		img_type = DFU_TARGET_IMAGE_TYPE_MODEM_DELTA;
 		break;
 	case NRF_CLOUD_FOTA_MODEM_FULL:
-		img_type = DFU_TARGET_IMAGE_TYPE_FULL_MODEM;
+		if (IS_ENABLED(CONFIG_NRF_CLOUD_FOTA_FULL_MODEM_UPDATE)) {
+			img_type = DFU_TARGET_IMAGE_TYPE_FULL_MODEM;
+		} else {
+			LOG_ERR("Not configured for full modem FOTA");
+			ret = -EFTYPE;
+		}
 		break;
 	default:
 		LOG_ERR("Unhandled FOTA type: %d", job.type);
 		return -EFTYPE;
 	}
 
-	LOG_INF("Starting FOTA download of %s/%s", job.host, job.path);
-	int err = fota_download_start_with_image_type(job.host, job.path,
-		CONFIG_NRF_CLOUD_SEC_TAG, 0, FOTA_DL_FRAGMENT_SZ,
-		img_type);
+	if (ret == -EFTYPE) {
+		fota_status = NRF_CLOUD_FOTA_REJECTED;
+		fota_status_details = FOTA_STATUS_DETAILS_MCU_REJ;
+		return ret;
+	}
 
-	if (err != 0) {
-		LOG_ERR("Failed to start FOTA download, error: %d", err);
+	LOG_INF("Starting FOTA download of %s/%s", job.host, job.path);
+
+	struct nrf_cloud_download_data dl = {
+		.type = NRF_CLOUD_DL_TYPE_FOTA,
+		.host = job.host,
+		.path = job.path,
+		.dl_cfg = {
+			.sec_tag_list = &sec_tag,
+			.sec_tag_count = (sec_tag < 0 ? 0 : 1),
+			.pdn_id = 0,
+			.frag_size_override = FOTA_DL_FRAGMENT_SZ,
+		},
+		.fota = { .expected_type = img_type }
+	};
+
+	ret = nrf_cloud_download_start(&dl);
+	if (ret) {
+		LOG_ERR("Failed to start FOTA download, error: %d", ret);
 		return -ENODEV;
 	}
 
@@ -459,6 +486,8 @@ int nrf_cloud_fota_poll_process(struct nrf_cloud_fota_poll_ctx *ctx)
 	 */
 	if (fota_status == NRF_CLOUD_FOTA_SUCCEEDED) {
 		handle_download_succeeded_and_reboot(ctx);
+		/* Application was expected to reboot... */
+		return -EBUSY;
 	}
 
 	/* Job was not successful, send status to nRF Cloud */
@@ -468,6 +497,5 @@ int nrf_cloud_fota_poll_process(struct nrf_cloud_fota_poll_ctx *ctx)
 	}
 
 	wait_after_job_update();
-
-	return err;
+	return -EFAULT;
 }
