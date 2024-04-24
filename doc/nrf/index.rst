@@ -24,11 +24,16 @@ Robust connectivity support
   The |NCS| supports a wide range of connectivity technologies.
   In addition to connectivity technologies :ref:`provided by Zephyr <zephyr:connectivity>`, such as Bluetooth® Low Energy, IPv6, TCP/IP, UDP, LoRa and LoRaWAN, the |NCS| supports ANT, Bluetooth Mesh, Apple Find My, LTE-M/NB-IoT/GPS, Matter, Amazon Sidewalk, Thread, and Wi-Fi®, among others.
 
+Remote observability
+  The |NCS| enables remotely monitoring and updating fielded devices to improve device reliability.
+  Once deployed, devices are under field conditions that often result in unexpected errors and crashes.
+  The |NCS| enables developers to proactively detect and solve these issues through an integration with :ref:`Memfault <ug_memfault>`, an observability platform for IoT devices with debugging, monitoring, and OTA support. 
+
 Scalable and extensible
   The |NCS| is out-of-tree ready and can be used for projects and applications of all sizes and levels of complexity.
 
 Third-party integrations
-  The |NCS| provides integrations with third-party and Nordic products within the SDK, such as AWS, nRF Cloud, Memfault, and more.
+  The |NCS| provides integrations with third-party and Nordic products within the SDK, such as AWS, nRF Cloud, and more.
 
 Varied reference designs
   The |NCS| comes with advanced hardware reference designs for different use cases, ranging from nRF Desktop for Human Interface Devices to nRF5340 Audio for audio devices based on Bluetooth LE Audio specifications.

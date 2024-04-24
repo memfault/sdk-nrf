@@ -150,3 +150,16 @@ The nRF52 Series devices support running another protocol in parallel with the S
 See the :ref:`ug_multiprotocol_support` user guide on how to enable multiprotocol support for Thread or Zigbee in combination with Bluetooth.
 
 The :ref:`nrfxlib:mpsl` library provides services for multiprotocol applications.
+
+Remote Monitoring with Memfault
+*******************************
+
+The nRF Connect SDK includes out-of-the-box metrics collected with Memfault for monitoring Bluetooth connectivity such as connection time and Bluetooth thread stack usage on nRF52 Series SiPs.
+`Memfault`_ is a cloud-based web application with |NCS| compatibility that monitors devices and allows you to debug issues remotely.
+Memfault integration provides the following features to |NCS|:
+
+* `Remote debugging <Memfault debugging_>`_ - Memfault issues can be efficiently resolved with automatic detection, alerts, deduplication, and actionable insights sent through the cloud.
+* `Continuous monitoring <Memfault monitoring_>`_ - Monitors device and fleet-level metrics like connectivity and low power state in real-time dashboards and displays prepopulated metrics for your devices.
+  You can access device level data to resolve bugs faster.
+
+See the :ref:`ug_memfault` page for more information on how to enable Memfault in your |NCS| project with a nRF91 Series SiP.

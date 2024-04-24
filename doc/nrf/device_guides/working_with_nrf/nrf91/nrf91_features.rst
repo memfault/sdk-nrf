@@ -190,6 +190,20 @@ For more information on the implementation of a custom trace backend, see :ref:`
 .. _nrf91_fota:
 .. _nrf9160_fota:
 
+Remote Monitoring with Memfault
+*******************************
+
+The nRF Connect SDK includes out-of-the-box metrics collected with Memfault for monitoring LTE connectivity such as total bytes sent and received, the network operator, frequency band, and signal quality measurements.
+`Memfault`_ is a cloud-based web application with |NCS| compatibility that monitors devices and allows you to debug issues remotely.
+Memfault integration provides the following features to |NCS|:
+
+* `Remote debugging <Memfault debugging_>`_ - Memfault issues can be efficiently resolved with automatic detection, alerts, deduplication, and actionable insights sent through the cloud.
+* `Continuous monitoring <Memfault monitoring_>`_ - Monitors device and fleet-level metrics like connectivity and low power state in real-time dashboards and displays prepopulated metrics for your devices.
+  You can access device level data to resolve bugs faster.
+
+See the :ref:`ug_memfault` page for more information on how to enable Memfault in your |NCS| project with a nRF91 Series SiP.
+
+
 FOTA updates
 ************
 
