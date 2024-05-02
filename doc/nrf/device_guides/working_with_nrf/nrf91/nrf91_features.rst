@@ -165,7 +165,6 @@ The :ref:`nrfxlib:nrf_modem` is released as an OS-independent binary library in 
 
 The Modem library integration layer fulfills the integration requirements of the Modem library in |NCS|.
 For more information on the integration, see :ref:`nrf_modem_lib_readme`.
-
 .. nrf91_modem_lib_end
 
 .. _modem_trace:
@@ -190,19 +189,21 @@ For more information on the implementation of a custom trace backend, see :ref:`
 .. _nrf91_fota:
 .. _nrf9160_fota:
 
-Remote Monitoring with Memfault
+Remote Observability for your Embedded Device
 *******************************
 
-The nRF Connect SDK includes out-of-the-box metrics collected with Memfault for monitoring LTE connectivity such as total bytes sent and received, the network operator, frequency band, and signal quality measurements.
-`Memfault`_ is a cloud-based web application with |NCS| compatibility that monitors devices and allows you to debug issues remotely.
-Memfault integration provides the following features to |NCS|:
+The |NCS| bundles support for remotely monitoring and debugging your
+fleet. This can be leveraged to quickly identify and triage issues in the field and optimize
+connection quality and battery life for global deployments. The collection system has been
+optimized to work in intermittent connectiviy environments and has extemely low overhead.
 
-* `Remote debugging <Memfault debugging_>`_ - Memfault issues can be efficiently resolved with automatic detection, alerts, deduplication, and actionable insights sent through the cloud.
-* `Continuous monitoring <Memfault monitoring_>`_ - Monitors device and fleet-level metrics like connectivity and low power state in real-time dashboards and displays prepopulated metrics for your devices.
-  You can access device level data to resolve bugs faster.
+The Cellular stack has been instrumented for out-of-the box collection of a number of key
+connectivity health vitals such as such as total bytes sent and received, the network operator, frequency
+band, and signal quality measurements. For debugging, any system crashes as well as modem traces
+can be remotely collected for further analysis.
 
-See the :ref:`ug_memfault` page for more information on how to enable Memfault in your |NCS| project with a nRF91 Series SiP.
-
+Using the nRF Connect SDK third party integration with tools like Memfault can be used to visualize
+this data across your fleet and by device. See the :ref:`ug_memfault` page for more information on how to enable Memfault in your |NCS| project with a nRF91 Series SiP.
 
 FOTA updates
 ************

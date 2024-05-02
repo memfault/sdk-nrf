@@ -151,15 +151,17 @@ See the :ref:`ug_multiprotocol_support` user guide on how to enable multiprotoco
 
 The :ref:`nrfxlib:mpsl` library provides services for multiprotocol applications.
 
-Remote Monitoring with Memfault
+Remote Observability for your Embedded Device
 *******************************
 
-The nRF Connect SDK includes out-of-the-box metrics collected with Memfault for monitoring Bluetooth connectivity such as connection time and Bluetooth thread stack usage on nRF52 Series SiPs.
-`Memfault`_ is a cloud-based web application with |NCS| compatibility that monitors devices and allows you to debug issues remotely.
-Memfault integration provides the following features to |NCS|:
+The |NCS| bundles support for remotely monitoring and debugging your
+fleet. This can be leveraged to quickly identify and triage issues in the field and optimize
+connection quality and battery life for global deployments. The collection system has been
+optimized to work in intermittent connectiviy environments and has extemely low overhead.
 
-* `Remote debugging <Memfault debugging_>`_ - Memfault issues can be efficiently resolved with automatic detection, alerts, deduplication, and actionable insights sent through the cloud.
-* `Continuous monitoring <Memfault monitoring_>`_ - Monitors device and fleet-level metrics like connectivity and low power state in real-time dashboards and displays prepopulated metrics for your devices.
-  You can access device level data to resolve bugs faster.
+The |NCS| includes out-of-the-box metrics collected for monitoring Bluetooth connectivity
+such as connection time and Bluetooth thread stack usage on nRF52 Series SiPs as well as a GATT
+profile and example apps for easily sending the data through a mobile phone gatway.
 
-See the :ref:`ug_memfault` page for more information on how to enable Memfault in your |NCS| project with a nRF91 Series SiP.
+Using the |NCS| third party integration with tools like Memfault can be used to visualize
+this data across your fleet and by device. See the :ref:`ug_memfault` page for more information on how to enable Memfault in your |NCS| project with a nRF52 Series.

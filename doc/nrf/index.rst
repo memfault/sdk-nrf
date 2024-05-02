@@ -25,9 +25,10 @@ Robust connectivity support
   In addition to connectivity technologies :ref:`provided by Zephyr <zephyr:connectivity>`, such as Bluetooth® Low Energy, IPv6, TCP/IP, UDP, LoRa and LoRaWAN, the |NCS| supports ANT, Bluetooth Mesh, Apple Find My, LTE-M/NB-IoT/GPS, Matter, Amazon Sidewalk, Thread, and Wi-Fi®, among others.
 
 Remote observability
-  The |NCS| enables remotely monitoring and updating fielded devices to improve device reliability.
-  Once deployed, devices are under field conditions that often result in unexpected errors and crashes.
-  The |NCS| enables developers to proactively detect and solve these issues through an integration with :ref:`Memfault <ug_memfault>`, an observability platform for IoT devices with debugging, monitoring, and OTA support. 
+  The |NCS| provides remote observability support to maintain optimal device performance and
+  reliablity in the midst of ever-changing device ecosystems once devices are deployed. Once
+  devices are in the field, the |NCS| enables developers to implement device reliability best
+  practices such as remote debug and monitoring using integrations such as :ref:Memfault <ug_memfault>
 
 Scalable and extensible
   The |NCS| is out-of-tree ready and can be used for projects and applications of all sizes and levels of complexity.

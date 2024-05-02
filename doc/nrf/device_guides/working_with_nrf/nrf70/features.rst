@@ -53,15 +53,3 @@ The nRF70 Series devices also support the following functionalities:
 Peer-to-peer support in the form of Wi-Fi Direct® will be available in the future.
 
 See the :ref:`ug_wifi` documentation for more information related to Wi-Fi modes of operation.
-
-Remote Monitoring with Memfault
-*******************************
-
-`Memfault`_ is a cloud-based web application with |NCS| compatibility that monitors devices and allows you to debug issues remotely.
-Memfault integration provides the following features to |NCS|:
-
-* `Remote debugging <Memfault debugging_>`_ - Memfault issues can be efficiently resolved with automatic detection, alerts, deduplication, and actionable insights sent through the cloud.
-* `Continuous monitoring <Memfault monitoring_>`_ - Monitors device and fleet-level metrics like connectivity and low power state in real-time dashboards and displays prepopulated metrics for your devices.
-  You can access device level data to resolve bugs faster.
-
-See the :ref:`ug_memfault` page for more information on how to enable Memfault in your |NCS| project with a nRF70 Series SiP.

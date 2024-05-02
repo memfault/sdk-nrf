@@ -134,13 +134,17 @@ Use the following steps to enable monitor-mode debugging in the |NCS|:
 For more information about monitor-mode debugging, see Zephyr's :ref:`zephyr:debugmon` documentation and SEGGER's `Monitor-mode Debugging <Monitor-mode Debugging_>`_ documentation.
 
 
-Remote Debugging with Memfault
+Remote Debugging
 ******************************
 
-To collect coredumps from a remote device that has been deployed to the field, enable :ref:`Memfault <ug_memfault>`.
-Memfault collects device state at the time of a crash for debugging crashes remotely.
-Additionally, you can use Memfault to collect metrics for monitoring device health, including battery life, memory usage, and CPU usage.
-For more information on enabling Memfault for your project, see :ref:`ug_memfault`.
+The |NCS| provides remote observability support to maintain optimal device performance
+and reliablity in the midst of ever-changing device ecosystems. As you start to rollout your fleet,
+the nRF Connect SDK enables developers to debug and monitor devices remotely.
+
+This functionality allows you to efficiently collect crash information and get the same information you would see at
+your desk with a debugger from devices half way around the world!
+
+For more information on enabling remote debugging with the |NCS| see :ref:`ug_memfault`.
 
 .. _debugging_tools:
 
