@@ -133,7 +133,7 @@ See `Memfault SDK`_ for more information.
 
 To send data to the Memfault cloud through a Bluetooth gateway, you must configure a project key using the :kconfig:option:`CONFIG_MEMFAULT_NCS_PROJECT_KEY` Kconfig option.
 You can find your project key in the project settings at `Memfault Dashboards`_.
-You also need to set the :kconfig:option:`CONFIG_MEMFAULT_NCS_DEVICE_ID` static Kconfig option for this sample
+The Memfault device ID in this sample is set to the BLE MAC address, but can be overridden with :kconfig:option:`CONFIG_MEMFAULT_NCS_DEVICE_ID` static Kconfig option.
 
 Building and running
 ********************

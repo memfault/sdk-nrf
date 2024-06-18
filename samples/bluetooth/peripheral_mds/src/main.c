@@ -16,8 +16,11 @@
 
 #include <dk_buttons_and_leds.h>
 
+#include <memfault_ncs.h>
+
 #include <memfault/metrics/metrics.h>
 #include <memfault/core/trace_event.h>
+#include <memfault/ports/zephyr/core.h>
 
 #define DEVICE_NAME     CONFIG_BT_DEVICE_NAME
 #define DEVICE_NAME_LEN (sizeof(DEVICE_NAME) - 1)
@@ -324,6 +327,15 @@ int main(void)
 			return 0;
 		}
 	}
+
+	/* Initialize the Memfault device ID after bluetooth interface init */
+	err = memfault_ncs_device_id_init();
+	if (err) {
+		printk("Device ID initialization failed (err %d)\n", err);
+	}
+
+	/* Collect Memfault reset info now that device ID is ready */
+	memfault_zephyr_collect_reset_info();
 
 	err = bt_le_adv_start(BT_LE_ADV_CONN, ad, ARRAY_SIZE(ad),
 			      sd, ARRAY_SIZE(sd));
