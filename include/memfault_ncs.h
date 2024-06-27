@@ -44,6 +44,19 @@ int memfault_ncs_device_id_set(const char *device_id, size_t len);
  */
 void memfault_ncs_metrics_collect_data(void);
 
+#if defined(CONFIG_MEMFAULT_NCS_DEVICE_ID_NET_MAC)
+/**
+ * @brief Initialize the Memfault device ID.
+ *
+ * @note If CONFIG_MEMFAULT_NCS_DEVICE_ID_IMEI=y, this will be called during system initialization,
+ * and is not exposed for the user to call.
+ * If CONFIG_MEMFAULT_NCS_DEVICE_ID_NET_MAC=y, call this function after the network interface is up.
+ *
+ * @return 0 on success, otherwise a negative error code
+ */
+int memfault_ncs_device_id_init(void);
+#endif /* CONFIG_MEMFAULT_NCS_DEVICE_ID_NET_MAC */
+
 #ifdef __cplusplus
 }
 #endif

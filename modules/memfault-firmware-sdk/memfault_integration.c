@@ -99,7 +99,7 @@ void memfault_platform_get_device_info(sMemfaultDeviceInfo *info)
 #endif /* defined(CONFIG_MEMFAULT_DEVICE_INFO_BUILTIN) */
 
 #if defined(CONFIG_MEMFAULT_NCS_DEVICE_ID_IMEI) || defined(CONFIG_MEMFAULT_NCS_DEVICE_ID_NET_MAC)
-static int device_info_init(void)
+int memfault_ncs_device_id_init(void)
 {
 	int err;
 	char hw_id_buf[HW_ID_LEN];
@@ -136,12 +136,15 @@ static int init(void)
 		}
 	}
 
-#if defined(CONFIG_MEMFAULT_NCS_DEVICE_ID_IMEI) || defined(CONFIG_MEMFAULT_NCS_DEVICE_ID_NET_MAC)
-	err = device_info_init();
+	/* Configure device ID only for IMEI-based IDs, which are available
+	 * before the network interface is initialized in the application.
+	 */
+#if defined(CONFIG_MEMFAULT_NCS_DEVICE_ID_IMEI)
+	err = memfault_ncs_device_id_init();
 	if (err) {
 		LOG_ERR("Device info initialization failed, error: %d", err);
 	}
-#endif /* CONFIG_MEMFAULT_NCS_DEVICE_ID_IMEI || CONFIG_MEMFAULT_NCS_DEVICE_ID_NET_MAC */
+#endif /* CONFIG_MEMFAULT_NCS_DEVICE_ID_IMEI */
 
 	if (IS_ENABLED(CONFIG_MEMFAULT_NCS_USE_DEFAULT_METRICS)) {
 		memfault_ncs_metrics_init();
