@@ -14,6 +14,8 @@
 #include <drivers/gpio.h>
 #include <soc.h>
 
+#include "mds.h"
+
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
 #include <bluetooth/conn.h>
@@ -40,12 +42,19 @@
 
 static bool app_button_state;
 
+// Add the MDS UUID in the advertising data, so the MDS app can automatically
+// find the device. This is optional.
 static const struct bt_data ad[] = {
 	BT_DATA_BYTES(BT_DATA_FLAGS, (BT_LE_AD_GENERAL | BT_LE_AD_NO_BREDR)),
-	BT_DATA(BT_DATA_NAME_COMPLETE, DEVICE_NAME, DEVICE_NAME_LEN),
+	BT_DATA_BYTES(BT_DATA_UUID128_ALL, BT_UUID_MDS_VAL),
 };
 
+// If this error is encountered:
+// > E: Too big advertising data
+// > Advertising failed to start (err -22)
+// Move the DEVICE_NAME or other fields to the scan response data
 static const struct bt_data sd[] = {
+	BT_DATA(BT_DATA_NAME_COMPLETE, DEVICE_NAME, DEVICE_NAME_LEN),
 	BT_DATA_BYTES(BT_DATA_UUID128_ALL, BT_UUID_LBS_VAL),
 };
 
@@ -187,6 +196,16 @@ static int init_button(void)
 	return err;
 }
 
+static bool mds_access_enable(struct bt_conn *conn)
+{
+	// Always permitted
+	return true;
+}
+
+static const struct bt_mds_cb mds_cb = {
+	.access_enable = mds_access_enable,
+};
+
 void main(void)
 {
 	int blink_status = 0;
@@ -209,6 +228,13 @@ void main(void)
 	bt_conn_cb_register(&conn_callbacks);
 	if (IS_ENABLED(CONFIG_BT_LBS_SECURITY_ENABLED)) {
 		bt_conn_auth_cb_register(&conn_auth_callbacks);
+	}
+
+	// Register MDS handler
+	err = bt_mds_cb_register(&mds_cb);
+	if (err) {
+		printk("Memfault Diagnostic service callback registration failed (err %d)\n", err);
+		return 0;
 	}
 
 	err = bt_enable(NULL);

@@ -12,5 +12,10 @@ project(NONE)
 target_sources(app PRIVATE
   src/main.c
 )
+if (CONFIG_BT_MDS)
+target_sources(app PRIVATE
+  src/mds.c
+)
+endif()
 # NORDIC SDK APP END
 zephyr_library_include_directories(.)
