@@ -42,6 +42,22 @@
 
 static bool app_button_state;
 
+// Substitute a custom memfault_platform_get_device_info() implementation that
+// wraps the default NCS one.
+#include "memfault/components.h"
+extern const char *memfault_zephyr_get_device_id(void);
+void __wrap_memfault_platform_get_device_info(sMemfaultDeviceInfo *info) {
+	*info = (sMemfaultDeviceInfo) {
+		// See here for this implementation:
+		// https://github.com/memfault/memfault-firmware-sdk/blob/1.10.0/ports/zephyr/common/memfault_platform_core.c#L177-L207
+		.device_serial = memfault_zephyr_get_device_id(),
+		.software_type = CONFIG_MEMFAULT_NCS_FW_TYPE,
+		.software_version = CONFIG_MEMFAULT_APP_SW_VERSION,
+		.hardware_version = CONFIG_MEMFAULT_NCS_HW_VERSION,
+	};
+}
+
+
 // Add the MDS UUID in the advertising data, so the MDS app can automatically
 // find the device. This is optional.
 static const struct bt_data ad[] = {
@@ -234,7 +250,7 @@ void main(void)
 	err = bt_mds_cb_register(&mds_cb);
 	if (err) {
 		printk("Memfault Diagnostic service callback registration failed (err %d)\n", err);
-		return 0;
+		return;
 	}
 
 	err = bt_enable(NULL);

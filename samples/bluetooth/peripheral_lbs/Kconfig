@@ -21,6 +21,12 @@ config BT_LBS_SECURITY_ENABLED
 	help
 	  "Enable BLE security for the LED-Button service"
 
+config MEMFAULT_APP_SW_VERSION
+	string "Memfault software version version"
+	default "0.1.0"
+	help
+	  "Software version to be reported to Memfault"
+
 endmenu
 
 

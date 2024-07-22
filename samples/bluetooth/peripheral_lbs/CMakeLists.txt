@@ -19,3 +19,7 @@ target_sources(app PRIVATE
 endif()
 # NORDIC SDK APP END
 zephyr_library_include_directories(.)
+
+# Substitute our own function in place of the NCS
+# memfault_platform_get_device_info() implementation
+zephyr_ld_options(-Wl,--wrap=memfault_platform_get_device_info)
