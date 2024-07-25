@@ -1,0 +1,1 @@
+MEMFAULT_METRICS_KEY_DEFINE(ble_connected_count, kMemfaultMetricType_Unsigned)

@@ -83,6 +83,8 @@ static void connected(struct bt_conn *conn, uint8_t err)
 
 	printk("Connected\n");
 
+	MEMFAULT_METRIC_ADD(ble_connected_count, 1);
+
 	dk_set_led_on(CON_STATUS_LED);
 }
 
