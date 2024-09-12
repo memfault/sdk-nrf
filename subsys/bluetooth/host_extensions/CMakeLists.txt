@@ -4,4 +4,5 @@
 # SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
 #
 
-zephyr_sources_ifdef(CONFIG_BT_TRANSMIT_POWER_CONTROL host_extensions.c)
+zephyr_sources(host_extensions.c)
+zephyr_sources_ifdef(CONFIG_BT_RADIO_NOTIFICATION_CONN_CB radio_notification_conn_cb.c)

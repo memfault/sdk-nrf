@@ -20,8 +20,8 @@ This is only possible on the nRF9160 DK, not on the other nRF91 Series DKs.
 
 .. note::
 
-   As of |NCS| |release|, Zephyr's GNSS driver does not support the nRF91 Series running SLM.
-   This functionality is part of planned future work.
+   As of |NCS| |release|, it is not yet possible to make use of the nRF91 Series' GNSS functionality when Zephyr's cellular modem driver controls the SiP.
+   Also, the driver's support of power saving features is quite limited, only allowing complete power off of the SiP.
 
 Configuration
 *************
@@ -31,6 +31,10 @@ Both SLM and the Zephyr application running on the controlling chip must be comp
 For that, Kconfig fragments and devicetree overlays must be added to the compilation command.
 
 See the :ref:`slm_config_files` section for information on how to compile with additional configuration files and a description of some of the mentioned Kconfig fragments.
+
+.. include:: CMUX_AT_commands.rst
+   :start-after: slm_cmux_baud_rate_note_start
+   :end-before: slm_cmux_baud_rate_note_end
 
 nRF91 Series SiP running SLM
 ============================
@@ -96,7 +100,7 @@ Zephyr's cellular modem driver running on the controlling chip will take care of
 However, before flashing the SLM built with the Zephyr-compatible modem configuration, make sure that the nRF91 Series modem has been set to the desired system mode.
 For this, you will need a regular SLM running in the nRF91 Series SiP to be able to run AT commands manually.
 To set the modem to the desired system mode, issue an ``AT%XSYSTEMMODE`` command followed by an ``AT+CFUN=0`` command so that the modem saves the system mode to NVM.
-For example, to enable only LTE-M, issue the following command: ``AT%XSYSTEMMODE=0,1,0,0``
+For example, to enable only LTE-M, issue the following command: ``AT%XSYSTEMMODE=1,0,0,0``
 You need to do this because the modem's system mode is not automatically set at any point, so the one already configured will be used.
 
 Additionally, if the controlling chip is an external MCU:

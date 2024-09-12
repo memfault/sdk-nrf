@@ -5,6 +5,7 @@
  */
 
 #include "board.h"
+#include "app/group_data_provider.h"
 #include "app/task_executor.h"
 
 #include <app/server/Server.h>
@@ -210,6 +211,7 @@ void Board::FunctionTimerEventHandler()
 	} else if (sInstance.mFunction == BoardFunctions::FactoryReset) {
 		/* Actually trigger Factory Reset */
 		sInstance.mFunction = BoardFunctions::None;
+		Matter::GroupDataProviderImpl::Instance().WillBeFactoryReset();
 		chip::Server::GetInstance().ScheduleFactoryReset();
 	}
 }
@@ -298,33 +300,29 @@ void Board::StartBLEAdvertisement()
 void Board::DefaultMatterEventHandler(const ChipDeviceEvent *event, intptr_t /* unused */)
 {
 	static bool isNetworkProvisioned = false;
+	static bool isBleConnected = false;
 
 	switch (event->Type) {
 	case DeviceEventType::kCHIPoBLEAdvertisingChange:
-		if (isNetworkProvisioned) {
-			sInstance.UpdateDeviceState(DeviceState::DeviceProvisioned);
-		} else if (ConnectivityMgr().NumBLEConnections() != 0) {
-			sInstance.UpdateDeviceState(DeviceState::DeviceConnectedBLE);
-		} else {
-			sInstance.UpdateDeviceState(DeviceState::DeviceAdvertisingBLE);
-		}
+		isBleConnected = ConnectivityMgr().NumBLEConnections() != 0;
 		break;
-#if defined(CONFIG_NET_L2_OPENTHREAD)
 	case DeviceEventType::kThreadStateChange:
-		isNetworkProvisioned = ConnectivityMgr().IsThreadProvisioned() && ConnectivityMgr().IsThreadEnabled();
-#elif defined(CONFIG_CHIP_WIFI)
 	case DeviceEventType::kWiFiConnectivityChange:
-		isNetworkProvisioned =
-			ConnectivityMgr().IsWiFiStationProvisioned() && ConnectivityMgr().IsWiFiStationEnabled();
-#endif /* CONFIG_NET_L2_OPENTHREAD */
-		if (isNetworkProvisioned) {
-			sInstance.UpdateDeviceState(DeviceState::DeviceProvisioned);
-		} else {
-			sInstance.UpdateDeviceState(DeviceState::DeviceDisconnected);
-		}
+		isNetworkProvisioned = ConnectivityMgrImpl().IsIPv6NetworkProvisioned() &&
+				       ConnectivityMgrImpl().IsIPv6NetworkEnabled();
 		break;
 	default:
 		break;
+	}
+
+	if (isNetworkProvisioned) {
+		sInstance.UpdateDeviceState(DeviceState::DeviceProvisioned);
+	} else if (isBleConnected) {
+		sInstance.UpdateDeviceState(DeviceState::DeviceConnectedBLE);
+	} else if (ConnectivityMgr().IsBLEAdvertising()) {
+		sInstance.UpdateDeviceState(DeviceState::DeviceAdvertisingBLE);
+	} else {
+		sInstance.UpdateDeviceState(DeviceState::DeviceDisconnected);
 	}
 }
 

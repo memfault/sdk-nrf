@@ -1,7 +1,6 @@
 /** Common simple block cipher modes with AES.
  *
  * @file
- * @copyright Copyright (c) 2019-2021 Silex Insight
  * @copyright Copyright (c) 2023 Nordic Semiconductor ASA
  *
  * SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
@@ -96,7 +95,6 @@ int sx_blkcipher_create_aesxts_dec(struct sxblkcipher *c, const struct sxkeyref 
  * @param[in] key key used for the block cipher operation, expected size
  *                16, 24 or 32 bytes
  * @param[in] iv initialization vector, size must be 16 bytes
- * @param[in] aes_countermeasures  Enable the side channel counter-measures for AES
  * @return ::SX_OK
  * @return ::SX_ERR_INVALID_KEYREF
  * @return ::SX_ERR_INVALID_KEY_SZ
@@ -107,7 +105,7 @@ int sx_blkcipher_create_aesxts_dec(struct sxblkcipher *c, const struct sxkeyref 
  *        sx_keyref_load_material() or sx_keyref_load_by_id()
  */
 int sx_blkcipher_create_aesctr_enc(struct sxblkcipher *c, const struct sxkeyref *key,
-				   const char *iv, bool aes_countermeasures);
+				   const char *iv);
 
 /** Prepares an AES CTR block cipher decryption
  *

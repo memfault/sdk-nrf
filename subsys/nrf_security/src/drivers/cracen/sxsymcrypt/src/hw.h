@@ -1,5 +1,4 @@
 /*
- *  Copyright (c) 2019-2021 Silex Insight
  *  Copyright (c) 2023 Nordic Semiconductor ASA
  *
  *  SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
@@ -14,6 +13,10 @@
 #include <stddef.h>
 #include <sxsymcrypt/internal.h>
 #include <cracen/interrupts.h>
+
+#ifdef CONFIG_DCACHE
+#include <zephyr/cache.h>
+#endif
 
 #ifndef SX_EXTRA_IN_DESCS
 #define SX_EXTRA_IN_DESCS 0

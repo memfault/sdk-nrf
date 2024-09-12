@@ -53,7 +53,8 @@ Since there are links from the |NCS| documentation set into other documentation 
 
 Complete the following steps to build the documentation output:
 
-1. Open a command-line window and enter the doc folder :file:`ncs/nrf/doc`.
+1. |open_terminal_window_with_environment|
+#. Enter the doc folder :file:`ncs/nrf/doc`.
 #. Generate the Ninja build files by entering the following command:
 
    .. code-block:: console
@@ -120,8 +121,8 @@ Here, *docset-name* is the name of the documentation set, for example, ``nrf``.
 
 .. _testing_versions:
 
-Testing different versions locally
-**********************************
+Testing locally
+***************
 
 Documentation sets for different versions of the |NCS| are defined in the :file:`doc/versions.json` file.
 This file is used to display the :ref:`version drop-down <doc_structure_versions>`.

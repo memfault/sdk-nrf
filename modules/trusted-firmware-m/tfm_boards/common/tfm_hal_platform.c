@@ -4,14 +4,11 @@
  * SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
  */
 
-#if defined(TFM_PARTITION_CRYPTO)
 #include <autoconf.h>
 
-#ifdef CONFIG_HAS_HW_NRF_CC3XX
+#if defined(TFM_PARTITION_CRYPTO) && defined(CONFIG_HAS_HW_NRF_CC3XX)
 #include <nrf_cc3xx_platform.h>
 #include <nrf_cc3xx_platform_ctr_drbg.h>
-#endif
-
 #endif
 
 #if defined(NRF_PROVISIONING)
@@ -36,8 +33,8 @@
 static enum tfm_hal_status_t crypto_platform_init(void)
 {
 	int err = 0;
-#ifdef CONFIG_HAS_HW_NRF_CC3XX
 
+#ifdef CONFIG_HAS_HW_NRF_CC3XX
 	/* Initialize the nrf_cc3xx runtime */
 #if !CRYPTO_RNG_MODULE_ENABLED
 	err = nrf_cc3xx_platform_init_no_rng();
@@ -65,7 +62,7 @@ static enum tfm_hal_status_t crypto_platform_init(void)
 		SPMLOG_INFMSG("Success\r\n");
 	}
 #endif /* CONFIG_HW_UNIQUE_KEY_RANDOM */
-
+	(void)err;
 	return TFM_HAL_SUCCESS;
 }
 #endif /* defined(TFM_PARTITION_CRYPTO) */
@@ -89,6 +86,37 @@ static void allow_nonsecure_reset(void)
 	reg_value |= (uint32_t)(AIRCR_VECTKEY_PERMIT_WRITE);
 
 	SCB->AIRCR = reg_value;
+}
+
+#if CONFIG_NRF_GPIO0_PIN_MASK_SECURE || CONFIG_NRF_GPIO1_PIN_MASK_SECURE
+static void maybe_log_for_gpio_port(uint32_t gpio_port, uint32_t secure_pin_mask)
+{
+	if (secure_pin_mask == 0) {
+		return;
+	}
+
+	SPMLOG_INFMSG("Pins have been configured as secure.\r\n");
+	SPMLOG_INFMSGVAL("GPIO port: ", gpio_port);
+
+	for (int i = 0; i < 32; i++) {
+		if (secure_pin_mask & (1 << i)) {
+			SPMLOG_INFMSGVAL("Pin: ", i);
+		}
+	}
+}
+#endif
+
+static void log_pin_security_configuration(void)
+{
+#if CONFIG_NRF_GPIO0_PIN_MASK_SECURE
+	maybe_log_for_gpio_port(0, CONFIG_NRF_GPIO0_PIN_MASK_SECURE);
+#endif
+#if CONFIG_NRF_GPIO1_PIN_MASK_SECURE
+	maybe_log_for_gpio_port(1, CONFIG_NRF_GPIO1_PIN_MASK_SECURE);
+#endif
+#if !CONFIG_NRF_GPIO0_PIN_MASK_SECURE && !CONFIG_NRF_GPIO1_PIN_MASK_SECURE
+	SPMLOG_INFMSG("All pins have been configured as non-secure\r\n");
+#endif
 }
 
 enum tfm_hal_status_t tfm_hal_platform_init(void)
@@ -122,6 +150,8 @@ enum tfm_hal_status_t tfm_hal_platform_init(void)
 		return TFM_HAL_ERROR_BAD_STATE;
 	}
 #endif /* defined(NRF_PROVISIONING) */
+
+	log_pin_security_configuration();
 
 	return TFM_HAL_SUCCESS;
 }

@@ -1,8 +1,7 @@
-/** PSA cryptographic Block Cipher driver for Silex Insight offload hardware.
+/**
  *
  * @file
  *
- * @copyright Copyright (c) 2021 Silex Insight
  * @copyright Copyright (c) 2023 Nordic Semiconductor ASA
  *
  * SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
@@ -52,10 +51,9 @@ static psa_status_t cracen_cipher_crypt(cracen_cipher_operation_t *operation,
  * the state between calls is not supported. This function is using the single part
  * APIs of Cracen to perform the AES ECB operations.
  */
-static psa_status_t cracen_cipher_crypt_ecb(const struct sxkeyref *key, const uint8_t *input,
-					    size_t input_length, uint8_t *output,
-					    size_t output_size, size_t *output_length,
-					    enum cipher_operation dir)
+psa_status_t cracen_cipher_crypt_ecb(const struct sxkeyref *key, const uint8_t *input,
+				     size_t input_length, uint8_t *output, size_t output_size,
+				     size_t *output_length, enum cipher_operation dir)
 {
 	int sx_status;
 	struct sxblkcipher blkciph;
@@ -105,7 +103,7 @@ psa_status_t cracen_cipher_encrypt(const psa_key_attributes_t *attributes,
 				   size_t output_size, size_t *output_length)
 {
 	__ASSERT_NO_MSG(iv != NULL);
-	__ASSERT_NO_MSG(input != NULL);
+	__ASSERT_NO_MSG(input != NULL || input_length == 0);
 	__ASSERT_NO_MSG(output != NULL);
 	__ASSERT_NO_MSG(output_length != NULL);
 
@@ -149,7 +147,7 @@ psa_status_t cracen_cipher_decrypt(const psa_key_attributes_t *attributes,
 				   psa_algorithm_t alg, const uint8_t *input, size_t input_length,
 				   uint8_t *output, size_t output_size, size_t *output_length)
 {
-	__ASSERT_NO_MSG(input != NULL);
+	__ASSERT_NO_MSG(input != NULL || input_length == 0);
 	__ASSERT_NO_MSG(output != NULL);
 	__ASSERT_NO_MSG(output_length != NULL);
 
@@ -215,19 +213,24 @@ static bool is_alg_supported(psa_algorithm_t alg, const psa_key_attributes_t *at
 		}
 		break;
 	case PSA_ALG_CBC_NO_PADDING:
-		IF_ENABLED(PSA_NEED_CRACEN_CBC_NO_PADDING_AES, (is_supported = true));
+		IF_ENABLED(PSA_NEED_CRACEN_CBC_NO_PADDING_AES,
+			   (is_supported = psa_get_key_type(attributes) == PSA_KEY_TYPE_AES));
 		break;
 	case PSA_ALG_CBC_PKCS7:
-		IF_ENABLED(PSA_NEED_CRACEN_CBC_PKCS7_AES, (is_supported = true));
+		IF_ENABLED(PSA_NEED_CRACEN_CBC_PKCS7_AES,
+			   (is_supported = psa_get_key_type(attributes) == PSA_KEY_TYPE_AES));
 		break;
 	case PSA_ALG_CTR:
-		IF_ENABLED(PSA_NEED_CRACEN_CTR_AES, (is_supported = true));
+		IF_ENABLED(PSA_NEED_CRACEN_CTR_AES,
+			   (is_supported = psa_get_key_type(attributes) == PSA_KEY_TYPE_AES));
 		break;
 	case PSA_ALG_ECB_NO_PADDING:
-		IF_ENABLED(PSA_NEED_CRACEN_ECB_NO_PADDING_AES, (is_supported = true));
+		IF_ENABLED(PSA_NEED_CRACEN_ECB_NO_PADDING_AES,
+			   (is_supported = psa_get_key_type(attributes) == PSA_KEY_TYPE_AES));
 		break;
 	case PSA_ALG_OFB:
-		IF_ENABLED(PSA_NEED_CRACEN_OFB_AES, (is_supported = true));
+		IF_ENABLED(PSA_NEED_CRACEN_OFB_AES,
+			   (is_supported = psa_get_key_type(attributes) == PSA_KEY_TYPE_AES));
 		break;
 	default:
 		is_supported = false;
@@ -277,14 +280,13 @@ static psa_status_t initialize_cipher(cracen_cipher_operation_t *operation)
 		break;
 	case PSA_ALG_CTR:
 		if (IS_ENABLED(PSA_NEED_CRACEN_CTR_AES)) {
-			sx_status =
-				operation->dir == CRACEN_DECRYPT
-					? sx_blkcipher_create_aesctr_dec(&operation->cipher,
-									 &operation->keyref,
-									 operation->iv)
-					: sx_blkcipher_create_aesctr_enc(
-						  &operation->cipher, &operation->keyref,
-						  operation->iv, BA411_AES_COUNTERMEASURES_ENABLE);
+			sx_status = operation->dir == CRACEN_DECRYPT
+					    ? sx_blkcipher_create_aesctr_dec(&operation->cipher,
+									     &operation->keyref,
+									     operation->iv)
+					    : sx_blkcipher_create_aesctr_enc(&operation->cipher,
+									     &operation->keyref,
+									     operation->iv);
 		}
 		break;
 	case PSA_ALG_STREAM_CIPHER:
@@ -398,7 +400,7 @@ psa_status_t cracen_cipher_update(cracen_cipher_operation_t *operation, const ui
 				  size_t input_length, uint8_t *output, size_t output_size,
 				  size_t *output_length)
 {
-	__ASSERT_NO_MSG(input != NULL);
+	__ASSERT_NO_MSG(input != NULL || input_length == 0);
 	__ASSERT_NO_MSG(output != NULL);
 	__ASSERT_NO_MSG(output_length != NULL);
 
@@ -548,7 +550,6 @@ psa_status_t cracen_cipher_update(cracen_cipher_operation_t *operation, const ui
 psa_status_t cracen_cipher_finish(cracen_cipher_operation_t *operation, uint8_t *output,
 				  size_t output_size, size_t *output_length)
 {
-	__ASSERT_NO_MSG(output != NULL);
 	__ASSERT_NO_MSG(output_length != NULL);
 
 	int sx_status;
@@ -558,6 +559,8 @@ psa_status_t cracen_cipher_finish(cracen_cipher_operation_t *operation, uint8_t 
 	if (operation->unprocessed_input_bytes == 0 && operation->alg != PSA_ALG_CBC_PKCS7) {
 		return PSA_SUCCESS;
 	}
+
+	__ASSERT_NO_MSG(output != NULL);
 
 	sx_status = SX_ERR_UNINITIALIZED_OBJ;
 

@@ -79,6 +79,7 @@ As neither the Linux-based PC nor the Raspberry Pi have such radio capability, y
 
 To program the nRF device with the RCP application, complete the following steps:
 
+#. |open_terminal_window_with_environment|
 #. Build the :ref:`ot_coprocessor_sample` sample for the hardware platform and the transport of your choice:
 
    .. tabs::
@@ -87,13 +88,13 @@ To program the nRF device with the RCP application, complete the following steps
 
          .. code-block:: console
 
-            west build -p always -b nrf52840dongle_nrf52840 nrf/samples/openthread/coprocessor/
+            west build -p always -b nrf52840dongle/nrf52840 nrf/samples/openthread/coprocessor/
 
       .. tab:: nRF52840 Development Kit (UART transport)
 
          .. code-block:: console
 
-            west build -p always -b nrf52840dk_nrf52840 nrf/samples/openthread/coprocessor/
+            west build -p always -b nrf52840dk/nrf52840 nrf/samples/openthread/coprocessor/
 
 #. Depending on the hardware platform, complete the following steps:
 

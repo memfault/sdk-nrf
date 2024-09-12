@@ -14,7 +14,8 @@
  * @brief Fast Pair API
  *
  * The Fast Pair subsystem needs the Bluetooth GATT operations to be run from the cooperative
- * thread context. It requires proper configuration of the CONFIG_BT_RECV_CONTEXT Kconfig option.
+ * thread context. It requires proper configuration of the @kconfig{CONFIG_BT_RECV_CONTEXT}
+ * Kconfig option.
  *
  * @{
  */
@@ -23,7 +24,10 @@
 extern "C" {
 #endif
 
-/** Value that denotes unknown battery level (see @ref bt_fast_pair_battery). */
+/** Value that denotes unknown battery level (see @ref bt_fast_pair_battery).
+ *
+ * Used only when the @kconfig{CONFIG_BT_FAST_PAIR_BN} Kconfig option is enabled.
+ */
 #define BT_FAST_PAIR_BATTERY_LEVEL_UNKNOWN	0x7f
 
 /** @brief Fast Pair advertising mode. Used to generate advertising packet. */
@@ -40,7 +44,9 @@ enum bt_fast_pair_adv_mode {
 
 /** @brief Fast Pair not discoverable advertising type. Used to generate advertising packet. */
 enum bt_fast_pair_not_disc_adv_type {
-	/** Show UI indication. */
+	/** Show UI indication.
+	 *  Used only when the @kconfig{CONFIG_BT_FAST_PAIR_SUBSEQUENT_PAIRING} is enabled.
+	 */
 	BT_FAST_PAIR_NOT_DISC_ADV_TYPE_SHOW_UI_IND,
 
 	/** Hide UI indication. */
@@ -52,8 +58,10 @@ enum bt_fast_pair_not_disc_adv_type {
 
 /** @brief Fast Pair advertising battery mode. Used to generate advertising packet.
  *
+ * Used only when the @kconfig{CONFIG_BT_FAST_PAIR_BN} Kconfig option is enabled.
+ *
  * Battery data can be included in advertising packet only if the Fast Pair Provider is in Fast Pair
- * not discoverable advertising mode and is in possesion of at least one Account Key. To prevent
+ * not discoverable advertising mode and is in possession of at least one Account Key. To prevent
  * tracking, the Fast Pair Provider should not include battery data in the advertising packet
  * all the time.
  */
@@ -71,7 +79,10 @@ enum bt_fast_pair_adv_battery_mode {
 	BT_FAST_PAIR_ADV_BATTERY_MODE_COUNT
 };
 
-/** @brief Index of Fast Pair battery component. */
+/** @brief Index of Fast Pair battery component.
+ *
+ * Used only when the @kconfig{CONFIG_BT_FAST_PAIR_BN} Kconfig option is enabled.
+ */
 enum bt_fast_pair_battery_comp {
 	/** Left bud. */
 	BT_FAST_PAIR_BATTERY_COMP_LEFT_BUD = 0,
@@ -98,6 +109,10 @@ struct bt_fast_pair_not_disc_adv_info {
 
 	/** Fast Pair advertising battery mode. Battery values can be set using
 	 *  @ref bt_fast_pair_battery_set.
+	 *
+	 *  This field is used only when the @kconfig{CONFIG_BT_FAST_PAIR_BN} Kconfig option is
+	 *  enabled. Otherwise, it should be set to @ref BT_FAST_PAIR_ADV_BATTERY_MODE_NONE or
+	 *  zero.
 	 */
 	enum bt_fast_pair_adv_battery_mode battery_mode;
 };
@@ -123,7 +138,10 @@ struct bt_fast_pair_adv_config {
 	};
 };
 
-/** @brief Fast Pair battery component descriptor. */
+/** @brief Fast Pair battery component descriptor.
+ *
+ * Used only when the @kconfig{CONFIG_BT_FAST_PAIR_BN} Kconfig option is enabled.
+ */
 struct bt_fast_pair_battery {
 	/** Battery status. True means that battery is charging and False means that battery is not
 	 *  charging.
@@ -155,6 +173,19 @@ struct bt_fast_pair_info_cb {
  * This function shall only be used after calling the bt_enable and the settings_load
  * functions. The Fast Pair operations require the enabled Bluetooth subsystem
  * (see the bt_is_ready function) and the load operation of the settings subsystem.
+ *
+ * Mandatory callbacks must be registered before the user enables the Fast Pair module with
+ * this API. The mandatory callback set may depend on the chosen Fast Pair extension set
+ * that is selected in the application Kconfig configuration. The enable API fails with
+ * an error if mandatory callbacks are not registered. An example of a mandatory callback
+ * is the @ref bt_fast_pair_fmdn_ring_cb structure defined in the API header of the Find My
+ * Device Network extension when this extension is configured to support ringing operations.
+ * The Fast Pair module configuration without any extensions does not require any mandatory
+ * callbacks.
+ *
+ * If the application uses non-mandatory callbacks, like the @ref bt_fast_pair_fmdn_ring_cb
+ * structure, these callbacks must also be registered before the @ref bt_fast_pair_enable
+ * API call.
  *
  * This function must be called in the cooperative thread context.
  *
@@ -247,6 +278,9 @@ bool bt_fast_pair_has_account_key(void);
  * responsibility to update battery value and regenerate advertising packet when battery value
  * change.
  *
+ * This function can only be used only when the @kconfig{CONFIG_BT_FAST_PAIR_BN} Kconfig option is
+ * enabled.
+ *
  * @param[in] battery_comp	Battery component.
  * @param[in] battery		Battery value.
  *
@@ -281,6 +315,9 @@ int bt_fast_pair_info_cb_register(const struct bt_fast_pair_info_cb *cb);
  * unwanted state after the reset interruption.
  *
  * This function must be called in the cooperative thread context.
+ *
+ * If the Find My Network Device extension is enabled, this function can only be called in the
+ * disabled state of the Fast Pair module (see the @ref bt_fast_pair_is_ready function).
  *
  * @return 0 if the operation was successful. Otherwise, a (negative) error code is returned.
  */

@@ -51,12 +51,14 @@ if (CONFIG_NFC_T2T_NRFXLIB OR
     CONFIG_NFC_T4T_CC_FILE OR
     CONFIG_NFC_T4T_HL_PROCEDURE OR
     CONFIG_NFC_TNEP_TAG OR
-    CONFIG_NFC_TNEP_POLLER)
+    CONFIG_NFC_TNEP_POLLER OR
+    CONFIG_NFC_RPC)
         add_subdirectory(nfc)
 endif()
 if(CONFIG_FW_INFO OR CONFIG_FW_INFO_API)
   add_subdirectory(fw_info)
 endif()
+add_subdirectory(logging)
 add_subdirectory(shell)
 
 add_subdirectory(debug)
@@ -69,3 +71,8 @@ add_subdirectory_ifdef(CONFIG_EMDS emds)
 add_subdirectory_ifdef(CONFIG_NET_CORE_MONITOR net_core_monitor)
 add_subdirectory_ifdef(CONFIG_AUDIO_MODULE audio_module)
 add_subdirectory_ifdef(CONFIG_UART_ASYNC_ADAPTER uart_async_adapter)
+add_subdirectory_ifdef(CONFIG_SDFW_SERVICES_ENABLED sdfw_services)
+add_subdirectory(suit)
+add_subdirectory_ifdef(CONFIG_MGMT_SUITFU mgmt/suitfu)
+add_subdirectory_ifdef(CONFIG_DULT dult)
+add_subdirectory_ifdef(CONFIG_NRF_COMPRESS nrf_compress)

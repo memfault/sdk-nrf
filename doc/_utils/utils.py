@@ -31,6 +31,20 @@ ALL_DOCSETS = {
 }
 """All supported docsets (name: title, home page, manifest project name)."""
 
+OPTIONAL_DOCSETS = {
+    "internal": ("Internal Documentation", "index", "doc-internal"),
+}
+"""Optional docsets (name: title, home page, manifest project name)."""
+
+
+# append optional docsets if they exist
+for docset, props in OPTIONAL_DOCSETS.items():
+    for p in _MANIFEST.projects:
+        if p.name != props[2] or not (Path(p.topdir) / Path(p.path)).exists():
+            continue
+
+        ALL_DOCSETS[docset] = props
+
 
 def get_projdir(docset: str) -> Path:
     """Obtain the project directory for the given docset.
@@ -135,11 +149,7 @@ def add_announcement_banner(options: dict) -> None:
         options: html theme options.
     """
 
-    msg = "<b>Important: </b>We're excited to introduce our new technical documentation " \
-           "platform <a href=\"https://docs.nordicsemi.com/\">docs.nordicsemi.com</a>, " \
-           "currently in Beta version. We invite you to explore it and share your feedback. " \
-           "Read more on our " \
-           "<a href=\"https://devzone.nordicsemi.com/nordic/nordic-blog/b/blog/posts/introducing-the-unified-documentation-portal/\">DevZone blog</a>. " \
+    msg = ""
 
-    options["set_default_announcement"] = True
+    options["set_default_announcement"] = False
     options["default_announcement_message"] = msg

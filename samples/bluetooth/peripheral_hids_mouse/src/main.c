@@ -116,6 +116,8 @@ static struct conn_mode {
 	bool in_boot_mode;
 } conn_mode[CONFIG_BT_HIDS_MAX_CLIENT_COUNT];
 
+static volatile bool is_adv_running;
+
 static struct k_work adv_work;
 
 static struct k_work pairing_work;
@@ -162,14 +164,24 @@ static void advertising_continue(void)
 
 	if (!k_msgq_get(&bonds_queue, &addr, K_NO_WAIT)) {
 		char addr_buf[BT_ADDR_LE_STR_LEN];
+		int err;
+
+		if (is_adv_running) {
+			err = bt_le_adv_stop();
+			if (err) {
+				printk("Advertising failed to stop (err %d)\n", err);
+				return;
+			}
+			is_adv_running = false;
+		}
 
 		adv_param = *BT_LE_ADV_CONN_DIR(&addr);
 		adv_param.options |= BT_LE_ADV_OPT_DIR_ADDR_RPA;
 
-		int err = bt_le_adv_start(&adv_param, NULL, 0, NULL, 0);
+		err = bt_le_adv_start(&adv_param, NULL, 0, NULL, 0);
 
 		if (err) {
-			printk("Directed advertising failed to start\n");
+			printk("Directed advertising failed to start (err %d)\n", err);
 			return;
 		}
 
@@ -179,6 +191,10 @@ static void advertising_continue(void)
 #endif
 	{
 		int err;
+
+		if (is_adv_running) {
+			return;
+		}
 
 		adv_param = *BT_LE_ADV_CONN;
 		adv_param.options |= BT_LE_ADV_OPT_ONE_TIME;
@@ -191,6 +207,8 @@ static void advertising_continue(void)
 
 		printk("Regular advertising started\n");
 	}
+
+	is_adv_running = true;
 }
 
 static void advertising_start(void)
@@ -259,6 +277,8 @@ static void connected(struct bt_conn *conn, uint8_t err)
 {
 	char addr[BT_ADDR_LE_STR_LEN];
 
+	is_adv_running = false;
+
 	bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
 
 	if (err) {
@@ -266,7 +286,8 @@ static void connected(struct bt_conn *conn, uint8_t err)
 			printk("Direct advertising to %s timed out\n", addr);
 			k_work_submit(&adv_work);
 		} else {
-			printk("Failed to connect to %s (%u)\n", addr, err);
+			printk("Failed to connect to %s 0x%02x %s\n", addr, err,
+			       bt_hci_err_to_str(err));
 		}
 		return;
 	}
@@ -295,7 +316,7 @@ static void disconnected(struct bt_conn *conn, uint8_t reason)
 
 	bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
 
-	printk("Disconnected from %s (reason %u)\n", addr, reason);
+	printk("Disconnected from %s, reason 0x%02x %s\n", addr, reason, bt_hci_err_to_str(reason));
 
 	err = bt_hids_disconnected(&hids_obj, conn);
 
@@ -325,12 +346,11 @@ static void security_changed(struct bt_conn *conn, bt_security_t level,
 	if (!err) {
 		printk("Security changed: %s level %u\n", addr, level);
 	} else {
-		printk("Security failed: %s level %u err %d\n", addr, level,
-			err);
+		printk("Security failed: %s level %u err %d %s\n", addr, level, err,
+		       bt_security_err_to_str(err));
 	}
 }
 #endif
-
 
 BT_CONN_CB_DEFINE(conn_callbacks) = {
 	.connected = connected,
@@ -623,9 +643,9 @@ static void pairing_failed(struct bt_conn *conn, enum bt_security_err reason)
 
 	bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
 
-	printk("Pairing failed conn: %s, reason %d\n", addr, reason);
+	printk("Pairing failed conn: %s, reason %d %s\n", addr, reason,
+	       bt_security_err_to_str(reason));
 }
-
 
 static struct bt_conn_auth_cb conn_auth_callbacks = {
 	.passkey_display = auth_passkey_display,

@@ -7,7 +7,7 @@ nRF Desktop: Application description
    :local:
    :depth: 2
 
-The nRF Desktop application supports common input hardware interfaces like motion sensors, rotation sensors, and buttons martixes.
+The nRF Desktop application supports common input hardware interfaces like motion sensors, rotation sensors, and buttons matrixes.
 You can configure the firmware at runtime using a dedicated configuration channel established with the HID feature report.
 The same channel is used to transmit DFU packets.
 
@@ -206,9 +206,11 @@ All of these reports use predefined report format and provide the given informat
 For example, the mouse motion is forwarded as HID mouse report.
 
 An nRF Desktop device supports the selected subset of the HID input reports.
-For example, the nRF Desktop keyboard reference design (``nrf52kbd_nrf52832``) supports HID keyboard report, HID consumer control report and HID system control report.
+For example, the nRF Desktop keyboard reference design (``nrf52kbd``) supports HID keyboard report, HID consumer control report and HID system control report.
 
 As an example, the following section describes handling HID mouse report data.
+
+.. _nrf_desktop_hid_mouse_report_handling:
 
 HID mouse report handling
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -233,13 +235,14 @@ In this state, the nRF Desktop mouse forwards the data from the motion sensor to
 #. When the HID input report is sent to the host, ``hid_report_sent_event`` is submitted.
    The motion sensor sample is triggered and the sequence repeats.
 
-If the device is connected through Bluetooth, the :ref:`nrf_desktop_hid_state` uses a pipeline that consists of two HID reports that it creates upon receiving the first ``motion_event``.
+If the device is connected through Bluetooth LE or the device is connected through USB and :ref:`nrf_desktop_usb_state_sof_synchronization` is enabled, the :ref:`nrf_desktop_hid_state` uses a pipeline that consists of two HID reports that it creates upon receiving the first ``motion_event``.
 The |hid_state| submits two ``hid_report_event`` events.
 Sending the first event to the host triggers the motion sensor sample.
 
 For the Bluetooth connections, submitting ``hid_report_sent_event`` is delayed by one Bluetooth connection interval.
-Because of this delay, the :ref:`nrf_desktop_hids` requires a pipeline of two HID reports to make sure that data is sent on every connection event.
-Such solution is necessary to achieve high report rate.
+Because of this delay, the :ref:`nrf_desktop_hids` requires a pipeline of two sequential HID reports to make sure that data is sent on every connection event.
+Such a solution is necessary to achieve a high report rate.
+For :ref:`nrf_desktop_usb_state_sof_synchronization`, the pipeline of two sequential HID reports is necessary to ensure that a USB peripheral can provide HID data on every USB poll.
 
 If there is no motion data for the predefined number of samples, the :ref:`nrf_desktop_motion` goes to the idle state.
 This is done to reduce the power consumption.
@@ -261,7 +264,7 @@ The nRF Desktop supports the HID keyboard LED report.
 The report is used by the host to update the state of the keyboard LEDs, for example to indicate that the Caps Lock key is active.
 
 .. note::
-   Only the ``nrf52840dk_nrf52840`` in ``keyboard`` configuration has hardware LEDs that can be used to display the Caps Lock and Num Lock state.
+   Only the ``nrf52840dk/nrf52840`` in ``keyboard`` configuration has hardware LEDs that can be used to display the Caps Lock and Num Lock state.
 
 The following diagrams show the HID output report data exchange between the application modules.
 
@@ -363,7 +366,7 @@ Depending on the development kit you use, you need to select the respective conf
 
       .. table-from-rows:: /includes/sample_board_rows.txt
          :header: heading
-         :rows: nrf52840dk_nrf52840, nrf52833dk_nrf52833, nrf52833dk_nrf52820, nrf5340dk_nrf5340_cpuapp, nrf54l15pdk_nrf54l15_cpuapp
+         :rows: nrf52840dk_nrf52840, nrf52833dk_nrf52833, nrf52833dk_nrf52820, nrf5340dk_nrf5340_cpuapp, nrf54l15pdk_nrf54l15_cpuapp, nrf54h20dk_nrf54h20_cpuapp
 
       Depending on the configuration, a DK may act either as mouse, keyboard or dongle.
       For information about supported configurations for each board, see the :ref:`nrf_desktop_board_configuration_files` section.
@@ -378,11 +381,12 @@ See :ref:`nrf_desktop_porting_guide` for details.
 nRF Desktop build types
 =======================
 
-The nRF Desktop application does not use a single :file:`prj.conf` file.
+The nRF Desktop application uses multiple files to configure each specific build type.
+Those files can be easily identified by their :ref:`zephyr:application-file-suffixes`.
 Before you start testing the application, you can select one of the build types supported by the application.
 Not every board supports all of the mentioned build types.
 
-See :ref:`app_build_additions_build_types` and :ref:`modifying_build_types` for more information about this feature of the |NCS|.
+See :ref:`app_build_file_suffixes` and :ref:`cmake_options` for more information.
 
 The application supports the following build types:
 
@@ -391,57 +395,57 @@ The application supports the following build types:
    :header-rows: 1
 
    * - Build type
-     - File name
-     - Supported board
+     - File suffix
+     - Supported board target
      - Description
    * - Debug (default)
-     - :file:`prj.conf`
+     - none
      - All from `Requirements`_
      - Debug version of the application; the same as the ``release`` build type, but with debug options enabled.
    * - Release
-     - :file:`prj_release.conf`
+     - ``release``
      - All from `Requirements`_
      - Release version of the application with no debugging features.
    * - Debug Fast Pair
-     - :file:`prj_fast_pair.conf`
-     - ``nrf52840dk_nrf52840``, ``nrf52840gmouse_nrf52840``
+     - ``fast_pair``
+     - ``nrf52840dk/nrf52840``, ``nrf52840gmouse/nrf52840``
      - Debug version of the application with `Fast Pair`_ support.
    * - Release Fast Pair
-     - :file:`prj_release_fast_pair.conf`
-     - ``nrf52kbd_nrf52832``, ``nrf52840gmouse_nrf52840``
+     - ``release_fast_pair``
+     - ``nrf52kbd/nrf52832``, ``nrf52840gmouse/nrf52840``
      - Release version of the application with `Fast Pair`_ support.
    * - Dongle
-     - :file:`prj_dongle.conf`
-     - ``nrf52840dk_nrf52840``
+     - ``dongle``
+     - ``nrf52840dk/nrf52840``
      - Debug version of the application that lets you generate the application with the dongle role.
    * - Keyboard
-     - :file:`prj_keyboard.conf`
-     - ``nrf52840dk_nrf52840``
+     - ``keyboard``
+     - ``nrf52840dk/nrf52840``
      - Debug version of the application that lets you generate the application with the keyboard role.
    * - MCUboot QSPI
-     - :file:`prj_mcuboot_qspi.conf`
-     - ``nrf52840dk_nrf52840``
+     - ``mcuboot_qspi``
+     - ``nrf52840dk/nrf52840``
      - Debug version of the application that uses MCUboot with the secondary slot in the external QSPI FLASH.
    * - MCUboot SMP
-     - :file:`prj_mcuboot_smp.conf`
-     - ``nrf52840dk_nrf52840``, ``nrf52840gmouse_nrf52840``
+     - ``mcuboot_smp``
+     - ``nrf52840dk/nrf52840``, ``nrf52840gmouse/nrf52840``
      - | Debug version of the application that enables MCUmgr with DFU support and offers support for the MCUboot DFU procedure over SMP.
        | See the :ref:`nrf_desktop_bootloader_background_dfu` section for more information.
    * - WWCB
-     - :file:`prj_wwcb.conf`
-     - ``nrf52840dk_nrf52840``
+     - ``wwcb``
+     - ``nrf52840dk/nrf52840``
      - Debug version of the application with the support for the B0 bootloader enabled for `Works With ChromeBook (WWCB)`_.
    * - Triple Bluetooth LE connection
-     - :file:`prj_3bleconn.conf`
-     - ``nrf52840dongle_nrf52840``
+     - ``3bleconn``
+     - ``nrf52840dongle/nrf52840``
      - Debug version of the application with the support for up to three simultaneous Bluetooth LE connections.
    * - Quadruple LLPM connection
-     - :file:`prj_4llpmconn.conf`
-     - ``nrf52840dongle_nrf52840``
+     - ``4llpmconn``
+     - ``nrf52840dongle/nrf52840``
      - Debug version of the application with the support for up to four simultaneous Bluetooth LE connections, in Low Latency Packet Mode.
    * - Release quadruple LLPM connection
-     - :file:`prj_release_4llpmconn.conf`
-     - ``nrf52840dongle_nrf52840``
+     - ``release_4llpmconn``
+     - ``nrf52840dongle/nrf52840``
      - Release version of the application with the support for up to four simultaneous Bluetooth LE connections, in Low Latency Packet Mode.
 
 .. note::
@@ -891,6 +895,8 @@ The nRF Desktop application is built the same way to any other |NCS| application
 
 .. include:: /includes/build_and_run.txt
 
+.. include:: /includes/nRF54H20_erase_UICR.txt
+
 .. note::
    Information about the known issues in nRF Desktop can be found in |NCS|'s :ref:`release_notes` and on the :ref:`known_issues` page.
 
@@ -900,7 +906,7 @@ Selecting a build type
 ======================
 
 Before you start testing the application, you can select one of the :ref:`nrf_desktop_requirements_build_types`, depending on your development kit.
-See :ref:`modifying_build_types` for detailed steps how to select a build type.
+See :ref:`app_build_file_suffixes` and :ref:`cmake_options` for information about how to select a build type.
 
 .. note::
    If nRF Desktop is built with `Fast Pair`_ support, you must provide Fast Pair Model ID and Anti Spoofing private key as CMake options.
@@ -922,7 +928,7 @@ See :ref:`modifying_build_types` for detailed steps how to select a build type.
       * Device Name: NCS gaming mouse
       * Model ID: ``0x8E717D``
       * Anti-Spoofing Private Key (base64, uncompressed): ``dZxFzP7X9CcfLPC0apyRkmgsh3n2EbWo9NFNXfVuxAM=``
-      * Device Type: Input Device
+      * Device Type: Mouse
       * Notification Type: Fast Pair
       * Data-Only connection: true
       * No Personalized Name: false
@@ -1009,7 +1015,7 @@ You can use any preferred HID report rate tool.
 Building information
 ~~~~~~~~~~~~~~~~~~~~
 
-Use the :file:`prj_release.conf` configuration for the HID report rate measurement.
+Use the configuration with the ``release`` file suffix for the HID report rate measurement.
 Debug features, such as logging or assertions, decrease the application performance.
 
 Use the nRF Desktop configuration that acts as a HID mouse reference design for the report rate measurement, as the motion data polling is synchronized with sending HID reports.
@@ -1023,8 +1029,8 @@ To build an application for evaluating HID report rate, run the following comman
    .. parsed-literal::
       :class: highlight
 
-      west build -p -b *build_target* -- \
-      -DCONF_FILE=prj_release.conf \
+      west build -p -b *board_target* -- \
+      -DFILE_SUFFIX=release \
       -DCONFIG_DESKTOP_MOTION_SIMULATED_ENABLE=y \
 
 Report rate measuring tips
@@ -1044,9 +1050,33 @@ See the following list of possible scenarios and best practices:
 * Radio frequency (RF) noise can negatively affect the HID report rate for wireless connections.
   If a HID report fails to be delivered in a given Bluetooth LE LLPM connection event, it is retransmitted in the subsequent connection event, which effectively reduces the report rate.
   By avoiding congested RF channels, the :ref:`nrf_desktop_ble_qos` helps to achieve better connection quality and a higher report rate.
-* For the USB device connected directly, you can configure your preferred USB HID poll interval using the :kconfig:option:`CONFIG_USB_HID_POLL_INTERVAL_MS` Kconfig option.
-  By default, the :kconfig:option:`CONFIG_USB_HID_POLL_INTERVAL_MS` Kconfig option is set to ``1`` to request the lowest possible poll interval.
-  Set parameters are not enforced, meaning that the HID host may still eventually use a value greater than the USB polling interval requested by a peripheral.
+* For the USB device connected directly, the applicable options will vary depending on the used USB stack:
+
+  * If you use the USB legacy stack, you can configure your preferred USB HID poll interval using the :kconfig:option:`CONFIG_USB_HID_POLL_INTERVAL_MS` Kconfig option.
+    By default, the :kconfig:option:`CONFIG_USB_HID_POLL_INTERVAL_MS` Kconfig option is set to ``1`` to request the lowest possible poll interval.
+  * If you use the USB next stack, you can configure your preferred USB HID polling rate using the ``in-polling-rate`` property of a DTS node compatible with ``zephyr,hid-device``.
+    The lowest polling rate that is supported by the USB High-Speed is 125 µs, which corresponds to 8 kHz report rate.
+    The lowest polling rate supported by devices that do not support USB High-Speed is 1000 µs, which corresponds to 1 kHz report rate.
+
+  Polling parameters are not enforced, meaning that the HID host may still eventually use a value greater than the USB polling parameter requested by a peripheral.
+
+USB High-Speed
+~~~~~~~~~~~~~~
+
+You can use the nRF54H20 DK to evaluate USBHS.
+Use the ``release`` configuration and slightly modify the simulated motion module's configuration to ensure that non-zero motion values are reported in every HID report.
+See an example of the build command:
+
+   .. parsed-literal::
+      :class: highlight
+
+      west build -p -b nrf54h20dk/nrf54h20/cpuapp -- \
+      -DFILE_SUFFIX=release \
+      -DCONFIG_DESKTOP_MOTION_SIMULATED_ENABLE=y \
+      -DCONFIG_DESKTOP_MOTION_SIMULATED_EDGE_TIME=8192 \
+      -DCONFIG_DESKTOP_MOTION_SIMULATED_SCALE_FACTOR=5
+
+For information about generating motion data, see the :ref:`nrf_desktop_motion_report_rate` documentation section.
 
 Testing steps
 ~~~~~~~~~~~~~

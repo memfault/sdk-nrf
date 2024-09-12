@@ -20,6 +20,8 @@
 #include <zephyr/devicetree.h>
 #include <zephyr/drivers/gpio.h>
 
+#include <dk_buttons_and_leds.h>
+
 #if IS_ENABLED(CONFIG_PTT_CLK_OUT)
 #include <nrfx_gpiote.h>
 #endif /* IS_ENABLED(CONFIG_PTT_CLK_OUT) */
@@ -41,7 +43,11 @@ LOG_MODULE_REGISTER(periph);
 
 #if IS_ENABLED(CONFIG_PTT_CLK_OUT)
 /* Timer instance used for HFCLK output */
+#if defined(NRF52_SERIES) || defined(NRF53_SERIES)
 #define PTT_CLK_TIMER 2
+#elif defined(NRF54L_SERIES)
+#define PTT_CLK_TIMER 20
+#endif
 
 static nrfx_timer_t clk_timer = NRFX_TIMER_INSTANCE(PTT_CLK_TIMER);
 
@@ -50,15 +56,23 @@ static nrfx_timer_t clk_timer = NRFX_TIMER_INSTANCE(PTT_CLK_TIMER);
 	[DT_PROP(gpio_node, port)] = \
 		NRFX_GPIOTE_INSTANCE(DT_PROP(GPIOTE_NODE(gpio_node), instance)),
 
+#define COND_GPIOTE_INST_AND_COMMA(gpio_node) \
+	COND_CODE_1(DT_NODE_HAS_PROP(gpio_node, gpiote_instance), \
+		(GPIOTE_INST_AND_COMMA(gpio_node)), \
+		())
+
 static const nrfx_gpiote_t gpiote_inst[GPIO_COUNT] = {
-	DT_FOREACH_STATUS_OKAY(nordic_nrf_gpio, GPIOTE_INST_AND_COMMA)
+	DT_FOREACH_STATUS_OKAY(nordic_nrf_gpio, COND_GPIOTE_INST_AND_COMMA)
 };
 
 #define NRF_GPIOTE_FOR_GPIO(idx)  &gpiote_inst[idx]
 #define NRF_GPIOTE_FOR_PSEL(psel) &gpiote_inst[psel >> 5]
-#endif /* IS_ENABLED(CONFIG_PTT_CLK_OUT) */
 
-static const struct gpio_dt_spec led0 = GPIO_DT_SPEC_GET(DT_ALIAS(led0), gpios);
+static inline bool gpiote_is_valid(const nrfx_gpiote_t *gpiote)
+{
+	return gpiote->p_reg != NULL;
+}
+#endif /* IS_ENABLED(CONFIG_PTT_CLK_OUT) */
 
 #define CLOCK_NODE DT_INST(0, nordic_nrf_clock)
 
@@ -74,17 +88,20 @@ uint8_t ppi_channel;
 uint8_t task_channel;
 #endif /* IS_ENABLED(CONFIG_PTT_CLK_OUT) */
 
+#if IS_ENABLED(CONFIG_PTT_CLK_OUT)
 static void clk_timer_handler(nrf_timer_event_t event_type, void *context)
 {
 	/* do nothing */
 }
+#endif
 
 void periph_init(void)
 {
-	nrfx_err_t err_code;
 	int ret;
 
 #if IS_ENABLED(CONFIG_PTT_CLK_OUT)
+	nrfx_err_t err_code;
+
 	uint32_t base_frequency = NRF_TIMER_BASE_FREQUENCY_GET(clk_timer.p_reg);
 	nrfx_timer_config_t clk_timer_cfg = NRFX_TIMER_DEFAULT_CONFIG(base_frequency);
 
@@ -94,6 +111,10 @@ void periph_init(void)
 	for (int i = 0; i < GPIO_COUNT; ++i) {
 		const nrfx_gpiote_t *gpiote = NRF_GPIOTE_FOR_GPIO(i);
 
+		if (!gpiote_is_valid(gpiote)) {
+			continue;
+		}
+
 		if (!nrfx_gpiote_init_check(gpiote)) {
 			err_code = nrfx_gpiote_init(gpiote, 0);
 			NRFX_ASSERT(err_code);
@@ -101,9 +122,7 @@ void periph_init(void)
 	}
 #endif
 
-	assert(device_is_ready(led0.port));
-
-	ret = gpio_pin_configure_dt(&led0, GPIO_OUTPUT_INACTIVE);
+	ret = dk_leds_init();
 	assert(ret == 0);
 
 #if DT_NODE_HAS_STATUS(DT_NODELABEL(gpio0), okay)
@@ -127,7 +146,7 @@ bool ptt_clk_out_ext(uint8_t pin, bool mode)
 	nrfx_err_t err;
 	const nrfx_gpiote_t *gpiote = NRF_GPIOTE_FOR_PSEL(pin);
 
-	if (!nrf_gpio_pin_present_check(pin)) {
+	if (!nrf_gpio_pin_present_check(pin) || !gpiote_is_valid(gpiote)) {
 		return false;
 	}
 
@@ -328,10 +347,10 @@ bool ptt_get_temp_ext(int32_t *temp)
 
 void ptt_ctrl_led_indication_on_ext(void)
 {
-	gpio_pin_set_dt(&led0, 1);
+	dk_set_led_on(DK_LED1);
 }
 
 void ptt_ctrl_led_indication_off_ext(void)
 {
-	gpio_pin_set_dt(&led0, 0);
+	dk_set_led_off(DK_LED1);
 }

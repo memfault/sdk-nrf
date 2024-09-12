@@ -18,7 +18,6 @@
 
 LOG_MODULE_REGISTER(nrf_cloud_fota_poll, CONFIG_NRF_CLOUD_FOTA_POLL_LOG_LEVEL);
 
-#define FOTA_DL_FRAGMENT_SZ	1400
 #define JOB_WAIT_S		30
 
 /* FOTA job status strings that provide additional details for nrf_cloud_fota_status values */
@@ -34,6 +33,8 @@ const char * const FOTA_STATUS_DETAILS_MISMATCH = "FW file does not match specif
 
 static bool initialized;
 
+static struct nrf_cloud_fota_poll_ctx *ctx_ptr;
+
 /* Semaphore to indicate the FOTA download has arrived at a terminal state */
 static K_SEM_DEFINE(fota_download_sem, 0, 1);
 
@@ -46,6 +47,10 @@ static struct nrf_cloud_settings_fota_job pending_job = { .type = NRF_CLOUD_FOTA
 /* FOTA job status */
 static enum nrf_cloud_fota_status fota_status = NRF_CLOUD_FOTA_QUEUED;
 static char const *fota_status_details = FOTA_STATUS_DETAILS_SUCCESS;
+
+/* Forward-declarations */
+static void handle_download_succeeded_and_reboot(struct nrf_cloud_fota_poll_ctx *ctx);
+static int update_job_status(struct nrf_cloud_fota_poll_ctx *ctx);
 
 /****************************************************/
 /* Define wrappers for transport-specific functions */
@@ -119,23 +124,33 @@ static void http_fota_dl_handler(const struct fota_download_evt *evt)
 {
 	LOG_DBG("evt: %d", evt->id);
 
+	if (fota_status != NRF_CLOUD_FOTA_IN_PROGRESS) {
+		LOG_DBG("No FOTA job in progress");
+		return;
+	}
+
 	switch (evt->id) {
 	case FOTA_DOWNLOAD_EVT_FINISHED:
 		LOG_INF("FOTA download finished");
 		nrf_cloud_download_end();
 		fota_status = NRF_CLOUD_FOTA_SUCCEEDED;
 		fota_status_details = FOTA_STATUS_DETAILS_SUCCESS;
-		k_sem_give(&fota_download_sem);
+
+		if (ctx_ptr->is_nonblocking) {
+			handle_download_succeeded_and_reboot(ctx_ptr);
+		} else {
+			k_sem_give(&fota_download_sem);
+		}
 		break;
 	case FOTA_DOWNLOAD_EVT_ERASE_PENDING:
 	case FOTA_DOWNLOAD_EVT_ERASE_TIMEOUT:
-		LOG_INF("FOTA download erase ongoing");
+		LOG_DBG("FOTA download erase ongoing");
 		break;
 	case FOTA_DOWNLOAD_EVT_ERASE_DONE:
 		LOG_DBG("FOTA download erase done");
 		break;
 	case FOTA_DOWNLOAD_EVT_ERROR:
-		LOG_INF("FOTA download error: %d", evt->cause);
+		LOG_ERR("FOTA download error: %d", evt->cause);
 
 		nrf_cloud_download_end();
 		fota_status = NRF_CLOUD_FOTA_FAILED;
@@ -151,10 +166,57 @@ static void http_fota_dl_handler(const struct fota_download_evt *evt)
 		} else if (evt->cause == FOTA_DOWNLOAD_ERROR_CAUSE_TYPE_MISMATCH) {
 			fota_status_details = FOTA_STATUS_DETAILS_MISMATCH;
 		}
-		k_sem_give(&fota_download_sem);
+
+		if (ctx_ptr->is_nonblocking) {
+			ctx_ptr->error_fn(fota_status, fota_status_details);
+
+			(void)update_job_status(ctx_ptr);
+		} else {
+			k_sem_give(&fota_download_sem);
+		}
+		break;
+	case FOTA_DOWNLOAD_EVT_CANCELLED:
+		/* This event only needs to be handled in the case of non-blocking operation.
+		 * In blocking mode, the download will be cancelled by the timeout work item, so
+		 * the fota_status and details are set accordingly.
+		 */
+
+		if (ctx_ptr->is_nonblocking) {
+			LOG_DBG("FOTA download cancelled");
+			nrf_cloud_download_end();
+
+			fota_status = NRF_CLOUD_FOTA_TIMED_OUT;
+			fota_status_details = FOTA_STATUS_DETAILS_TIMEOUT;
+
+			ctx_ptr->error_fn(fota_status, fota_status_details);
+
+			(void)update_job_status(ctx_ptr);
+		}
 		break;
 	case FOTA_DOWNLOAD_EVT_PROGRESS:
 		LOG_DBG("FOTA download percent: %d%%", evt->progress);
+		break;
+	case FOTA_DOWNLOAD_EVT_RESUME_OFFSET:
+		LOG_DBG("FOTA download resume at offset: %u", evt->resume_offset);
+		/* Event is only applicable if CoAP downloads are enabled */
+#if defined(CONFIG_NRF_CLOUD_COAP_DOWNLOADS)
+		int err = nrf_cloud_download_coap_offset_resume(evt->resume_offset);
+
+		if (err) {
+			LOG_ERR("Failed to resume download, error: %d", err);
+			nrf_cloud_download_end();
+			fota_status = NRF_CLOUD_FOTA_FAILED;
+			fota_status_details = FOTA_STATUS_DETAILS_DL_ERR;
+
+			if (ctx_ptr->is_nonblocking) {
+				ctx_ptr->error_fn(fota_status, fota_status_details);
+
+				(void)update_job_status(ctx_ptr);
+			} else {
+				k_sem_give(&fota_download_sem);
+			}
+		}
+#endif /* CONFIG_NRF_CLOUD_COAP_DOWNLOADS */
 		break;
 	default:
 		break;
@@ -181,6 +243,13 @@ static void process_pending_job(struct nrf_cloud_fota_poll_ctx *ctx)
 			ctx->reboot_fn(FOTA_REBOOT_REQUIRED);
 		}
 	}
+}
+
+static void fota_dl_timeout_work_fn(struct k_work *work)
+{
+	LOG_ERR("Timeout; FOTA download took longer than %d minutes", CONFIG_FOTA_DL_TIMEOUT_MIN);
+
+	nrf_cloud_download_cancel();
 }
 
 int nrf_cloud_fota_poll_init(struct nrf_cloud_fota_poll_ctx *ctx)
@@ -221,6 +290,19 @@ int nrf_cloud_fota_poll_init(struct nrf_cloud_fota_poll_ctx *ctx)
 		LOG_ERR("Failed to initialize FOTA download, error: %d", err);
 		return err;
 	}
+
+	/* If an error handler is provided, error messages will be sent asynchronously,
+	 * so the timeout must be detected via a delayable work item instead of a semaphore.
+	 * Calls to nrf_cloud_fota_poll_process() will then be nonblocking.
+	 */
+	if (ctx->error_fn) {
+		ctx->is_nonblocking = true;
+
+		k_work_init_delayable(&ctx->timeout_work, fota_dl_timeout_work_fn);
+	}
+
+	/* A copy of the ctx pointer is needed to use in http_fota_dl_handler  */
+	ctx_ptr = ctx;
 
 	initialized = true;
 	return 0;
@@ -317,7 +399,7 @@ static int update_job_status(struct nrf_cloud_fota_poll_ctx *ctx)
 static int start_download(void)
 {
 	enum dfu_target_image_type img_type;
-	static const int sec_tag = CONFIG_NRF_CLOUD_SEC_TAG;
+	static int sec_tag;
 	int ret = 0;
 
 	/* Start the FOTA download, specifying the job/image type */
@@ -350,6 +432,8 @@ static int start_download(void)
 
 	LOG_INF("Starting FOTA download of %s/%s", job.host, job.path);
 
+	sec_tag = nrf_cloud_sec_tag_get();
+
 	struct nrf_cloud_download_data dl = {
 		.type = NRF_CLOUD_DL_TYPE_FOTA,
 		.host = job.host,
@@ -358,14 +442,25 @@ static int start_download(void)
 			.sec_tag_list = &sec_tag,
 			.sec_tag_count = (sec_tag < 0 ? 0 : 1),
 			.pdn_id = 0,
-			.frag_size_override = FOTA_DL_FRAGMENT_SZ,
+			.frag_size_override = ctx_ptr->fragment_size ? ctx_ptr->fragment_size :
+					      CONFIG_NRF_CLOUD_FOTA_DOWNLOAD_FRAGMENT_SIZE,
 		},
-		.fota = { .expected_type = img_type }
+		.fota = {
+			.expected_type = img_type,
+			.img_sz = job.file_size
+		}
 	};
+
+	/* Clear semaphore before starting download */
+	k_sem_reset(&fota_download_sem);
+
+	fota_status = NRF_CLOUD_FOTA_IN_PROGRESS;
+	fota_status_details = NULL;
 
 	ret = nrf_cloud_download_start(&dl);
 	if (ret) {
 		LOG_ERR("Failed to start FOTA download, error: %d", ret);
+		fota_status = NRF_CLOUD_FOTA_QUEUED;
 		return -ENODEV;
 	}
 
@@ -377,7 +472,9 @@ static int wait_for_download(void)
 	int err = k_sem_take(&fota_download_sem, K_MINUTES(CONFIG_FOTA_DL_TIMEOUT_MIN));
 
 	if (err == -EAGAIN) {
-		fota_download_cancel();
+		fota_status = NRF_CLOUD_FOTA_TIMED_OUT;
+		fota_status_details = FOTA_STATUS_DETAILS_TIMEOUT;
+		nrf_cloud_download_cancel();
 		return -ETIMEDOUT;
 	} else if (err != 0) {
 		LOG_ERR("k_sem_take error: %d", err);
@@ -473,12 +570,21 @@ int nrf_cloud_fota_poll_process(struct nrf_cloud_fota_poll_ctx *ctx)
 		return -ENOTRECOVERABLE;
 	}
 
+	/* Set timeout and return if this call is asynchronous, ie error_fn is defined */
+	if (ctx->is_nonblocking) {
+		k_work_schedule(&ctx->timeout_work, K_MINUTES(CONFIG_FOTA_DL_TIMEOUT_MIN));
+
+		return 0;
+	}
+
+	/* When this point is reached, this function will block until timeout or the fota_download
+	 * reports that the download is done.
+	 */
+
 	err = wait_for_download();
 	if (err == -ETIMEDOUT) {
 		LOG_ERR("Timeout; FOTA download took longer than %d minutes",
 			CONFIG_FOTA_DL_TIMEOUT_MIN);
-		fota_status = NRF_CLOUD_FOTA_TIMED_OUT;
-		fota_status_details = FOTA_STATUS_DETAILS_TIMEOUT;
 	}
 
 	/* On download success, save job info and reboot to complete installation.

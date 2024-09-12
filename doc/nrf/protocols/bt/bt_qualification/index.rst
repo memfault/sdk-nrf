@@ -20,13 +20,20 @@ Pre-qualified design
 ********************
 
 A *design* is a specific configuration of hardware or software implementation (or both) of adopted Bluetooth specifications, either in parts or as a whole.
-If relevant, you can use an existing design that has already been qualified (called *pre-qualified design*).
+If relevant, you can use an existing design that has already been qualified (called *pre-qualified design*) and has a Qualification Design ID (QDID) number.
 This allows you to speed up your product's qualification process by omitting a testing phase.
 
 The |NCS| contains qualified portions of various Bluetooth features (for example, :ref:`ug_ble_controller_softdevice` versions).
+If your product uses a qualified Bluetooth stack provided as part of the |NCS|, you can inherit this qualification from Nordic Semiconductor, provided that you do not introduce any changes to the stack.
+To find the QDID, go to the Compatibility Matrix relevant for the SoC or SiP model you use (for example, the `nRF52840 DK Compatibility Matrix`_), and open the Bluetooth QDID section.
 
-Any qualified design offered by Nordic Semiconductor (for example, :ref:`ug_bt_mesh` versions) can be qualified independently by the customers.
-However, this process may be complex and time-consuming, thus it is recommended to inherit Nordic Semiconductor's design qualifications in your End Product's listing.
+Generally, the qualified designs from Nordic Semiconductor combine many features together, but when you create a product or product line, you might not need some optional features.
+In this case, you can create a subset design that contains only the features you want to inherit from the qualified design.
+Listing products using subsets allows your product to present its used feature list in the form of a subset and distinguish itself from other designs.
+Follow the `Create a subset of a design`_ instructions to create a subset of a qualified design.
+
+You can independently qualify any qualified design offered by Nordic Semiconductor (for example, :ref:`ug_bt_mesh` versions).
+However, this process may be complex and time-consuming, thus it is recommended that you inherit Nordic Semiconductor's design qualifications in your End Product's listing.
 If you want to create a Profile Subsystem that is not on the `Bluetooth Qualification Listing`_, run the relevant tests through the `Profile Tuning Suite (PTS)`_ tool and qualify the product.
 
 A full list of Bluetooth product types including their descriptions is available on the `Bluetooth product types`_ page.
@@ -90,11 +97,9 @@ Switching to another SDK version
 
 If you want to switch to another |NCS| version for an existing product, complete the following steps:
 
-1. Go to the `Nordic Semiconductor Infocenter`_ and search for the SoC or SiP model you use.
+1. Go to the Compatibility Matrix relevant for the SoC or SiP model you use.
 
-#. Navigate to the relevant Compatibility Matrix directory.
-
-#. Open the Bluetooth QDIDs article and, based on the table, confirm the following:
+#. Open the Bluetooth QDIDs section and, based on the table, confirm the following:
 
    * The version you want to use must be compatible with versions of other Subsystems you want to keep for your product.
    * Relevant Host and SoftDevice Controller Subsystems implemented in the |NCS| version you want to use must be pre-qualified.
@@ -116,10 +121,12 @@ Use the listing search in the following cases:
 * To search for existing designs that can be used in your product.
 * To check if you can add your device model to an existing qualification entry.
 
-Matter certification by inheritance
-***********************************
+Bluetooth QDID inheritance in Matter certification
+**************************************************
 
-Bluetooth QDIDs may be further used to obtain the Matter certification by inheritance.
+When applying for Matter certification, you must present a self-attestation that confirms you have applied for and obtained the certification for the transport platform you are using for your Matter component.
+If your product uses a qualified Bluetooth stack provided as part of the |NCS|, you can inherit this certification from Nordic Semiconductor, provided that you do not introduce any changes to the stack.
+
 See the :ref:`ug_matter_device_certification_reqs_dependent` section for details.
 
 Support

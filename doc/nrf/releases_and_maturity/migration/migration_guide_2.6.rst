@@ -186,7 +186,7 @@ Security
    * For the :ref:`crypto_persistent_key` sample:
 
      * The Kconfig option ``CONFIG_PSA_NATIVE_ITS`` is replaced by the Kconfig option :kconfig:option:`CONFIG_TRUSTED_STORAGE`, which enables the new :ref:`trusted_storage_readme` library.
-       The :ref:`trusted_storage_readme` library provides the PSA Internal Trusted Storage (ITS) API for build targets without TF-M.
+       The :ref:`trusted_storage_readme` library provides the PSA Internal Trusted Storage (ITS) API for board targets without TF-M.
        It is not backward compatible with the previous PSA ITS implementation.
        Migrating from the PSA ITS implementation, enabled by the ``CONFIG_PSA_NATIVE_ITS`` option, to the new :ref:`trusted_storage_readme` library requires manual data migration.
 
@@ -797,10 +797,10 @@ nRF5340 Audio applications
 
 .. toggle::
 
-   * The :ref:`nrf53_audio_app` have changed the default controller from the :ref:`lib_bt_ll_acs_nrf53_readme` to Nordic Semiconductor's standard :ref:`ug_ble_controller_softdevice` (:ref:`softdevice_controller_iso`).
+   * The :ref:`nrf53_audio_app` have changed the default controller from the LE Audio controller for nRF5340 library to Nordic Semiconductor's standard :ref:`ug_ble_controller_softdevice` (:ref:`softdevice_controller_iso`).
      :ref:`ug_ble_controller_softdevice` is included and built automatically.
-     For |NCS| 2.6.0, tests have been run and issues documented as before for the previously used :ref:`lib_bt_ll_acs_nrf53_readme`.
-     However, :ref:`lib_bt_ll_acs_nrf53_readme` is marked as deprecated, it will be removed soon, and there will be no new features or fixes to this controller.
+     For |NCS| 2.6.0, tests have been run and issues documented as before for the previously used LE Audio controller for nRF5340 library.
+     However, the LE Audio controller for nRF5340 library is marked as deprecated, it will be removed soon, and there will be no new features or fixes to this controller.
      Make sure to remove references to LE Audio controller for nRF5340 from your application and transition to the new controller.
      There should be no negative impact on performance of the nRF5340 Audio applications with the :ref:`ug_ble_controller_softdevice`.
      This change enables the use of standard |NCS| tools and procedures for building, configuring and DFU.

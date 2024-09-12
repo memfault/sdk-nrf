@@ -53,7 +53,9 @@ int rpu_init(void);
 int rpu_enable(void);
 int rpu_disable(void);
 
-#ifdef CONFIG_NRF700X_RADIO_COEX
+#ifdef CONFIG_NRF700X_SR_COEX_RF_SWITCH
 int sr_ant_switch(unsigned int ant_switch);
-#endif /* CONFIG_NRF700X_RADIO_COEX */
+int sr_gpio_remove(void);
+int sr_gpio_config(void);
+#endif /* CONFIG_NRF700X_SR_COEX_RF_SWITCH */
 #endif /* __RPU_HW_IF_H_ */

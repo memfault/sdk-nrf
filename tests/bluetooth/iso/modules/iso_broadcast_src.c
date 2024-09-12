@@ -19,7 +19,7 @@
 #include "iso_broadcast_src.h"
 
 #include <zephyr/logging/log.h>
-LOG_MODULE_REGISTER(broadcast_src, CONFIG_ISO_TEST_LOG_LEVEL);
+LOG_MODULE_REGISTER(brcast_src, CONFIG_ISO_TEST_LOG_LEVEL);
 
 K_THREAD_STACK_DEFINE(broadcaster_thread_stack, 4096);
 static struct k_thread broadcaster_thread;
@@ -27,14 +27,15 @@ static struct k_thread broadcaster_thread;
 static const struct gpio_dt_spec led = GPIO_DT_SPEC_GET(DT_ALIAS(led1), gpios);
 
 #define BUF_ALLOC_TIMEOUT_MS	       (10)
-#define BROADCAST_PERIODIC_ADV_INT_MIN (32)	/* Periodic ADV min interval = 40ms */
-#define BROADCAST_PERIODIC_ADV_INT_MAX (32)	/* Periodic ADV max interval = 40ms */
+#define BROADCAST_PERIODIC_ADV_INT_MIN (32) /* Periodic ADV min interval = 40ms */
+#define BROADCAST_PERIODIC_ADV_INT_MAX (32) /* Periodic ADV max interval = 40ms */
 #define BROADCAST_PERIODIC_ADV                                                                     \
 	BT_LE_PER_ADV_PARAM(BROADCAST_PERIODIC_ADV_INT_MIN, BROADCAST_PERIODIC_ADV_INT_MAX,        \
 			    BT_LE_PER_ADV_OPT_NONE)
 
 NET_BUF_POOL_FIXED_DEFINE(bis_tx_pool, CONFIG_BIS_ISO_CHAN_COUNT_MAX,
-			  BT_ISO_SDU_BUF_SIZE(CONFIG_BT_ISO_TX_MTU), 8, NULL);
+			  BT_ISO_SDU_BUF_SIZE(CONFIG_BT_ISO_TX_MTU),
+			  CONFIG_BT_CONN_TX_USER_DATA_SIZE, NULL);
 
 static K_SEM_DEFINE(sem_big_cmplt, 0, CONFIG_BIS_ISO_CHAN_COUNT_MAX);
 static K_SEM_DEFINE(sem_big_term, 0, CONFIG_BIS_ISO_CHAN_COUNT_MAX);
@@ -110,6 +111,10 @@ static struct bt_iso_big *big;
 static uint32_t iso_send_count;
 static uint8_t iso_data[CONFIG_BT_ISO_TX_MTU] = {0};
 
+static const struct bt_data ad[] = {
+	BT_DATA(BT_DATA_NAME_COMPLETE, CONFIG_BT_DEVICE_NAME, sizeof(CONFIG_BT_DEVICE_NAME) - 1),
+};
+
 static void broadcaster_t(void *arg1, void *arg2, void *arg3)
 {
 	static uint8_t initial_send = 2;
@@ -117,7 +122,10 @@ static void broadcaster_t(void *arg1, void *arg2, void *arg3)
 	while (1) {
 		int ret;
 
-		k_sleep(K_USEC(big_create_param.interval));
+		/* Wake up earlier to reduce the time skewing
+		 * Use the ISO interval minus 200 uS to keep the buffer full.
+		 */
+		k_sleep(K_USEC(big_create_param.interval - 200));
 		if (!running) {
 			k_msleep(100);
 			initial_send = 2;
@@ -142,8 +150,7 @@ static void broadcaster_t(void *arg1, void *arg2, void *arg3)
 			net_buf_reserve(buf, BT_ISO_CHAN_SEND_RESERVE);
 			sys_put_le32(iso_send_count, iso_data);
 			net_buf_add_mem(buf, iso_data, iso_tx_qos.sdu);
-			ret = bt_iso_chan_send(&bis_iso_chan[chan], buf, seq_num,
-					       BT_ISO_TIMESTAMP_NONE);
+			ret = bt_iso_chan_send(&bis_iso_chan[chan], buf, seq_num);
 			if (ret < 0) {
 				LOG_ERR("Unable to broadcast data on channel %u"
 					" : %d",
@@ -158,9 +165,9 @@ static void broadcaster_t(void *arg1, void *arg2, void *arg3)
 			initial_send--;
 		}
 
-		if ((iso_send_count % CONFIG_PRINT_CONN_INTERVAL) == 0) {
+		if ((iso_send_count % CONFIG_PRINT_ISO_INTERVAL) == 0) {
 			LOG_INF("Sending value %u", iso_send_count);
-			if ((iso_send_count / CONFIG_PRINT_CONN_INTERVAL) % 2 == 0) {
+			if ((iso_send_count / CONFIG_PRINT_ISO_INTERVAL) % 2 == 0) {
 				ret = gpio_pin_set_dt(&led, 1);
 			} else {
 				ret = gpio_pin_set_dt(&led, 0);
@@ -225,10 +232,17 @@ int iso_broadcast_src_start(const struct shell *shell, size_t argc, char **argv)
 	}
 
 	/* Create a non-connectable non-scannable advertising set */
-	ret = bt_le_ext_adv_create(BT_LE_EXT_ADV_NCONN_NAME, NULL, &adv);
+	ret = bt_le_ext_adv_create(BT_LE_EXT_ADV_NCONN, NULL, &adv);
 	if (ret) {
 		LOG_ERR("Failed to create advertising set (ret %d)", ret);
 		return ret;
+	}
+
+	/* Set advertising data to have complete local name set */
+	ret = bt_le_ext_adv_set_data(adv, ad, ARRAY_SIZE(ad), NULL, 0);
+	if (ret) {
+		LOG_ERR("Failed to set advertising data (ret %d)", ret);
+		return 0;
 	}
 
 	/* Set periodic advertising parameters */
@@ -265,7 +279,7 @@ int iso_broadcast_src_start(const struct shell *shell, size_t argc, char **argv)
 		LOG_INF("Waiting for BIG complete chan %u...", chan);
 		ret = k_sem_take(&sem_big_cmplt, K_FOREVER);
 		if (ret) {
-			LOG_ERR("failed (ret %d)", ret);
+			LOG_ERR("k_sem_take failed (ret %d)", ret);
 			return ret;
 		}
 		LOG_INF("BIG create complete chan %u.", chan);
@@ -298,12 +312,12 @@ static int argument_check(const struct shell *shell, uint8_t const *const input)
 
 	if (*end != '\0' || (uint8_t *)end == input || (arg_val == 0 && !isdigit(input[0])) ||
 	    arg_val < 0) {
-		shell_error(shell, "Argument must be a positive integer %s", input);
+		LOG_ERR("Argument must be a positive integer %s", input);
 		return -EINVAL;
 	}
 
 	if (running) {
-		shell_error(shell, "Arguments can not be changed while running");
+		LOG_ERR("Arguments can not be changed while running");
 		return -EACCES;
 	}
 
@@ -355,7 +369,7 @@ static int param_set(const struct shell *shell, size_t argc, char **argv)
 	}
 
 	if (running) {
-		shell_error(shell, "Stop src before changing parameters");
+		LOG_ERR("Stop src before changing parameters");
 		return -EPERM;
 	}
 
@@ -377,6 +391,10 @@ static int param_set(const struct shell *shell, size_t argc, char **argv)
 			broadcaster_print_cfg(shell, 0, NULL);
 			break;
 		case 'n':
+			if (result != 1) {
+				LOG_ERR("Only 1 BIS is supported for now");
+				return -EINVAL;
+			}
 			big_create_param.num_bis = result;
 			broadcaster_print_cfg(shell, 0, NULL);
 			break;
@@ -397,13 +415,13 @@ static int param_set(const struct shell *shell, size_t argc, char **argv)
 			broadcaster_print_cfg(shell, 0, NULL);
 			break;
 		case ':':
-			shell_error(shell, "Missing option parameter");
+			LOG_ERR("Missing option parameter");
 			break;
 		case '?':
-			shell_error(shell, "Unknown option: %c", opt);
+			LOG_ERR("Unknown option: %c", opt);
 			break;
 		default:
-			shell_error(shell, "Invalid option: %c", opt);
+			LOG_ERR("Invalid option: %c", opt);
 			break;
 		}
 	}

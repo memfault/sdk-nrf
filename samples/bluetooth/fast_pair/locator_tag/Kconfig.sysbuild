@@ -1,0 +1,15 @@
+#
+# Copyright (c) 2024 Nordic Semiconductor
+#
+# SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
+#
+
+config BT_FAST_PAIR
+	default y
+
+config APP_DFU
+	bool "Enable MCUmgr OTA DFU over Bluetooth"
+	default y
+	depends on BOOTLOADER_MCUBOOT
+
+source "${ZEPHYR_BASE}/share/sysbuild/Kconfig"

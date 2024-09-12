@@ -42,7 +42,7 @@ static const uint16_t fast_pair_uuid = BT_FAST_PAIR_UUID_FPS_VAL;
 static const uint8_t version_and_flags;
 static const uint8_t empty_account_key_list;
 
-static int check_adv_config_range(struct bt_fast_pair_adv_config fp_adv_config)
+static int check_adv_config(struct bt_fast_pair_adv_config fp_adv_config)
 {
 	if ((fp_adv_config.mode >= BT_FAST_PAIR_ADV_MODE_COUNT) || (fp_adv_config.mode < 0)) {
 		return -EINVAL;
@@ -51,6 +51,24 @@ static int check_adv_config_range(struct bt_fast_pair_adv_config fp_adv_config)
 	if (fp_adv_config.mode == BT_FAST_PAIR_ADV_MODE_NOT_DISC) {
 		if ((fp_adv_config.not_disc.type >= BT_FAST_PAIR_NOT_DISC_ADV_TYPE_COUNT) ||
 		    (fp_adv_config.not_disc.type < 0)) {
+			return -EINVAL;
+		}
+
+		if (!IS_ENABLED(CONFIG_BT_FAST_PAIR_SUBSEQUENT_PAIRING) &&
+		    fp_adv_config.not_disc.type == BT_FAST_PAIR_NOT_DISC_ADV_TYPE_SHOW_UI_IND) {
+			LOG_ERR("Cannot use not discoverable advertising with UI indications "
+				"without support for the subsequent pairing feature. Enable the "
+				"CONFIG_BT_FAST_PAIR_SUBSEQUENT_PAIRING Kconfig to use this mode");
+
+			return -EINVAL;
+		}
+
+		if (!IS_ENABLED(CONFIG_BT_FAST_PAIR_BN) &&
+		    (fp_adv_config.not_disc.battery_mode != BT_FAST_PAIR_ADV_BATTERY_MODE_NONE)) {
+			LOG_ERR("Cannot use not discoverable advertising with battery data "
+				"without support for the Battery Notification extension. Enable "
+				"the CONFIG_BT_FAST_PAIR_BN Kconfig to use this mode");
+
 			return -EINVAL;
 		}
 
@@ -108,7 +126,7 @@ size_t bt_fast_pair_adv_data_size(struct bt_fast_pair_adv_config fp_adv_config)
 	size_t res = 0;
 	int err;
 
-	err = check_adv_config_range(fp_adv_config);
+	err = check_adv_config(fp_adv_config);
 	if (err) {
 		return 0;
 	}
@@ -133,8 +151,13 @@ static void fp_adv_data_fill_battery_info(uint8_t *battery_info,
 					  enum fp_field_type battery_data_type)
 {
 	struct net_buf_simple nb;
-	struct bt_fast_pair_battery_data battery_data = fp_battery_get_battery_data();
+	struct bt_fast_pair_battery_data battery_data;
 	static const size_t battery_data_size = FP_CRYPTO_BATTERY_INFO_LEN - FIELD_LEN_TYPE_SIZE;
+
+	if (!IS_ENABLED(CONFIG_BT_FAST_PAIR_BN)) {
+		__ASSERT_NO_MSG(false);
+		return;
+	}
 
 	net_buf_simple_init_with_data(&nb, battery_info, FP_CRYPTO_BATTERY_INFO_LEN);
 	net_buf_simple_reset(&nb);
@@ -146,6 +169,7 @@ static void fp_adv_data_fill_battery_info(uint8_t *battery_info,
 
 	BUILD_ASSERT(sizeof(uint8_t) == FIELD_BATTERY_STATUS_LEVEL_SIZE);
 
+	battery_data = fp_battery_get_battery_data();
 	for (size_t i = 0; i < battery_data_size; i++) {
 		__ASSERT_NO_MSG(battery_data.batteries[i].level <=
 				BIT_MASK(BATTERY_LEVEL_BITS));
@@ -247,7 +271,7 @@ int bt_fast_pair_adv_data_fill(struct bt_data *bt_adv_data, uint8_t *buf, size_t
 	enum fp_field_type ak_filter_type;
 	int err;
 
-	err = check_adv_config_range(fp_adv_config);
+	err = check_adv_config(fp_adv_config);
 	if (err) {
 		return err;
 	}

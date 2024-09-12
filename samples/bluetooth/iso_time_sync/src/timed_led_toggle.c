@@ -13,19 +13,20 @@
 #include <zephyr/kernel.h>
 #include <zephyr/device.h>
 #include <zephyr/drivers/gpio.h>
+#include <soc.h>
 #include <hal/nrf_rtc.h>
 #include <nrfx_gpiote.h>
 #include <helpers/nrfx_gppi.h>
 #include "iso_time_sync.h"
 
-#define GPIOTE_INST NRF_DT_GPIOTE_INST(DT_ALIAS(led0), gpios)
+#define GPIOTE_INST NRF_DT_GPIOTE_INST(DT_ALIAS(led1), gpios)
 #define GPIOTE_NODE DT_NODELABEL(_CONCAT(gpiote, GPIOTE_INST))
 
 BUILD_ASSERT(IS_ENABLED(_CONCAT(CONFIG_, _CONCAT(NRFX_GPIOTE, GPIOTE_INST))),
 	     "NRFX_GPIOTE" STRINGIFY(GPIOTE_INST) " must be enabled in Kconfig");
 
 static const nrfx_gpiote_t gpiote = NRFX_GPIOTE_INSTANCE(GPIOTE_INST);
-static struct gpio_dt_spec led = GPIO_DT_SPEC_GET_OR(DT_ALIAS(led0), gpios, {0});
+static struct gpio_dt_spec led = GPIO_DT_SPEC_GET_OR(DT_ALIAS(led1), gpios, {0});
 
 static uint8_t previous_led_value;
 
@@ -88,7 +89,12 @@ void timed_led_toggle_trigger_at(uint8_t value, uint32_t timestamp_us)
 	const uint64_t current_time_us = controller_time_us_get();
 	const uint64_t current_time_most_significant_word = current_time_us & 0xFFFFFFFF00000000UL;
 
-	const uint64_t full_timestamp_us = current_time_most_significant_word | timestamp_us;
+	uint64_t full_timestamp_us = current_time_most_significant_word | timestamp_us;
+
+	if (timestamp_us < (current_time_us & UINT32_MAX)) {
+		/* Trigger time is after UINT32 wrap */
+		full_timestamp_us += 0x100000000UL;
+	}
 
 	controller_time_trigger_set(full_timestamp_us);
 

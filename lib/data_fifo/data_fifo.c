@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
  */
 
-#include "data_fifo.h"
+#include <data_fifo.h>
 
 #include <zephyr/kernel.h>
 
@@ -167,6 +167,22 @@ int data_fifo_empty(struct data_fifo *data_fifo)
 	return 0;
 }
 
+int data_fifo_uninit(struct data_fifo *data_fifo)
+{
+	__ASSERT_NO_MSG(data_fifo != NULL);
+	__ASSERT_NO_MSG(data_fifo->initialized);
+	int ret;
+
+	ret = data_fifo_empty(data_fifo);
+	if (ret) {
+		return ret;
+	}
+
+	data_fifo->initialized = false;
+
+	return 0;
+}
+
 int data_fifo_init(struct data_fifo *data_fifo)
 {
 	__ASSERT_NO_MSG(data_fifo != NULL);
@@ -189,4 +205,14 @@ int data_fifo_init(struct data_fifo *data_fifo)
 	data_fifo->initialized = true;
 
 	return ret;
+}
+
+bool data_fifo_state(struct data_fifo *data_fifo)
+{
+	__ASSERT_NO_MSG(data_fifo != NULL);
+	__ASSERT_NO_MSG(data_fifo->elements_max != 0);
+	__ASSERT_NO_MSG(data_fifo->block_size_max != 0);
+	__ASSERT_NO_MSG((data_fifo->block_size_max % WB_UP(1)) == 0);
+
+	return data_fifo->initialized;
 }

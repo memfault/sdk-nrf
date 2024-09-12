@@ -483,6 +483,15 @@ int npgps_download_start(const char *host, const char *file, int sec_tag,
 		return -EINVAL;
 	}
 
+#if defined(CONFIG_NET_IPV6) && defined(CONFIG_NET_IPV4)
+	int family = AF_UNSPEC;
+#elif defined(CONFIG_NET_IPV6)
+	int family = AF_INET6;
+#elif defined(CONFIG_NET_IPV4)
+	int family = AF_INET;
+#else
+	int family = AF_UNSPEC;
+#endif /* defined(CONFIG_NET_IPV6) && defined(CONFIG_NET_IPV4) */
 	int err;
 	struct nrf_cloud_download_data dl = {
 		.type = NRF_CLOUD_DL_TYPE_DL_CLIENT,
@@ -494,7 +503,7 @@ int npgps_download_start(const char *host, const char *file, int sec_tag,
 			.pdn_id = pdn_id,
 			.frag_size_override = fragment_size,
 			.set_tls_hostname = false,
-			.family = AF_INET
+			.family = family
 		},
 		.dlc = &dlc
 	};
@@ -530,14 +539,17 @@ static int download_client_callback(const struct download_client_evt *event)
 		err = buffer_handler((uint8_t *)event->fragment.buf,
 				     event->fragment.len);
 		if (!err) {
-			return err;
+			return 0;
 		}
 		break;
 	case DOWNLOAD_CLIENT_EVT_DONE:
 		LOG_INF("Download client done");
-		nrf_cloud_download_end();
 		break;
 	case DOWNLOAD_CLIENT_EVT_ERROR: {
+		if ((event->error == -ECANCELED) && IS_ENABLED(CONFIG_NRF_CLOUD_COAP_DOWNLOADS)) {
+			eot_handler(event->error);
+			return 0;
+		}
 		/* In case of socket errors we can return 0 to retry/continue,
 		 * or non-zero to stop
 		 */
@@ -556,11 +568,14 @@ static int download_client_callback(const struct download_client_evt *event)
 		return 0;
 	}
 
+	/* CoAP downloads do not need to disconnect since they don't directly use download_client */
+#if !defined(CONFIG_NRF_CLOUD_COAP_DOWNLOADS)
 	int ret = download_client_disconnect(&dlc);
 
 	if (ret) {
 		LOG_ERR("Error disconnecting from download client:%d", ret);
 	}
+#endif
 
 	nrf_cloud_download_end();
 

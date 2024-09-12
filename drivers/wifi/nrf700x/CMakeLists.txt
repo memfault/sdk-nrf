@@ -129,11 +129,15 @@ if(CONFIG_NRF_WIFI_PATCHES_EXT_FLASH_XIP)
 zephyr_code_relocate(FILES src/fw_load.c LOCATION EXTFLASH_RODATA NOCOPY)
 endif()
 
+zephyr_compile_definitions_ifdef(CONFIG_NRF700X_ON_QSPI
 # These are XIP related anomalies and aren't applicable for nRF7002 and cause
 # throughput issues.
-zephyr_compile_definitions_ifdef(CONFIG_NRF700X_ON_QSPI
   -DNRF53_ERRATA_43_ENABLE_WORKAROUND=0
   -DNRF52_ERRATA_215_ENABLE_WORKAROUND=0
+# nRF70 QSPI doesn't use 192MHz clock and most samples use 128MHz, this can cause anomaly 159
+# but as its rare and not seen in most cases, we can disable it.
+# Alternative is 128MHz CPU should be disabled that impacts Wi-Fi performance.
+  -DNRF53_ERRATA_159_ENABLE_WORKAROUND=0
 )
 
 # RPU FW patch binaries based on the selected configuration
@@ -173,29 +177,31 @@ if(CONFIG_NRF_WIFI_PATCHES_EXT_FLASH_STORE)
   endif()
 
   if(CONFIG_PARTITION_MANAGER_ENABLED)
-    add_custom_target(nrf70_wifi_fw_patch_target
-      DEPENDS ${CMAKE_BINARY_DIR}/zephyr/nrf70.hex
-    )
-    add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/zephyr/nrf70.hex
-      COMMAND ${Python3_EXECUTABLE}
-        -c "import sys; import intelhex; intelhex.bin2hex(sys.argv[1], sys.argv[2], int(sys.argv[3])) "
-        ${NRF70_PATCH}
-        ${CMAKE_BINARY_DIR}/zephyr/nrf70.hex
-        $<TARGET_PROPERTY:partition_manager,nrf70_wifi_fw_XIP_ABS_ADDR>
-        VERBATIM
+    if(NOT SYSBUILD)
+      add_custom_target(nrf70_wifi_fw_patch_target
+        DEPENDS ${CMAKE_BINARY_DIR}/zephyr/nrf70.hex
       )
-    # Delegate merging WiFi FW patch to mcuboot because we need to merge signed hex instead of raw nrf70.hex.
-    if(NOT CONFIG_NRF_WIFI_FW_PATCH_DFU)
-      set_property(
-        GLOBAL PROPERTY
-        nrf70_wifi_fw_PM_HEX_FILE
-        ${CMAKE_BINARY_DIR}/zephyr/nrf70.hex
+      add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/zephyr/nrf70.hex
+        COMMAND ${Python3_EXECUTABLE}
+          -c "import sys; import intelhex; intelhex.bin2hex(sys.argv[1], sys.argv[2], int(sys.argv[3])) "
+          ${NRF70_PATCH}
+          ${CMAKE_BINARY_DIR}/zephyr/nrf70.hex
+          $<TARGET_PROPERTY:partition_manager,nrf70_wifi_fw_XIP_ABS_ADDR>
+          VERBATIM
         )
-      set_property(
-        GLOBAL PROPERTY
-        nrf70_wifi_fw_PM_TARGET
-        nrf70_wifi_fw_patch_target
-        )
+      # Delegate merging WiFi FW patch to mcuboot because we need to merge signed hex instead of raw nrf70.hex.
+      if(NOT CONFIG_NRF_WIFI_FW_PATCH_DFU)
+        set_property(
+          GLOBAL PROPERTY
+          nrf70_wifi_fw_PM_HEX_FILE
+          ${CMAKE_BINARY_DIR}/zephyr/nrf70.hex
+          )
+        set_property(
+          GLOBAL PROPERTY
+          nrf70_wifi_fw_PM_TARGET
+          nrf70_wifi_fw_patch_target
+          )
+      endif()
     endif()
   else()
     dt_nodelabel(nrf70_fw_node NODELABEL "nrf70_fw_partition")
@@ -229,5 +235,5 @@ if(CONFIG_NRF_WIFI_PATCHES_EXT_FLASH_STORE)
       ${CMAKE_BINARY_DIR}/zephyr/nrf70.hex ${CMAKE_BINARY_DIR}/zephyr/zephyr.hex)
     set_property(TARGET runners_yaml_props_target PROPERTY
       hex_file ${CMAKE_BINARY_DIR}/zephyr/merged.hex)
-    endif()
+  endif()
 endif()

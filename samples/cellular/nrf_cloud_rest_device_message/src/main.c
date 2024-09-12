@@ -341,7 +341,7 @@ static void send_message_on_button(void)
 
 	/* Send off a JSON message about the button press */
 	/* This matches the nRF Cloud-defined schema for a "BUTTON" device message */
-	rest_ctx.keep_alive = true;
+	rest_ctx.keep_alive = IS_ENABLED(CONFIG_REST_DEVICE_MESSAGE_KEEP_ALIVE);
 	(void)send_message("{\"appId\":\"BUTTON\", \"messageType\":\"DATA\", \"data\":\"1\"}");
 	rest_ctx.keep_alive = false;
 	(void)nrf_cloud_rest_log_send(&rest_ctx, device_id, LOG_LEVEL_DBG,
@@ -454,8 +454,6 @@ static int setup_connection(void)
 		return err;
 	}
 
-	LOG_INF("Device ID: %s", device_id);
-
 	/* Connect to LTE */
 	err = connect_to_lte();
 	if (err) {
@@ -526,6 +524,11 @@ static int init(void)
 	if (err) {
 		LOG_ERR("Failed to initialize modem library: 0x%X", err);
 		return -EFAULT;
+	}
+
+	err = nrf_cloud_print_details();
+	if (err) {
+		LOG_ERR("Error printing cloud information: %d", err);
 	}
 
 	/* If provisioning library is disabled, ensure device has credentials installed

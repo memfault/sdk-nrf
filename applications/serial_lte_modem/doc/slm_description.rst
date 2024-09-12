@@ -92,8 +92,11 @@ CONFIG_SLM_NATIVE_TLS_CREDENTIAL_BUFFER_COUNT - Number of buffers for loading cr
 
 CONFIG_SLM_EXTERNAL_XTAL - Use external XTAL for UARTE
    This option configures the application to use an external XTAL for UARTE.
-   For the nRF9160 DK, see the `nRF9160 Product Specification`_ (section 6.19 UARTE) for more information.
-   For the nRF9161 DK, see the `nRF9161 Product Specification`_ (section 6.19 UARTE) for more information.
+   For more information, see the UARTE - Universal asynchronous receiver/transmitter with EasyDMA section of the following documentation:
+
+   * `nRF9151 Product Specification`_
+   * `nRF9161 Product Specification`_
+   * `nRF9160 Product Specification`_
 
 .. _CONFIG_SLM_START_SLEEP:
 
@@ -107,9 +110,9 @@ CONFIG_SLM_POWER_PIN - Interface GPIO pin to power off the SiP and exit from sle
    This option specifies which pin to use to power on or off the SiP and make SLM exit idle mode.
    It is set by default as follows:
 
-   * On the nRF9161 DK:
+   * On an nRF91x1 DK:
 
-     * **P0.8** (Button 1 on the nRF9161 DK) is used when UART_0 is used.
+     * **P0.8** (Button 1 on the nRF91x1 DK) is used when UART_0 is used.
      * **P0.31** is used when UART_1 is used.
 
    * On the nRF9160 DK:
@@ -117,7 +120,7 @@ CONFIG_SLM_POWER_PIN - Interface GPIO pin to power off the SiP and exit from sle
      * **P0.6** (Button 1 on the nRF9160 DK) is used when UART_0 is used.
      * **P0.31** is used when UART_1 is used.
 
-   * On Thingy:91, **P0.26** (Multi-function button on Thingy:91) is used.
+   * On Thingy:91 and Thingy:91 X, **P0.26** (Multi-function button) is used.
 
    .. note::
       This pin is configured with a pull up, so it is active low.
@@ -129,9 +132,9 @@ CONFIG_SLM_INDICATE_PIN - Interface GPIO pin to indicate data available or unsol
    This option specifies which pin to use for indicating data available or unsolicited event notifications from the modem.
    It is set by default as follows:
 
-   * On the nRF9161 DK:
+   * On an nRF91x1 DK:
 
-     * **P0.00** (LED 1 on the nRF9161 DK) is used when UART_0 is selected.
+     * **P0.00** (LED 1 on an nRF91x1 DK) is used when UART_0 is selected.
      * **P0.30** is used when UART_2 is selected.
 
    * On the nRF9160 DK:
@@ -139,7 +142,7 @@ CONFIG_SLM_INDICATE_PIN - Interface GPIO pin to indicate data available or unsol
      * **P0.2** (LED 1 on the nRF9160 DK) is used when UART_0 is selected.
      * **P0.30** is used when UART_2 is selected.
 
-   * It is not defined when the target is Thingy:91.
+   * It is not defined when the targets are Thingy:91 and Thingy:91 X.
 
    .. note::
       This pin is configured to be active low, so it will be high when inactive.
@@ -288,22 +291,22 @@ You can find the configuration files in the :file:`applications/serial_lte_modem
 
 In general, they have an ``overlay-`` prefix, and a :file:`.conf` or :file:`.overlay` extension for Kconfig or devicetree overlays, respectively.
 Board-specific configuration files are named :file:`<BOARD>` with a :file:`.conf` or :file:`.overlay` extension and are located in the :file:`boards` directory.
-When the name of the board-specific configuration file matches the build target, the overlay is automatically included by the build system.
+When the name of the board-specific configuration file matches the board target, the overlay is automatically included by the build system.
 
 See :ref:`app_build_system`: for more information on the |NCS| configuration system.
 
 .. important::
 
-  When adding Kconfig fragments and devicetree overlays, make sure to use the ``-DEXTRA_CONF_FILE`` and ``-DEXTRA_DTC_OVERLAY_FILE`` CMake parameters, respectively.
-  Otherwise, if ``-DCONF_FILE`` or ``-DDTC_OVERLAY_FILE`` is used, all the configuration files that normally get picked up automatically will have to be included explicitly.
+  When adding Kconfig fragments and devicetree overlays, make sure to use the :makevar:`EXTRA_CONF_FILE` and :makevar:`EXTRA_DTC_OVERLAY_FILE` :ref:`CMake options <cmake_options>`, respectively.
+  Otherwise, if :makevar:`CONF_FILE` or :makevar:`DTC_OVERLAY_FILE` is used, all the configuration files that normally get picked up automatically will have to be included explicitly.
 
 The following configuration files are provided:
 
 * :file:`prj.conf` - This configuration file contains the standard configuration for the serial LTE modem application and is included by default by the build system.
 
 * :file:`overlay-native_tls.conf` - This configuration file contains additional configuration options that are required to use :ref:`slm_native_tls`.
-  You can include it by adding ``-DEXTRA_CONF_FILE=overlay-native_tls.conf`` to your build command.
-  See :ref:`cmake_options`.
+  Not supported with the ``thingy91/nrf9160/ns`` board target due to flash memory constraints.
+  If you need to use native TLS with Thingy:91, you must disable features to free up flash memory.
 
 * :file:`overlay-carrier.conf` - Configuration file that adds |NCS| :ref:`liblwm2m_carrier_readme` support.
   See :ref:`slm_carrier_library_support` for more information on how to connect to an operator's device management platform.
@@ -318,36 +321,47 @@ The following configuration files are provided:
   This disables most of the IP-based protocols available through AT commands (such as FTP and MQTT) as it is expected that the controlling chip's own IP stack is used instead.
   See :ref:`CONFIG_SLM_PPP <CONFIG_SLM_PPP>` and :ref:`SLM_AT_PPP` for more information.
 
-* :file:`overlay-ppp-without-cmux.overlay` - Devicetree overlay file that configures the UART to be used by PPP.
+* :file:`overlay-ppp-without-cmux.conf` - Kconfig fragment that configures the UART to be used by PPP.
+  This configuration file should be included when building SLM with PPP and without CMUX.
+
+* :file:`overlay-ppp-without-cmux.overlay` - Devicetree overlay that configures the UART to be used by PPP.
   This configuration file should be included when building SLM with PPP and without CMUX, in addition to :file:`overlay-ppp.conf`.
   It can be customized to fit your configuration (UART, baud rate, and so on).
   By default, it sets the baud rate of the PPP UART to 1 000 000.
 
 * :file:`overlay-zephyr-modem.conf`, :file:`overlay-zephyr-modem-external-mcu.conf`, :file:`overlay-zephyr-modem-nrf9160dk-nrf52840.conf`, :file:`overlay-external-mcu.overlay`,  and :file:`overlay-zephyr-modem-nrf9160dk-nrf52840.overlay` - These configuration files are used when compiling SLM to turn an nRF91 Series SiP into a Zephyr-compatible standalone modem.
-   See :ref:`slm_as_zephyr_modem` for more information.
+  See :ref:`slm_as_zephyr_modem` for more information.
 
 * :file:`boards/nrf9160dk_nrf9160_ns.conf` - Configuration file specific for the nRF9160 DK.
-  This file is automatically merged with the :file:`prj.conf` file when you build for the ``nrf9160dk_nrf9160_ns`` build target.
+  This file is automatically merged with the :file:`prj.conf` file when you build for the ``nrf9160dk/nrf9160/ns`` board target.
+
+* :file:`boards/nrf9151dk_nrf9151_ns.conf` - Configuration file specific for the nRF9151 DK.
+  This file is automatically merged with the :file:`prj.conf` file when you build for the ``nrf9151dk/nrf9151/ns`` board target.
 
 * :file:`boards/nrf9161dk_nrf9161_ns.conf` - Configuration file specific for the nRF9161 DK.
-  This file is automatically merged with the :file:`prj.conf` file when you build for the ``nrf9161dk_nrf9161_ns`` build target.
+  This file is automatically merged with the :file:`prj.conf` file when you build for the ``nrf9161dk/nrf9161/ns`` board target.
 
 * :file:`boards/thingy91_nrf9160_ns.conf` - Configuration file specific for Thingy:91.
-  This file is automatically merged with the :file:`prj.conf` file when you build for the ``thingy91_nrf9160_ns`` build target.
+  This file is automatically merged with the :file:`prj.conf` file when you build for the ``thingy91/nrf9160/ns`` board target.
+
+* :file:`boards/thingy91x_nrf9151_ns.conf` - Configuration file specific for Thingy:91 X.
+  This file is automatically merged with the :file:`prj.conf` file when you build for the ``thingy91x/nrf9151/ns`` board target.
 
 .. _slm_native_tls:
 
 Native TLS
 ----------
 
-By default, the secure socket (TLS) is offloaded to the modem.
-If you need customized TLS features that are not supported by the modem firmware, you can use native TLS instead.
+By default, the secure socket (TLS/DTLS) is offloaded to the modem.
+If you need customized TLS/DTLS features that are not supported by the modem firmware, you can use native TLS instead.
 Native TLS uses the Mbed TLS library in Zephyr to establish secure connectivity.
 Currently, the SLM application can be built to use native TLS for the following services:
 
 * Secure socket
 * TLS Proxy client
 * TLS Proxy server
+* DTLS Proxy client
+* DTLS Proxy server
 * HTTPS client
 
 With native TLS, the credentials are stored in the Zephyr settings storage with the ``AT#XCMNG`` command.
@@ -418,7 +432,7 @@ Connecting with an external MCU
 
 .. note::
 
-   This section does not apply to Thingy:91 as it does not have UART2.
+   This section does not apply to Thingy:91 or Thingy:91 X.
 
 If you run your user application on an external MCU (for example, an nRF52 Series development kit), you can control the modem on an nRF91 Series device directly from the application.
 See the :ref:`slm_shell_sample` for a sample implementation of such an application.
@@ -426,6 +440,47 @@ See the :ref:`slm_shell_sample` for a sample implementation of such an applicati
 To connect with an external MCU using UART_2, change the configuration files for the default board as follows:
 
 .. tabs::
+
+   .. group-tab:: nRF9151 DK
+
+      * In the :file:`nrf9151dk_nrf9151_ns.conf` file::
+
+          # Use UART_0 (when working with PC terminal)
+          # unmask the following config
+          #CONFIG_UART_0_NRF_HW_ASYNC_TIMER=2
+          #CONFIG_UART_0_NRF_HW_ASYNC=y
+          #CONFIG_SLM_POWER_PIN=8
+          #CONFIG_SLM_INDICATE_PIN=0
+
+          # Use UART_2 (when working with external MCU)
+          # unmask the following config
+          CONFIG_UART_2_NRF_HW_ASYNC_TIMER=2
+          CONFIG_UART_2_NRF_HW_ASYNC=y
+          CONFIG_SLM_POWER_PIN=31
+          CONFIG_SLM_INDICATE_PIN=30
+
+      * In the :file:`nrf9151dk_nrf9151_ns.overlay` file::
+
+          / {
+              chosen {
+                       ncs,slm-uart = &uart2;
+                     }
+            };
+
+          &uart0 {
+             status = "disabled";
+          };
+
+          &uart2 {
+             compatible = "nordic,nrf-uarte";
+             current-speed = <115200>;
+             status = "okay";
+             hw-flow-control;
+
+             pinctrl-0 = <&uart2_default_alt>;
+             pinctrl-1 = <&uart2_sleep_alt>;
+             pinctrl-names = "default", "sleep";
+          };
 
    .. group-tab:: nRF9161 DK
 
@@ -535,7 +590,7 @@ The following table shows how to connect an nRF52 Series development kit to an n
 Use the following UART devices:
 
 * nRF52840 or nRF52832 - UART0
-* nRF9160 or nRF9161 - UART2
+* nRF9160 or nRF91x1 - UART2
 
 Use the following UART configuration:
 
@@ -615,7 +670,7 @@ Dependencies
 
 This application uses the following |NCS| libraries:
 
-* :ref:`at_cmd_parser_readme`
+* :ref:`at_parser_readme`
 * :ref:`at_monitor_readme`
 * :ref:`nrf_modem_lib_readme`
 * :ref:`lib_modem_jwt`

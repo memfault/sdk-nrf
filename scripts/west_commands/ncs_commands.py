@@ -100,14 +100,14 @@ def print_likely_merged(downstream_repo: nwh.Repository,
                 '(revert these if appropriate):', color=log.WRN_COLOR)
         for downstream_commit, upstream_commits in likely_merged.items():
             if len(upstream_commits) == 1:
-                log.inf(f'- {downstream_commit.oid} {commit_title(downstream_commit)}')
+                log.inf(f'- {downstream_commit.id} {commit_title(downstream_commit)}')
                 log.inf(f'  Similar upstream title:\n'
-                        f'  {upstream_commits[0].oid} {commit_title(upstream_commits[0])}')
+                        f'  {upstream_commits[0].id} {commit_title(upstream_commits[0])}')
             else:
-                log.inf(f'- {downstream_commit.oid} {commit_title(downstream_commit)}\n'
+                log.inf(f'- {downstream_commit.id} {commit_title(downstream_commit)}\n'
                         '  Similar upstream titles:')
                 for i, upstream_commit in enumerate(upstream_commits, start=1):
-                    log.inf(f'    {i}. {upstream_commit.oid} {commit_title(upstream_commit)}')
+                    log.inf(f'    {i}. {upstream_commit.id} {commit_title(upstream_commit)}')
     else:
         log.dbg('no downstream patches seem to have been merged upstream')
 
@@ -382,11 +382,11 @@ class NcsLoot(NcsWestCommand):
         for index, commit in enumerate(loot):
             if self.args.files and not commit_affects_files(commit,
                                                             self.args.files):
-                log.dbg(f"skipping {commit.oid}; it doesn't affect file filter",
+                log.dbg(f"skipping {commit.id}; it doesn't affect file filter",
                         level=log.VERBOSE_VERY)
                 continue
 
-            sha = str(commit.oid)
+            sha = str(commit.id)
             title = commit_title(commit)
             if self.args.sha_only:
                 log.inf(sha)
@@ -705,15 +705,15 @@ class NcsUpmerger(NcsWestCommand):
 
         for dc, ucs in reversed(analyzer.likely_merged.items()):
             if len(ucs) == 1:
-                log.inf(f'- Reverting: {dc.oid} {commit_title(dc)}')
+                log.inf(f'- Reverting: {dc.id} {commit_title(dc)}')
                 log.inf(f'  Similar upstream title:\n'
-                        f'  {ucs[0].oid} {commit_title(ucs[0])}')
+                        f'  {ucs[0].id} {commit_title(ucs[0])}')
             else:
-                log.inf(f'- Reverting: {dc.oid} {commit_title(dc)}\n'
+                log.inf(f'- Reverting: {dc.id} {commit_title(dc)}\n'
                         '  Similar upstream titles:')
                 for i, uc in enumerate(ucs, start=1):
-                    log.inf(f'    {i}. {uc.oid} {commit_title(uc)}')
-            project.git('revert --signoff --no-edit ' + str(dc.oid))
+                    log.inf(f'    {i}. {uc.id} {commit_title(uc)}')
+            project.git('revert --signoff --no-edit ' + str(dc.id))
         log.inf(f'Merging: {z_rev} to project: {project.name}')
         msg = f"[nrf mergeup] Merge upstream automatically up to commit {z_sha}\n\nThis auto-upmerge was performed with ncs-upmerger script."
         project.git('merge --no-edit --no-ff --signoff -m "' + msg + '" ' + str(self.zephyr_rev))
@@ -724,13 +724,16 @@ _UPSTREAM_ZEPHYR_URL = 'https://github.com/zephyrproject-rtos/zephyr'
 _BLOCKED_PROJECTS: set[Path] = set(
     Path(p) for p in
     ['modules/audio/sof',
+     'modules/debug/percepio',
      'modules/hal/altera',
+     'modules/hal/ambiq',
      'modules/hal/atmel',
      'modules/hal/cypress',
      'modules/hal/espressif',
      'modules/hal/ethos_u',
      'modules/hal/gigadevice',
      'modules/hal/infineon',
+     'modules/hal/intel',
      'modules/hal/microchip',
      'modules/hal/nuvoton',
      'modules/hal/nxp',
@@ -744,7 +747,22 @@ _BLOCKED_PROJECTS: set[Path] = set(
      'modules/hal/telink',
      'modules/hal/ti',
      'modules/hal/xtensa',
+     'modules/lib/acpica',
+     'modules/crypto/mbedtls',
      'modules/lib/tflite-micro',
      'modules/lib/thrift',
      'modules/tee/tf-a/trusted-firmware-a',
+     'modules/tee/tf-m/trusted-firmware-m',
+     'tools/bsim',
+     'tools/bsim/components',
+     'tools/bsim/components/ext_2G4_libPhyComv1',
+     'tools/bsim/components/ext_2G4_phy_v1',
+     'tools/bsim/components/ext_2G4_channel_NtNcable',
+     'tools/bsim/components/ext_2G4_channel_multiatt',
+     'tools/bsim/components/ext_2G4_modem_magic',
+     'tools/bsim/components/ext_2G4_modem_BLE_simple',
+     'tools/bsim/components/ext_2G4_device_burst_interferer',
+     'tools/bsim/components/ext_2G4_device_WLAN_actmod',
+     'tools/bsim/components/ext_2G4_device_playback',
+     'tools/bsim/components/ext_libCryptov1',
      ])

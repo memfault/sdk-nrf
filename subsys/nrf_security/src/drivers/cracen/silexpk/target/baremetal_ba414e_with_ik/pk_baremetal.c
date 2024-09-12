@@ -1,6 +1,4 @@
 /*
- * Copyright (c) 2014-2021 Silex Insight sa
- * Copyright (c) 2018-2021 Beerten Engineering
  * Copyright (c) 2023 Nordic Semiconductor ASA
  *
  * SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
@@ -22,6 +20,7 @@
 
 #include <hal/nrf_cracen.h>
 #include <security/cracen.h>
+#include <nrf_security_mutexes.h>
 
 #ifndef ADDR_BA414EP_REGS_BASE
 #define ADDR_BA414EP_REGS_BASE CRACEN_ADDR_BA414EP_REGS_BASE
@@ -52,6 +51,8 @@ struct sx_pk_cnx {
 };
 
 struct sx_pk_cnx silex_pk_engine;
+
+NRF_SECURITY_MUTEX_DEFINE(cracen_mutex_asymmetric);
 
 bool ba414ep_is_busy(sx_pk_req *req)
 {
@@ -94,7 +95,9 @@ int read_status(sx_pk_req *req)
 int sx_pk_wait(sx_pk_req *req)
 {
 	do {
-		cracen_wait_for_pke_interrupt();
+		if (!sx_pk_is_ik_cmd(req)) {
+			cracen_wait_for_pke_interrupt();
+		}
 	} while (is_busy(req));
 
 	return read_status(req);
@@ -180,12 +183,13 @@ struct sx_pk_acq_req sx_pk_acquire_req(const struct sx_pk_cmd_def *cmd)
 {
 	struct sx_pk_acq_req req = {NULL, SX_OK};
 
-	cracen_acquire();
-	nrf_cracen_int_enable(NRF_CRACEN, NRF_CRACEN_INT_PKE_IKG_MASK);
-
+	nrf_security_mutex_lock(cracen_mutex_asymmetric);
 	req.req = &silex_pk_engine.instance;
 	req.req->cmd = cmd;
 	req.req->cnx = &silex_pk_engine;
+
+	cracen_acquire();
+	nrf_cracen_int_enable(NRF_CRACEN, NRF_CRACEN_INT_PKE_IKG_MASK);
 
 	/* Wait until initialized. */
 	while (ba414ep_is_busy(req.req) || ik_is_busy(req.req)) {
@@ -216,6 +220,7 @@ void sx_pk_release_req(sx_pk_req *req)
 	cracen_release();
 	req->cmd = NULL;
 	req->userctxt = NULL;
+	nrf_security_mutex_unlock(cracen_mutex_asymmetric);
 }
 
 struct sx_regs *sx_pk_get_regs(void)

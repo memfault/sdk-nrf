@@ -61,7 +61,7 @@ struct bt_conn_set_pcr_params {
 	 */
 	uint16_t beta;
 	/** The lower limit of the RSSI golden range. The RSSI golden range is explained in
-	 *  Core_v5.4, Vol 6, Part B, Section 5.1.17.1.
+	 *  Bluetooth Core Specification, Vol 6, Part B, Section 5.1.17.1.
 	 *  Default value is -70 dBm.
 	 */
 	int8_t lower_limit;
@@ -106,6 +106,15 @@ struct bt_conn_set_pcr_params {
  *  @retval -ENOBUFS HCI command buffer is not available.
  */
 int bt_conn_set_power_control_request_params(struct bt_conn_set_pcr_params *params);
+
+/** @brief Reduce the priority of the initiator when following AUX packets.
+ *
+ *  @param reduce Set to true to reduce the priority. Set to false to restore the default priority.
+ *
+ *  @return Zero on success or (negative) error code on failure.
+ *  @retval -ENOBUFS HCI command buffer is not available.
+ */
+int bt_nrf_host_extension_reduce_initator_aux_channel_priority(bool reduce);
 
 /**
  * @}

@@ -26,6 +26,10 @@ When returning from the callback, the content of the provided buffer is treated 
    When the custom AT commands library is enabled, the application must not call the :c:func:`nrf_modem_at_cmd_custom_set` function because it overrides the handler set by the library.
    Instead, the application must add the AT filters using the :c:macro:`AT_CMD_CUSTOM` macro.
 
+.. note::
+   The custom AT command filter is compared against the start of the AT command string sent to the Modem library.
+   Therefore, you must make sure to remove any leading whitespace characters in the AT command string before calling the :c:func:`nrf_modem_at_cmd` function.
+
 Adding a custom command
 =======================
 
@@ -92,7 +96,7 @@ API documentation
 *****************
 
 | Header file: :file:`include/modem/at_cmd_custom.h`
-| Source file: :file:`lib/at_cmd_custom/src/at_cmd_custom.c`
+| Source file: :file:`lib/at_cmd_custom/at_cmd_custom.c`
 
 .. doxygengroup:: at_cmd_custom
    :project: nrf

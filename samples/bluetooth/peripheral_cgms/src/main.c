@@ -23,7 +23,7 @@
 
 #define APP_GLUCOSE_MIN    88
 #define APP_GLUCOSE_MAX    92
-#define APP_GLUCOSE_STEP   0.1
+#define APP_GLUCOSE_STEP   0.1f
 
 static bool session_state;
 
@@ -31,7 +31,11 @@ static const struct bt_data ad[] = {
 	BT_DATA_BYTES(BT_DATA_FLAGS, (BT_LE_AD_GENERAL | BT_LE_AD_NO_BREDR)),
 	BT_DATA_BYTES(BT_DATA_UUID16_ALL,
 				BT_UUID_16_ENCODE(BT_UUID_CGMS_VAL),
-				BT_UUID_16_ENCODE(BT_UUID_DIS_VAL))
+				BT_UUID_16_ENCODE(BT_UUID_DIS_VAL)),
+};
+
+static const struct bt_data sd[] = {
+	BT_DATA(BT_DATA_NAME_COMPLETE, CONFIG_BT_DEVICE_NAME, sizeof(CONFIG_BT_DEVICE_NAME) - 1),
 };
 
 static void connected(struct bt_conn *conn, uint8_t err)
@@ -40,7 +44,8 @@ static void connected(struct bt_conn *conn, uint8_t err)
 
 	bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
 	if (err) {
-		printk("Failed to connect to %s (err 0x%02x)\n", addr, err);
+		printk("Failed to connect to %s, err 0x%02x %s\n", addr, err,
+		       bt_hci_err_to_str(err));
 	} else {
 		printk("Connected %s\n", addr);
 	}
@@ -51,11 +56,10 @@ static void disconnected(struct bt_conn *conn, uint8_t reason)
 	char addr[BT_ADDR_LE_STR_LEN];
 
 	bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
-	printk("Disconnected from %s (reason %u)\n", addr, reason);
+	printk("Disconnected from %s, reason 0x%02x %s\n", addr, reason, bt_hci_err_to_str(reason));
 }
 
-static void security_changed(struct bt_conn *conn, bt_security_t level,
-				enum bt_security_err err)
+static void security_changed(struct bt_conn *conn, bt_security_t level, enum bt_security_err err)
 {
 	char addr[BT_ADDR_LE_STR_LEN];
 
@@ -63,8 +67,8 @@ static void security_changed(struct bt_conn *conn, bt_security_t level,
 	if (!err) {
 		printk("Security changed: %s level %u\n", addr, level);
 	} else {
-		printk("Security failed: %s level %u err %d\n", addr, level,
-			err);
+		printk("Security failed: %s level %u err %d %s\n", addr, level, err,
+		       bt_security_err_to_str(err));
 	}
 }
 
@@ -147,8 +151,7 @@ int main(void)
 		printk("Error occurred when initializing cgm service (err %d)\n", err);
 		return 0;
 	}
-
-	err = bt_le_adv_start(BT_LE_ADV_CONN_NAME, ad, ARRAY_SIZE(ad), NULL, 0);
+	err = bt_le_adv_start(BT_LE_ADV_CONN, ad, ARRAY_SIZE(ad), sd, ARRAY_SIZE(sd));
 	if (err) {
 		printk("Advertising failed to start (err %d)\n", err);
 		return 0;

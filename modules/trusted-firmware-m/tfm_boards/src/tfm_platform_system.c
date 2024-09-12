@@ -7,7 +7,6 @@
 #include <platform/include/tfm_platform_system.h>
 #include <cmsis.h>
 #include <stdio.h>
-#include <pm_config.h>
 #include <tfm_ioctl_api.h>
 #include <string.h>
 #include <arm_cmse.h>
@@ -129,6 +128,8 @@ enum tfm_platform_err_t tfm_platform_hal_ioctl(tfm_platform_ioctl_req_t request,
 	switch (request) {
 	case TFM_PLATFORM_IOCTL_READ_SERVICE:
 		return tfm_platform_hal_read_service(in_vec, out_vec);
+	case TFM_PLATFORM_IOCTL_WRITE32_SERVICE:
+		return tfm_platform_hal_write32_service(in_vec, out_vec);
 #if defined(GPIO_PIN_CNF_MCUSEL_Msk)
 	case TFM_PLATFORM_IOCTL_GPIO_SERVICE:
 		return tfm_platform_hal_gpio_service(in_vec, out_vec);

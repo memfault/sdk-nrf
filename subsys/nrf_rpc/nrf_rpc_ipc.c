@@ -9,7 +9,9 @@
 #include <nrf_rpc_errno.h>
 #include <nrf_rpc/nrf_rpc_ipc.h>
 
+#if CONFIG_OPENAMP
 #include <openamp/rpmsg.h>
+#endif /* CONFIG_OPENAMP */
 #include <zephyr/ipc/ipc_service.h>
 
 #include <zephyr/logging/log.h>
@@ -55,6 +57,7 @@ static int translate_error(int ll_err)
 	case -EBADMSG:
 		return -NRF_EBADMSG;
 
+#if CONFIG_OPENAMP
 	case RPMSG_ERR_BUFF_SIZE:
 	case RPMSG_ERR_NO_MEM:
 	case RPMSG_ERR_NO_BUFF:
@@ -65,6 +68,7 @@ static int translate_error(int ll_err)
 	case RPMSG_ERR_INIT:
 	case RPMSG_ERR_ADDR:
 		return -NRF_EIO;
+#endif /* CONFIG_OPENAMP */
 
 	default:
 		if (ll_err < 0) {
@@ -165,7 +169,6 @@ static int send(const struct nrf_rpc_tr *transport, const uint8_t *data, size_t 
 	case NRF_RPC_IPC_STATE_WAITING:
 		if (!k_event_wait(&endpoint->ept_bond, 0x01, false,
 				ipc_config->endpoint.timeout)) {
-			ipc_config->state = NRF_RPC_IPC_STATE_ERROR;
 			LOG_ERR("IPC endpoint bond timeout");
 			return -NRF_EPIPE;
 		}

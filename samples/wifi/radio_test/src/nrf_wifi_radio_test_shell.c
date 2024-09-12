@@ -320,7 +320,7 @@ enum nrf_wifi_status nrf_wifi_radio_test_conf_init(struct rpu_conf_params *conf_
 	conf_params->tx_mode = 1;
 	conf_params->tx_pkt_num = -1;
 	conf_params->tx_pkt_len = 1400;
-	conf_params->tx_pkt_preamble = 1;
+	conf_params->tx_pkt_preamble = 0;
 	conf_params->tx_pkt_rate = 6;
 	conf_params->he_ltf = 2;
 	conf_params->he_gi = 2;
@@ -989,10 +989,10 @@ static int nrf_wifi_radio_test_set_rx_capture_length(const struct shell *shell,
 
 	val = strtoul(argv[1], &ptr, 10);
 
-	if (val >= 16384) {
+	if ((val > MAX_CAPTURE_LEN)  || (val < MIN_CAPTURE_LEN)) {
 		shell_fprintf(shell,
-					  SHELL_ERROR,
-					  "'capture_length' has to be less than 16384\n");
+			      SHELL_ERROR,
+			      "'capture_length' has to be non-zero and less than 16384\n");
 		return -ENOEXEC;
 	}
 
@@ -1001,6 +1001,30 @@ static int nrf_wifi_radio_test_set_rx_capture_length(const struct shell *shell,
 	}
 
 	ctx->conf_params.capture_length = val;
+
+	return 0;
+}
+
+static int nrf_wifi_radio_test_set_rx_capture_timeout(const struct shell *shell, size_t argc,
+						      const char *argv[])
+{
+	char *ptr = NULL;
+	unsigned short int val = 0;
+
+	val = strtoul(argv[1], &ptr, 10);
+
+	if (val > CAPTURE_DURATION_IN_SEC) {
+		shell_fprintf(shell,
+			      SHELL_ERROR,
+			      "'capture_timeout' has to be less than 600 seconds\n");
+		return -ENOEXEC;
+	}
+
+	if (!check_test_in_prog(shell)) {
+		return -ENOEXEC;
+	}
+
+	ctx->conf_params.capture_timeout = val;
 
 	return 0;
 }
@@ -1352,7 +1376,7 @@ static int nrf_wifi_radio_test_set_rx(const struct shell *shell,
 	return 0;
 }
 
-#ifdef CONFIG_NRF700X_RADIO_COEX
+#ifdef CONFIG_NRF700X_SR_COEX_RF_SWITCH
 static int nrf_wifi_radio_test_sr_ant_switch_ctrl(const struct shell *shell,
 					     size_t argc,
 					     const char *argv[])
@@ -1370,8 +1394,7 @@ static int nrf_wifi_radio_test_sr_ant_switch_ctrl(const struct shell *shell,
 
 	return sr_ant_switch(val);
 }
-#endif /* CONFIG_NRF700X_RADIO_COEX */
-
+#endif /* CONFIG_NRF700X_SR_COEX_RF_SWITCH */
 
 static int nrf_wifi_radio_test_rx_cap(const struct shell *shell,
 				      size_t argc,
@@ -1380,6 +1403,7 @@ static int nrf_wifi_radio_test_rx_cap(const struct shell *shell,
 	enum nrf_wifi_status status = NRF_WIFI_STATUS_FAIL;
 	unsigned long rx_cap_type = 0;
 	unsigned char *rx_cap_buf = NULL;
+	unsigned char capture_status = 0;
 	char *ptr = NULL;
 	unsigned int i = 0;
 	int ret = -ENOEXEC;
@@ -1406,6 +1430,17 @@ static int nrf_wifi_radio_test_rx_cap(const struct shell *shell,
 		goto out;
 	}
 
+	if (rx_cap_type == NRF_WIFI_RF_TEST_RX_DYN_PKT_CAP) {
+		if (!ctx->conf_params.capture_timeout) {
+			shell_fprintf(shell,
+				SHELL_ERROR,
+				"%s: Invalid rx_capture_timeout %d\n",
+				__func__,
+				ctx->conf_params.capture_timeout);
+			goto out;
+		}
+	}
+
 	if (!check_test_in_prog(shell)) {
 		goto out;
 	}
@@ -1429,8 +1464,10 @@ static int nrf_wifi_radio_test_rx_cap(const struct shell *shell,
 					      rx_cap_type,
 					      rx_cap_buf,
 					      ctx->conf_params.capture_length,
+					      ctx->conf_params.capture_timeout,
 					      ctx->conf_params.lna_gain,
-					      ctx->conf_params.bb_gain);
+					      ctx->conf_params.bb_gain,
+					      &capture_status);
 
 	if (status != NRF_WIFI_STATUS_SUCCESS) {
 		shell_fprintf(shell,
@@ -1439,17 +1476,27 @@ static int nrf_wifi_radio_test_rx_cap(const struct shell *shell,
 		goto out;
 	}
 
-	shell_fprintf(shell,
-		      SHELL_INFO,
-		      "************* RX capture data ***********\n");
-
-	for (i = 0; i < (ctx->conf_params.capture_length); i++) {
+	if (capture_status == 0) {
 		shell_fprintf(shell,
-				SHELL_INFO,
-				"%02X%02X%02X\n",
-				rx_cap_buf[i*3 + 2],
-				rx_cap_buf[i*3 + 1],
-				rx_cap_buf[i*3 + 0]);
+			      SHELL_INFO,
+			      "\n************* RX capture data ***********\n");
+
+		for (i = 0; i < (ctx->conf_params.capture_length); i++) {
+			shell_fprintf(shell,
+				      SHELL_INFO,
+				      "%02X%02X%02X\n",
+				       rx_cap_buf[i*3 + 2],
+				       rx_cap_buf[i*3 + 1],
+				       rx_cap_buf[i*3 + 0]);
+		}
+	} else if (capture_status == 1) {
+		shell_fprintf(shell,
+			      SHELL_INFO,
+			      "\n************* Capture failed ***********\n");
+	} else {
+		shell_fprintf(shell,
+			      SHELL_INFO,
+			      "\n************* Packet detection failed ***********\n");
 	}
 
 	ret = 0;
@@ -1946,6 +1993,11 @@ static int nrf_wifi_radio_test_show_cfg(const struct shell *shell,
 		      "rx_capture_length = %d\n",
 		      conf_params->capture_length);
 
+	shell_fprintf(shell,
+		      SHELL_INFO,
+		      "rx_capture_timeout = %d\n",
+		      conf_params->capture_timeout);
+
 #if defined(CONFIG_BOARD_NRF7002DK_NRF7001_NRF5340_CPUAPP) || \
 	defined(CONFIG_BOARD_NRF7002DK_NRF5340_CPUAPP)
 	shell_fprintf(shell,
@@ -2245,8 +2297,8 @@ SHELL_STATIC_SUBCMD_SET_CREATE(
 		      0),
 	SHELL_CMD_ARG(tx_pkt_preamble,
 		      NULL,
-		      "0 - Short preamble\n"
-		      "1 - Long preamble\n"
+		      "0 - Long preamble\n"
+		      "1 - Short preamble\n"
 		      "2 - Mixed preamble                                   ",
 		      nrf_wifi_radio_test_set_tx_pkt_preamble,
 		      2,
@@ -2327,7 +2379,7 @@ SHELL_STATIC_SUBCMD_SET_CREATE(
 		      nrf_wifi_radio_test_set_rx,
 		      2,
 		      0),
-#ifdef CONFIG_NRF700X_RADIO_COEX
+#ifdef CONFIG_NRF700X_SR_COEX_RF_SWITCH
 	SHELL_CMD_ARG(sr_ant_switch_ctrl,
 		      NULL,
 		      "0 - Switch set to use the BLE antenna\n"
@@ -2335,7 +2387,7 @@ SHELL_STATIC_SUBCMD_SET_CREATE(
 		      nrf_wifi_radio_test_sr_ant_switch_ctrl,
 		      2,
 		      0),
-#endif /* CONFIG_NRF700X_RADIO_COEX */
+#endif /* CONFIG_NRF700X_SR_COEX_RF_SWITCH */
 	SHELL_CMD_ARG(rx_lna_gain,
 		      NULL,
 		      "<val> - LNA gain to be configured.\n"
@@ -2361,11 +2413,18 @@ SHELL_STATIC_SUBCMD_SET_CREATE(
 		      nrf_wifi_radio_test_set_rx_capture_length,
 		      2,
 		      0),
+	SHELL_CMD_ARG(rx_capture_timeout,
+		      NULL,
+		      "<val> - Wait time allowed in seconds\n"
+		      "Max timeout allowed is 600 seconds",
+		      nrf_wifi_radio_test_set_rx_capture_timeout,
+		      2,
+		      0),
 	SHELL_CMD_ARG(rx_cap,
 		      NULL,
 		      "0 = ADC capture\n"
-		      "1 = Static packet capture\n"
-		      "2 = Dynamic packet captur              ",
+		      "1 = Filtered ADC capture\n"
+		      "2 = Dynamic packet capture              ",
 		      nrf_wifi_radio_test_rx_cap,
 		      2,
 		      0),

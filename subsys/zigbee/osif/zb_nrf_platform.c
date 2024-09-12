@@ -30,6 +30,8 @@
 
 /* Value that is returned while reading a single byte from the erased flash page .*/
 #define FLASH_EMPTY_BYTE 0xFF
+/* Broadcast Pan ID value */
+#define ZB_BROADCAST_PAN_ID 0xFFFFU
 /* The number of bytes to be checked before concluding that the ZBOSS NVRAM is not initialized. */
 #define ZB_PAGE_INIT_CHECK_LEN 32
 
@@ -592,6 +594,15 @@ void zb_osif_abort(void)
 	}
 }
 
+uint32_t zigbee_pibcache_pan_id_clear(void)
+{
+	/* For consistency with zb_nwk_nib_init(), the 0xFFFFU is used,
+	 * i.e. ZB_BROADCAST_PAN_ID.
+	 */
+	ZB_PIBCACHE_PAN_ID() = ZB_BROADCAST_PAN_ID;
+	return ZB_BROADCAST_PAN_ID;
+}
+
 void zb_reset(zb_uint8_t param)
 {
 	uint8_t reas = (uint8_t)SYS_REBOOT_COLD;
@@ -602,12 +613,7 @@ void zb_reset(zb_uint8_t param)
 	reas = (uint8_t)SYS_REBOOT_NCP;
 #endif /* CONFIG_ZIGBEE_LIBRARY_NCP_DEV */
 
-/* For nRF5340DK sys_reboot() does not set reset reason.
- * Do it manually in this case - NCP samples require this.
- */
-#ifdef CONFIG_SOC_NRF5340_CPUAPP
 	nrf_power_gpregret_set(NRF_POWER, 0, reas);
-#endif /* CONFIG_SOC_NRF5340_CPUAPP */
 
 	/* Power on unused sections of RAM to allow MCUboot to use it. */
 	if (IS_ENABLED(CONFIG_RAM_POWER_DOWN_LIBRARY)) {

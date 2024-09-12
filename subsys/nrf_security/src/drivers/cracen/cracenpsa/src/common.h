@@ -33,10 +33,22 @@
 #define CRACEN_X25519_KEY_SIZE_BYTES (32)
 #define CRACEN_X448_KEY_SIZE_BYTES   (56)
 
+typedef struct {
+	uint8_t slot_number;
+	uint8_t owner_id;
+} ikg_opaque_key;
+
 __attribute__((warn_unused_result)) psa_status_t silex_statuscodes_to_psa(int ret);
 
 __attribute__((warn_unused_result)) psa_status_t
 hash_get_algo(psa_algorithm_t alg, const struct sxhashalg **sx_hash_algo);
+
+enum asn1_tags {
+	ASN1_SEQUENCE = 0x10,
+	ASN1_INTEGER = 0x2,
+	ASN1_CONSTRUCTED = 0x20,
+	ASN1_BIT_STRING = 0x3
+};
 
 /*!
  * \brief Get Cracen curve object based on the PSA attributes.
@@ -95,7 +107,7 @@ psa_status_t cracen_ecc_check_public_key(const struct sx_pk_ecurve *curve,
 					 const sx_pk_affine_point *in_pnt);
 
 /**
- * \brief Tries to extract a Silex RSA key from ASN.1.
+ * \brief Tries to extract an RSA key from ASN.1.
  *
  * \param[out] rsa                 Resulting RSA key.
  * \param[in]  extract_pubkey      true to extract public key. false to extract private key.
@@ -156,3 +168,21 @@ void cracen_xorbytes(char *a, const char *b, size_t sz);
  */
 psa_status_t cracen_load_keyref(const psa_key_attributes_t *attributes, const uint8_t *key_buffer,
 				size_t key_buffer_size, struct sxkeyref *k);
+
+/**
+ * @brief Do ECB operation.
+ *
+ * @return psa_status_t
+ */
+psa_status_t cracen_cipher_crypt_ecb(const struct sxkeyref *key, const uint8_t *input,
+				     size_t input_length, uint8_t *output, size_t output_size,
+				     size_t *output_length, enum cipher_operation dir);
+
+/**
+ * @brief Prepare ik key.
+ *
+ * @param user_data    Owner ID.
+ *
+ * @return sxsymcrypt error code.
+ */
+int cracen_prepare_ik_key(const uint8_t *user_data);

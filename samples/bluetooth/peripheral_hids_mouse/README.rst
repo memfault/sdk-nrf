@@ -10,6 +10,9 @@ Bluetooth: Peripheral HIDS mouse
 The Peripheral HIDS mouse sample demonstrates how to use the :ref:`hids_readme` to implement a mouse input device that you can connect to your computer.
 This sample also shows how to perform directed advertising.
 
+.. note::
+   |nrf_desktop_HID_ref|
+
 Requirements
 ************
 
@@ -32,7 +35,7 @@ This sample exposes the HID GATT Service.
 It uses a report map for a generic mouse.
 
 You can also disable the directed advertising feature by clearing the ``BT_DIRECTED_ADVERTISING`` flag in the application configuration.
-This feature is enabled by default and it changes the way how advertising works in comparison to the other Bluetooth® Low Energy samples.
+This feature is enabled by default and it changes the way how advertising works in comparison to the other Bluetooth Low Energy samples.
 When the device wants to advertise, it starts with high duty cycle directed advertising provided that it has bonding information.
 If the timeout occurs, the device starts directed advertising to the next bonded peer.
 If all bonding information is used and there is still no connection, the regular advertising starts.
@@ -40,21 +43,43 @@ If all bonding information is used and there is still no connection, the regular
 User interface
 **************
 
-Button 1:
-   Simulate moving the mouse pointer five pixels to the left.
+.. tabs::
 
-   When pairing, press this button to confirm the passkey value that is printed on the COM listener to pair with the other device.
+   .. group-tab:: nRF52 and nRF53 DKs
 
-Button 2:
-   Simulate moving the mouse pointer five pixels up.
+      Button 1:
+         Simulate moving the mouse pointer five pixels to the left.
 
-   When pairing, press this button to reject the passkey value that is printed on the COM listener to prevent pairing with the other device.
+         When pairing, press this button to confirm the passkey value that is printed on the COM listener to pair with the other device.
 
-Button 3:
-   Simulate moving the mouse pointer five pixels to the right.
+      Button 2:
+         Simulate moving the mouse pointer five pixels up.
 
-Button 4:
-   Simulate moving the mouse pointer five pixels down.
+         When pairing, press this button to reject the passkey value that is printed on the COM listener to prevent pairing with the other device.
+
+      Button 3:
+         Simulate moving the mouse pointer five pixels to the right.
+
+      Button 4:
+         Simulate moving the mouse pointer five pixels down.
+
+   .. group-tab:: nRF54 DKs
+
+      Button 0:
+         Simulate moving the mouse pointer five pixels to the left.
+
+         When pairing, press this button to confirm the passkey value that is printed on the COM listener to pair with the other device.
+
+      Button 1:
+         Simulate moving the mouse pointer five pixels up.
+
+         When pairing, press this button to reject the passkey value that is printed on the COM listener to prevent pairing with the other device.
+
+      Button 2:
+         Simulate moving the mouse pointer five pixels to the right.
+
+      Button 3:
+         Simulate moving the mouse pointer five pixels down.
 
 Configuration
 *************
@@ -66,18 +91,27 @@ Setup
 
 The HID service specification does not require encryption (:kconfig:option:`CONFIG_BT_HIDS_DEFAULT_PERM_RW_ENCRYPT`), but some systems disconnect from the HID devices that do not support security.
 
+.. note::
+   If you want to pair the device with a computer running MacOS, set the :kconfig:option:`CONFIG_BT_HIDS_DEFAULT_PERM_RW_AUTHEN` Kconfig option to ``y``.
+
 Building and running
 ********************
 
-To build this sample with the :ref:`nrf_rpc_ipc_readme` library on the nRF5340 DK, set the :makevar:`OVERLAY_CONFIG` option to the :file:`overlay-nrf_rpc.conf` file.
+To build this sample with the :ref:`ble_rpc` library, add the following parameters:
 
-.. code-block::
+* set the :makevar:`SNIPPET` option to ``nordic-bt-rpc``,
+* set the :makevar:`FILE_SUFFIX` option to ``bt_rpc``.
 
-   west build -b nrf5340dk_nrf5340_cpuapp -- -DOVERLAY_CONFIG=overlay-nrf_rpc.conf
+.. parsed-literal::
+   :class: highlight
+
+   west build -b *board_target* -S nordic-bt-rpc -- -DFILE_SUFFIX=bt_rpc
 
 .. |sample path| replace:: :file:`samples/bluetooth/peripheral_hids_mouse`
 
 .. include:: /includes/build_and_run_ns.txt
+
+.. include:: /includes/nRF54H20_erase_UICR.txt
 
 Testing
 =======
@@ -89,53 +123,104 @@ Testing with a Microsoft Windows computer
 
 To test with a Microsoft Windows computer that has a Bluetooth radio, complete the following steps:
 
-1. Power on your development kit.
-#. On your Windows computer, search for Bluetooth devices and connect to the device named "NCS HIDS mouse".
-#. Push **Button 1** on the kit.
-   Observe that the mouse pointer on the computer moves to the left.
-#. Push **Button 2**.
-   Observe that the mouse pointer on the computer moves upward.
-#. Push **Button 3**.
-   Observe that the mouse pointer on the computer moves to the right.
-#. Push **Button 4**.
-   Observe that the mouse pointer on the computer moves downward.
-#. Disconnect the computer from the device by removing the device from the computer's devices list.
+.. tabs::
 
+   .. group-tab:: nRF52 and nRF53 DKs
+
+      1. Power on your development kit.
+      #. On your Windows computer, search for Bluetooth devices and connect to the device named "NCS HIDS mouse".
+      #. Push **Button 1** on the kit.
+         Observe that the mouse pointer on the computer moves to the left.
+      #. Push **Button 2**.
+         Observe that the mouse pointer on the computer moves upward.
+      #. Push **Button 3**.
+         Observe that the mouse pointer on the computer moves to the right.
+      #. Push **Button 4**.
+         Observe that the mouse pointer on the computer moves downward.
+      #. Disconnect the computer from the device by removing the device from the computer's devices list.
+
+   .. group-tab:: nRF54 DKs
+
+      1. Power on your development kit.
+      #. On your Windows computer, search for Bluetooth devices and connect to the device named "NCS HIDS mouse".
+      #. Push **Button 0** on the kit.
+         Observe that the mouse pointer on the computer moves to the left.
+      #. Push **Button 1**.
+         Observe that the mouse pointer on the computer moves upward.
+      #. Push **Button 2**.
+         Observe that the mouse pointer on the computer moves to the right.
+      #. Push **Button 3**.
+         Observe that the mouse pointer on the computer moves downward.
+      #. Disconnect the computer from the device by removing the device from the computer's devices list.
 
 Testing with nRF Connect for Desktop
 ------------------------------------
 
 To test with `nRF Connect for Desktop`_, complete the following steps:
 
-1. Power on your development kit.
-#. Start `nRF Connect for Desktop`_.
-#. Open the Bluetooth Low Energy app.
-#. Connect to the device from the app. The device is advertising as "NCS HIDS mouse"
-#. Optionally, bond to the device.
-   Click the :guilabel:`Settings` button for the device in the app, select **Pair**, check :guilabel:`Perform Bonding`, and click :guilabel:`Pair`.
-   Optionally check :guilabel:`Enable MITM protection` to pair with MITM protection and use a button on the device to confirm or reject passkey value.
-#. Click :guilabel:`Match` in the app.
-   Wait until the bond is established before you continue.
-#. Observe that the services of the connected device are shown.
-#. Click :guilabel:`Play` for all HID Report characteristics.
-#. Push **Button 1** on the kit.
-   Observe that a notification is received on one of the HID Report characteristics, containing the value ``FB0F00``.
+.. tabs::
 
-   Mouse motion reports contain data with an X-translation and a Y-translation.
-   These are transmitted as 12-bit signed integers.
-   The format used for mouse reports is the following byte array, where LSB/MSB is the least/most significant bit: ``[8 LSB (X), 4 LSB (Y) | 4 MSB(X), 8 MSB(Y)]``.
+   .. group-tab:: nRF52 and nRF53 DKs
 
-   Therefore, ``FB0F00`` denotes an X-translation of FFB = -5 (two's complement format), which means a movement of five pixels to the left, and a Y-translation of 000 = 0.
-#. Push **Button 2**.
-   Observe that the value ``00B0FF`` is received on the same HID Report characteristic.
-#. Push **Button 3**.
-   Observe that the value ``050000`` is received on the same HID Report characteristic.
-#. Push **Button 4**.
-   Observe that the value ``005000`` is received on the same HID Report characteristic.
-#. Disconnect the device in the Bluetooth Low Energy app of nRF Connect for Desktop.
-   Observe that no new notifications are received and the device is advertising.
-#. As bond information is preserved by the Bluetooth Low Energy app, you can immediately reconnect to the device by clicking the :guilabel:`Connect` button again.
+      1. Power on your development kit.
+      #. Start `nRF Connect for Desktop`_.
+      #. Open the Bluetooth Low Energy app.
+      #. Connect to the device from the app. The device is advertising as "NCS HIDS mouse"
+      #. Optionally, bond to the device.
+         Click the :guilabel:`Settings` button for the device in the app, select **Pair**, check :guilabel:`Perform Bonding`, and click :guilabel:`Pair`.
+         Optionally check :guilabel:`Enable MITM protection` to pair with MITM protection and use a button on the device to confirm or reject passkey value.
+      #. Click :guilabel:`Match` in the app.
+         Wait until the bond is established before you continue.
+      #. Observe that the services of the connected device are shown.
+      #. Click :guilabel:`Play` for all HID Report characteristics.
+      #. Push **Button 1** on the kit.
+         Observe that a notification is received on one of the HID Report characteristics, containing the value ``FB0F00``.
 
+         Mouse motion reports contain data with an X-translation and a Y-translation.
+         These are transmitted as 12-bit signed integers.
+         The format used for mouse reports is the following byte array, where LSB/MSB is the least/most significant bit: ``[8 LSB (X), 4 LSB (Y) | 4 MSB(X), 8 MSB(Y)]``.
+
+         Therefore, ``FB0F00`` denotes an X-translation of FFB = -5 (two's complement format), which means a movement of five pixels to the left, and a Y-translation of 000 = 0.
+      #. Push **Button 2**.
+         Observe that the value ``00B0FF`` is received on the same HID Report characteristic.
+      #. Push **Button 3**.
+         Observe that the value ``050000`` is received on the same HID Report characteristic.
+      #. Push **Button 4**.
+         Observe that the value ``005000`` is received on the same HID Report characteristic.
+      #. Disconnect the device in the Bluetooth Low Energy app of nRF Connect for Desktop.
+         Observe that no new notifications are received and the device is advertising.
+      #. As bond information is preserved by the Bluetooth Low Energy app, you can immediately reconnect to the device by clicking the :guilabel:`Connect` button again.
+
+   .. group-tab:: nRF54 DKs
+
+      1. Power on your development kit.
+      #. Start `nRF Connect for Desktop`_.
+      #. Open the Bluetooth Low Energy app.
+      #. Connect to the device from the app. The device is advertising as "NCS HIDS mouse"
+      #. Optionally, bond to the device.
+         Click the :guilabel:`Settings` button for the device in the app, select **Pair**, check :guilabel:`Perform Bonding`, and click :guilabel:`Pair`.
+         Optionally check :guilabel:`Enable MITM protection` to pair with MITM protection and use a button on the device to confirm or reject passkey value.
+      #. Click :guilabel:`Match` in the app.
+         Wait until the bond is established before you continue.
+      #. Observe that the services of the connected device are shown.
+      #. Click :guilabel:`Play` for all HID Report characteristics.
+      #. Push **Button 0** on the kit.
+         Observe that a notification is received on one of the HID Report characteristics, containing the value ``FB0F00``.
+
+         Mouse motion reports contain data with an X-translation and a Y-translation.
+         These are transmitted as 12-bit signed integers.
+         The format used for mouse reports is the following byte array, where LSB/MSB is the least/most significant bit: ``[8 LSB (X), 4 LSB (Y) | 4 MSB(X), 8 MSB(Y)]``.
+
+         Therefore, ``FB0F00`` denotes an X-translation of FFB = -5 (two's complement format), which means a movement of five pixels to the left, and a Y-translation of 000 = 0.
+      #. Push **Button 1**.
+         Observe that the value ``00B0FF`` is received on the same HID Report characteristic.
+      #. Push **Button 2**.
+         Observe that the value ``050000`` is received on the same HID Report characteristic.
+      #. Push **Button 3**.
+         Observe that the value ``005000`` is received on the same HID Report characteristic.
+      #. Disconnect the device in the Bluetooth Low Energy app of nRF Connect for Desktop.
+         Observe that no new notifications are received and the device is advertising.
+      #. As bond information is preserved by the Bluetooth Low Energy app, you can immediately reconnect to the device by clicking the :guilabel:`Connect` button again.
 
 Dependencies
 ************

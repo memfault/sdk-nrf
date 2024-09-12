@@ -15,23 +15,12 @@
 #if defined(CONFIG_SLM_NRF_CLOUD)
 
 #include <stdbool.h>
-#include <modem/at_cmd_parser.h>
 
 /* Whether the connection to nRF Cloud is ready. */
 extern bool slm_nrf_cloud_ready;
 
 /* Whether to send the device's location to nRF Cloud. */
 extern bool slm_nrf_cloud_send_location;
-
-/* Handles the AT#XNRFCLOUD commands. */
-int handle_at_nrf_cloud(enum at_cmd_type cmd_type);
-
-#if defined(CONFIG_NRF_CLOUD_LOCATION)
-
-/* Handles the AT#XNRFCLOUDPOS command. */
-int handle_at_nrf_cloud_pos(enum at_cmd_type cmd_type);
-
-#endif /* CONFIG_NRF_CLOUD_LOCATION */
 
 /**
  * @brief Initialize nRF Cloud AT command parser.

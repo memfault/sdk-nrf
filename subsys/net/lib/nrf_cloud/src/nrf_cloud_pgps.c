@@ -24,6 +24,7 @@
 
 LOG_MODULE_REGISTER(nrf_cloud_pgps, CONFIG_NRF_CLOUD_GPS_LOG_LEVEL);
 
+#include "nrf_cloud_mem.h"
 #include "nrf_cloud_transport.h"
 #include "nrf_cloud_fsm.h"
 #include "nrf_cloud_pgps_schema_v1.h"
@@ -39,7 +40,6 @@ LOG_MODULE_REGISTER(nrf_cloud_pgps, CONFIG_NRF_CLOUD_GPS_LOG_LEVEL);
 #define PREDICTION_PERIOD		240
 #endif
 #define REPLACEMENT_THRESHOLD		CONFIG_NRF_CLOUD_PGPS_REPLACEMENT_THRESHOLD
-#define SEC_TAG				CONFIG_NRF_CLOUD_SEC_TAG
 #define FRAGMENT_SIZE			CONFIG_NRF_CLOUD_PGPS_DOWNLOAD_FRAGMENT_SIZE
 #define PREDICTION_MIDPOINT_SHIFT_SEC	(120 * SEC_PER_MIN)
 #define LOCATION_UNC_SEMIMAJOR_K	89U
@@ -120,6 +120,7 @@ static void cache_pgps_header(const struct nrf_cloud_pgps_header *header);
 static int consume_pgps_data(uint8_t pnum, const char *buf, size_t buf_len);
 static void prediction_work_handler(struct k_work *work);
 static void prediction_timer_handler(struct k_timer *dummy);
+static bool prediction_timer_is_running(void);
 void agnss_print_enable(bool enable);
 static void print_time_details(const char *info,
 			       int64_t sec, uint16_t day, uint32_t time_of_day);
@@ -492,7 +493,8 @@ int nrf_cloud_pgps_notify_prediction(void)
 	 */
 	int err;
 	int pnum;
-	struct nrf_cloud_pgps_prediction *prediction;
+	struct nrf_modem_gnss_agnss_data_frame processed;
+	struct nrf_cloud_pgps_prediction *prediction = NULL;
 	struct nrf_cloud_pgps_event evt = {
 		.type = PGPS_EVT_AVAILABLE,
 	};
@@ -500,6 +502,16 @@ int nrf_cloud_pgps_notify_prediction(void)
 	if (state == PGPS_NONE) {
 		LOG_ERR("P-GPS subsystem is not initialized.");
 		return -EINVAL;
+	}
+
+	nrf_cloud_agnss_processed(&processed);
+
+	/* If the prediction timer is running and a prediction has already been injected,
+	 * there's no need to find the next prediction yet.
+	 */
+	if (prediction_timer_is_running() && processed.system[0].sv_mask_ephe != 0) {
+		LOG_INF("Not time to find next prediction yet.");
+		return 0;
 	}
 	LOG_DBG("num_predictions:%d, replacement threshold:%d",
 		NUM_PREDICTIONS, REPLACEMENT_THRESHOLD);
@@ -529,7 +541,7 @@ int nrf_cloud_pgps_notify_prediction(void)
 		/* the application should now send data to modem with
 		 * nrf_cloud_pgps_inject()
 		 */
-		if (evt_handler) {
+		if (evt_handler && prediction) {
 			evt.prediction = prediction;
 			evt_handler(&evt);
 		}
@@ -539,12 +551,12 @@ int nrf_cloud_pgps_notify_prediction(void)
 
 static void prediction_work_handler(struct k_work *work)
 {
-	struct nrf_cloud_pgps_prediction *p;
+	struct nrf_cloud_pgps_prediction *p = NULL;
 	int ret;
 
 	LOG_DBG("Prediction is expiring; finding next");
 	ret = nrf_cloud_pgps_find_prediction(&p);
-	if (ret >= 0) {
+	if ((ret >= 0) && p) {
 		LOG_DBG("found prediction %d; injecting to modem", ret);
 		ret = nrf_cloud_pgps_inject(p, NULL);
 		if (ret) {
@@ -581,6 +593,11 @@ static void start_expiration_timer(int pnum, int64_t cur_gps_sec)
 	} else {
 		LOG_ERR("Cannot start prediction expiration timer; delta = %d", (int32_t)delta);
 	}
+}
+
+static bool prediction_timer_is_running(void)
+{
+	return k_timer_remaining_ticks(&prediction_timer) > 0;
 }
 
 static void print_time_details(const char *info,
@@ -660,14 +677,14 @@ int nrf_cloud_pgps_find_prediction(struct nrf_cloud_pgps_prediction **prediction
 		 * falls before the first valid prediction; default to
 		 * first entry and day and time for it
 		 */
-		LOG_WRN("cannot find prediction; real time not known");
+		LOG_WRN("Cannot find prediction; real time not known");
 		return -ETIMEUNKNOWN;
 	} else if (cur_gps_sec > end_sec) {
 		if ((cur_gps_sec - end_sec) > PGPS_MARGIN_SEC) {
 			index.cur_pnum = 0xff;
 			state = PGPS_EXPIRED;
 			loading_in_progress = false; /* make sure we request it */
-			LOG_WRN("data expired!");
+			LOG_WRN("Data expired!");
 			return -ETIMEDOUT;
 		}
 		margin = true;
@@ -676,7 +693,7 @@ int nrf_cloud_pgps_find_prediction(struct nrf_cloud_pgps_prediction **prediction
 	} else {
 		pnum = offset_sec / (SEC_PER_MIN * period_min);
 		if (pnum >= index.header.prediction_count) {
-			LOG_WRN("prediction num:%d -- too large", pnum);
+			LOG_WRN("Prediction num:%d -- too large", pnum);
 			pnum = index.header.prediction_count - 1;
 		}
 	}
@@ -898,7 +915,7 @@ int nrf_cloud_pgps_update(struct nrf_cloud_pgps_result *file_location)
 		return err;
 	}
 
-	int sec_tag = SEC_TAG;
+	int sec_tag = nrf_cloud_sec_tag_get();
 
 	if (FORCE_HTTP_DL && (strncmp(file_location->host, "https", 5) == 0)) {
 		memmove(&file_location->host[4],
@@ -1654,7 +1671,9 @@ static void end_transfer_handler(int transfer_result)
 	if (transfer_result == 0) {
 		LOG_DBG("Download completed without error.");
 	} else {
-		LOG_ERR("Download failed: %d", transfer_result);
+		if (transfer_result != -ECANCELED) {
+			LOG_ERR("Download failed: %d", transfer_result);
+		}
 		npgps_undo_alloc_block(index.store_block);
 	}
 	nrf_cloud_pgps_finish_update();
@@ -1714,8 +1733,9 @@ int nrf_cloud_pgps_init(struct nrf_cloud_pgps_init_param *param)
 	state = PGPS_NONE;
 
 	if (!write_buf) {
-		write_buf = k_malloc(flash_page_size);
+		write_buf = nrf_cloud_malloc(flash_page_size);
 		if (!write_buf) {
+			LOG_ERR("Failed to allocate write buffer");
 			return -ENOMEM;
 		}
 #if PGPS_DEBUG
@@ -1778,10 +1798,11 @@ int nrf_cloud_pgps_init(struct nrf_cloud_pgps_init_param *param)
 	if (num_valid) {
 		LOG_INF("Checking if P-GPS data is expired...");
 		err = nrf_cloud_pgps_find_prediction(&found_prediction);
-		if (err == -ETIMEDOUT) {
-			LOG_WRN("Predictions expired. Requesting predictions...");
+		if (err < 0) {
+			LOG_ERR("Find prediction returned err: %d", err);
+			LOG_WRN("Requesting predictions...");
 			num_valid = 0;
-		} else if (err >= 0) {
+		} else {
 			LOG_INF("Found valid prediction, day:%u, time:%u",
 				found_prediction->time.date_day,
 				found_prediction->time.time_full_s);
@@ -1833,7 +1854,7 @@ int nrf_cloud_pgps_init(struct nrf_cloud_pgps_init_param *param)
 	} else {
 		state = PGPS_READY;
 		LOG_INF("P-GPS data is up to date.");
-		if (evt_handler) {
+		if (evt_handler && found_prediction) {
 			evt.type = PGPS_EVT_AVAILABLE;
 			evt.prediction = found_prediction;
 			evt_handler(&evt);

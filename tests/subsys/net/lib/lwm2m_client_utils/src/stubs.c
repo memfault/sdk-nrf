@@ -6,13 +6,14 @@
 
 #include <zephyr/ztest.h>
 #include <zephyr/fff.h>
-
+#include <assert.h>
 #include <net/lwm2m_client_utils.h>
 #include <modem/modem_key_mgmt.h>
 #include <modem/lte_lc.h>
 #include <modem/modem_info.h>
 #include <zephyr/settings/settings.h>
 #include <zephyr/sys/reboot.h>
+#include "lwm2m_engine.h"
 #include "stubs.h"
 
 /*
@@ -68,7 +69,6 @@ DEFINE_FAKE_VALUE_FUNC(int, lte_lc_edrx_param_set, enum lte_lc_lte_mode, const c
 DEFINE_FAKE_VALUE_FUNC(int, lte_lc_edrx_req, bool);
 DEFINE_FAKE_VALUE_FUNC(int, lte_lc_neighbor_cell_measurement, struct lte_lc_ncellmeas_params *);
 DEFINE_FAKE_VALUE_FUNC(int, lte_lc_psm_param_set_seconds, int, int);
-DEFINE_FAKE_VOID_FUNC(lte_lc_register_handler, lte_lc_evt_handler_t);
 DEFINE_FAKE_VALUE_FUNC(int, nrf_cloud_agnss_process, const char *, size_t);
 DEFINE_FAKE_VALUE_FUNC(int, nrf_cloud_pgps_begin_update);
 DEFINE_FAKE_VALUE_FUNC(int, nrf_cloud_pgps_process_update, uint8_t *, size_t);
@@ -101,13 +101,51 @@ DEFINE_FAKE_VALUE_FUNC(int, net_mgmt_NET_REQUEST_WIFI_SCAN, uint32_t, struct net
 DEFINE_FAKE_VALUE_FUNC(int, lte_lc_conn_eval_params_get, struct lte_lc_conn_eval_params *);
 DEFINE_FAKE_VALUE_FUNC(int, lwm2m_engine_pause);
 DEFINE_FAKE_VALUE_FUNC(int, lwm2m_engine_resume);
-DEFINE_FAKE_VALUE_FUNC(int, at_parser_max_params_from_str, const char *, char **,
-		       struct at_param_list *, size_t);
-DEFINE_FAKE_VALUE_FUNC(int, at_params_int_get, const struct at_param_list *, size_t, int32_t *);
-DEFINE_FAKE_VALUE_FUNC(int, at_params_unsigned_short_get, const struct at_param_list *, size_t,
-		       uint16_t *);
+DEFINE_FAKE_VALUE_FUNC(int, at_parser_init, struct at_parser *, const char *);
+DEFINE_FAKE_VALUE_FUNC(int, at_parser_int32_get, struct at_parser *, size_t, int32_t *);
+DEFINE_FAKE_VALUE_FUNC(int, at_parser_uint16_get, struct at_parser *, size_t, uint16_t *);
 DEFINE_FAKE_VALUE_FUNC_VARARG(int, nrf_modem_at_cmd_async, nrf_modem_at_resp_handler_t,
 			      const char *, ...);
-DEFINE_FAKE_VALUE_FUNC(int, at_params_list_init, struct at_param_list *, size_t);
 DEFINE_FAKE_VALUE_FUNC(int, z_impl_zsock_setsockopt, int, int, int, const void *, socklen_t);
 DEFINE_FAKE_VOID_FUNC(lwm2m_utils_rai_event_cb, struct lwm2m_ctx *, enum lwm2m_rd_client_event *);
+DEFINE_FAKE_VALUE_FUNC(uint8_t, lwm2m_firmware_get_update_state_inst, uint16_t);
+DEFINE_FAKE_VOID_FUNC(lwm2m_firmware_set_update_result_inst, uint16_t, uint8_t);
+DEFINE_FAKE_VOID_FUNC(lwm2m_registry_lock);
+DEFINE_FAKE_VOID_FUNC(lwm2m_registry_unlock);
+DEFINE_FAKE_VOID_FUNC(boot_is_img_confirmed);
+DEFINE_FAKE_VOID_FUNC(boot_write_img_confirmed);
+
+static lte_lc_evt_handler_t lte_handlers[10];
+void lte_lc_register_handler(lte_lc_evt_handler_t handler)
+{
+	for (int i = 0; i < ARRAY_SIZE(lte_handlers); i++) {
+		if (!lte_handlers[i] || lte_handlers[i] == handler) {
+			lte_handlers[i] = handler;
+			return;
+		}
+	}
+}
+
+void call_lte_handlers(const struct lte_lc_evt *const evt)
+{
+	for (int i = 0; i < ARRAY_SIZE(lte_handlers); i++) {
+		if (lte_handlers[i]) {
+			lte_handlers[i](evt);
+		}
+	}
+}
+
+int call_lwm2m_init_callbacks(void)
+{
+	STRUCT_SECTION_FOREACH(lwm2m_init_func, init)
+	{
+		int ret = init->f();
+
+		if (ret) {
+			printf("Init function %p returned %d\n", init, ret);
+		}
+	}
+	return 0;
+}
+
+SYS_INIT(call_lwm2m_init_callbacks, APPLICATION, CONFIG_KERNEL_INIT_PRIORITY_DEFAULT);

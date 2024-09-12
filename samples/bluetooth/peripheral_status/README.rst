@@ -28,56 +28,82 @@ The `Testing`_ instructions refer to `nRF Connect for Mobile`_, but you can also
 Overview
 ********
 
-The sample implements two NSMS instances that result in two NSMS characteristics that describe the status of two buttons (**Button 1** and **Button 2**).
+The sample implements two NSMS instances that result in two NSMS characteristics that describe the button status.
 Each characteristic has a name set in Characteristic User Description (CUD) that corresponds to the button whose status is shown.
 
-Moreover, status related to **Button 2** has configurable security settings.
-When :ref:`CONFIG_BT_STATUS_SECURITY_ENABLED <CONFIG_BT_STATUS_SECURITY_ENABLED>` is configured, the status related to **Button 2** has security enabled, thus it can be accessed only when bonded.
+.. tabs::
+
+   .. group-tab:: nRF52 and nRF53 DKs
+
+      Status related to **Button 2** has configurable security settings.
+      When :ref:`CONFIG_BT_STATUS_SECURITY_ENABLED <CONFIG_BT_STATUS_SECURITY_ENABLED>` is configured, the status related to **Button 2** has security enabled, thus it can be accessed only when bonded.
+
+   .. group-tab:: nRF54 DKs
+
+      Status related to **Button 1** has configurable security settings.
+      When :ref:`CONFIG_BT_STATUS_SECURITY_ENABLED <CONFIG_BT_STATUS_SECURITY_ENABLED>` is configured, the status related to **Button 1** has security enabled, thus it can be accessed only when bonded.
 
 User interface
 **************
 
 The user interface of the sample depends on the hardware platform you are using.
 
-Thingy:53
-=========
+.. tabs::
 
-RGB LED:
-   The RGB LED channels are used independently to display the following information:
+   .. group-tab:: nRF52 and nRF53 DKs
 
-   * Red - If the main loop is running (that is, the device is advertising).
-     Blinks with a period of two seconds with the duty cycle set to 50% when the main loop is running and the device is advertising.
-   * Green - If the device is connected.
+      LED 1:
+         Blinks with a period of two seconds with the duty cycle set to 50% when the main loop is running and the device is advertising.
 
-   For example, if Thingy:53 is connected over Bluetooth, the LED color toggles between green and yellow.
-   The green LED channel is kept on, and the red LED channel is blinking.
+      LED 2:
+         Lit when the development kit is connected.
 
-Button 1:
-   Set **Button 1** NSMS Status Characteristic to: "Pressed" or "Released".
-   Notify the client if notification is enabled.
+      Button 1:
+         Set **Button 1** NSMS Status Characteristic to: "Pressed" or "Released".
+         Notify the client if notification is enabled.
 
-Button 2 (the one hidden under the cover):
-   Set **Button 2** NSMS Status Characteristic to: "Pressed" or "Released".
-   Notify the client if notification is enabled.
-   By default, this service requires the connection to be secured to read or notify.
+      Button 2 (the one hidden under the cover):
+         Set **Button 2** NSMS Status Characteristic to: "Pressed" or "Released".
+         Notify the client if notification is enabled.
+         By default, this service requires the connection to be secured to read or notify.
 
-Development kits
-================
+   .. group-tab:: nRF54 DKs
 
-LED 1:
-   Blinks with a period of two seconds with the duty cycle set to 50% when the main loop is running and the device is advertising.
+      LED 0:
+         Blinks with a period of two seconds with the duty cycle set to 50% when the main loop is running and the device is advertising.
 
-LED 2:
-   Lit when the development kit is connected.
+      LED 1:
+         Lit when the development kit is connected.
 
-Button 1:
-   Set **Button 1** NSMS Status Characteristic to: "Pressed" or "Released".
-   Notify the client if notification is enabled.
+      Button 0:
+         Set **Button 0** NSMS Status Characteristic to: "Pressed" or "Released".
+         Notify the client if notification is enabled.
 
-Button 2 (the one hidden under the cover):
-   Set **Button 2** NSMS Status Characteristic to: "Pressed" or "Released".
-   Notify the client if notification is enabled.
-   By default, this service requires the connection to be secured to read or notify.
+      Button 1 (the one hidden under the cover):
+         Set **Button 1** NSMS Status Characteristic to: "Pressed" or "Released".
+         Notify the client if notification is enabled.
+         By default, this service requires the connection to be secured to read or notify.
+
+   .. group-tab:: Thingy:53
+
+      RGB LED:
+         The RGB LED channels are used independently to display the following information:
+
+         * Red - If the main loop is running (that is, the device is advertising).
+           Blinks with a period of two seconds with the duty cycle set to 50% when the main loop is running and the device is advertising.
+         * Green - If the device is connected.
+
+         For example, if Thingy:53 is connected over Bluetooth, the LED color toggles between green and yellow.
+         The green LED channel is kept on, and the red LED channel is blinking.
+
+      Button 1:
+         Set **Button 1** NSMS Status Characteristic to: "Pressed" or "Released".
+         Notify the client if notification is enabled.
+
+      Button 2 (the one hidden under the cover):
+         Set **Button 2** NSMS Status Characteristic to: "Pressed" or "Released".
+         Notify the client if notification is enabled.
+         By default, this service requires the connection to be secured to read or notify.
 
 Configuration
 *************
@@ -118,8 +144,17 @@ After programming the sample to your dongle or development kit, test it by perfo
 #. Enable notification for the characteristic found.
 #. Press the related button and observe the message change between "Pressed" and "Released".
 
-.. note::
-   Performing the same for **Button 2** characteristic requires a secured connection.
+.. tabs::
+
+   .. group-tab:: nRF52 and nRF53 DKs
+
+      .. note::
+         Performing the same for **Button 2** characteristic requires a secured connection.
+
+   .. group-tab:: nRF54 DKs
+
+      .. note::
+         Performing the same for **Button 1** characteristic requires a secured connection.
 
 Dependencies
 ************

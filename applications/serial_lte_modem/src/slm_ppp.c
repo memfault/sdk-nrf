@@ -10,7 +10,6 @@
 #if defined(CONFIG_SLM_CMUX)
 #include "slm_cmux.h"
 #endif
-#include <modem/at_cmd_custom.h>
 #include <modem/lte_lc.h>
 #include <modem/pdn.h>
 #include <zephyr/modem/ppp.h>
@@ -44,10 +43,38 @@ static struct k_thread ppp_data_passing_thread_id;
 static K_THREAD_STACK_DEFINE(ppp_data_passing_thread_stack, KB(2));
 static void ppp_data_passing_thread(void*, void*, void*);
 
-static struct k_work ppp_restart_work;
-static struct k_work ppp_stop_work;
+static void ppp_controller(struct k_work *work);
+enum ppp_action {
+	PPP_START,
+	PPP_RESTART,
+	PPP_STOP
+};
+struct ppp_work {
+	struct k_work work;
+	enum ppp_action action;
+};
+static struct ppp_work ppp_start_work = {
+	.work = Z_WORK_INITIALIZER(ppp_controller),
+	.action = PPP_START
+};
+static struct ppp_work ppp_restart_work = {
+	.work = Z_WORK_INITIALIZER(ppp_controller),
+	.action = PPP_RESTART
+};
+static struct ppp_work ppp_stop_work = {
+	.work = Z_WORK_INITIALIZER(ppp_controller),
+	.action = PPP_STOP
+};
 
 static bool ppp_peer_connected;
+
+enum ppp_states {
+	PPP_STATE_STOPPED,
+	PPP_STATE_STARTING,
+	PPP_STATE_RUNNING,
+	PPP_STATE_STOPPING
+};
+static atomic_t ppp_state;
 
 MODEM_PPP_DEFINE(ppp_module, NULL, CONFIG_KERNEL_INIT_PRIORITY_DEFAULT,
 		 sizeof(ppp_data_buf), sizeof(ppp_data_buf));
@@ -155,6 +182,16 @@ static bool configure_ppp_link_ip_addresses(struct ppp_context *ctx)
 	return true;
 }
 
+static bool ppp_is_running(void)
+{
+	return (atomic_get(&ppp_state) == PPP_STATE_RUNNING);
+}
+
+static void send_status_notification(void)
+{
+	rsp_send("\r\n#XPPP: %u,%u\r\n", ppp_is_running(), ppp_peer_connected);
+}
+
 static int ppp_start_failure(int ret)
 {
 	close_ppp_sockets();
@@ -162,7 +199,7 @@ static int ppp_start_failure(int ret)
 	return ret;
 }
 
-static int ppp_start(void)
+static int ppp_start_internal(void)
 {
 	int ret;
 	unsigned int mtu;
@@ -178,8 +215,15 @@ static int ppp_start(void)
 		return ret;
 	}
 
-	/* Set the PPP MTU to that of the LTE link. */
-	mtu = MIN(mtu, sizeof(ppp_data_buf));
+	if (mtu) {
+		/* Set the PPP MTU to that of the LTE link. */
+		mtu = MIN(mtu, sizeof(ppp_data_buf));
+	} else {
+		LOG_DBG("Could not retrieve MTU, using fallback value.");
+		mtu = CONFIG_SLM_PPP_FALLBACK_MTU;
+		BUILD_ASSERT(sizeof(ppp_data_buf) >= CONFIG_SLM_PPP_FALLBACK_MTU);
+	}
+
 	net_if_set_mtu(ppp_iface, mtu);
 	LOG_DBG("MTU set to %u.", mtu);
 
@@ -194,7 +238,7 @@ static int ppp_start(void)
 	}
 
 #if defined(CONFIG_SLM_CMUX)
-	ppp_pipe = slm_cmux_reserve_ppp_channel();
+	ppp_pipe = slm_cmux_reserve(CMUX_PPP_CHANNEL);
 	/* The pipe opening is managed by CMUX. */
 #endif
 
@@ -221,27 +265,35 @@ static int ppp_start(void)
 	return 0;
 }
 
-bool slm_ppp_is_running(void)
+bool slm_ppp_is_stopped(void)
 {
-	return net_if_is_carrier_ok(ppp_iface)
-	    && ppp_fds[ZEPHYR_FD_IDX] >= 0
-	    && ppp_fds[MODEM_FD_IDX] >= 0;
+	return (atomic_get(&ppp_state) == PPP_STATE_STOPPED);
 }
 
-static void ppp_stop(void)
+static void ppp_start(void)
 {
-	if (!slm_ppp_is_running()) {
-		return;
+	if (atomic_cas(&ppp_state, PPP_STATE_STOPPED, PPP_STATE_STARTING)) {
+		if (ppp_start_internal()) {
+			atomic_set(&ppp_state, PPP_STATE_STOPPED);
+		} else {
+			atomic_set(&ppp_state, PPP_STATE_RUNNING);
+			send_status_notification();
+		}
 	}
+}
+
+static void ppp_stop_internal(void)
+{
 	LOG_DBG("Stopping PPP...");
 
-	/* First bring the carrier down so that slm_ppp_is_running()
-	 * returns false right away. This is to prevent trying to stop PPP at the
-	 * same time from multiple sources: the original one (e.g. "AT#XPPP=0")
-	 * and the data passing thread. The latter attempts to stop PPP when it receives
-	 * an error on some of the sockets, which happens when they are closed.
+	/* Bring the interface down before releasing pipes and carrier.
+	 * This is needed for LCP to notify the remote endpoint that the link is going down.
 	 */
-	net_if_carrier_off(ppp_iface);
+	const int ret = net_if_down(ppp_iface);
+
+	if (ret) {
+		LOG_WRN("Failed to bring PPP interface down (%d).", ret);
+	}
 
 #if !defined(CONFIG_SLM_CMUX)
 	modem_pipe_close(ppp_pipe);
@@ -250,14 +302,10 @@ static void ppp_stop(void)
 	modem_ppp_release(&ppp_module);
 
 #if defined(CONFIG_SLM_CMUX)
-	slm_cmux_release_ppp_channel();
+	slm_cmux_release(CMUX_PPP_CHANNEL);
 #endif
 
-	const int ret = net_if_down(ppp_iface);
-
-	if (ret) {
-		LOG_WRN("Failed to bring PPP interface down (%d).", ret);
-	}
+	net_if_carrier_off(ppp_iface);
 
 	close_ppp_sockets();
 
@@ -266,21 +314,26 @@ static void ppp_stop(void)
 	LOG_INF("PPP stopped.");
 }
 
+static void ppp_stop(void)
+{
+	if (atomic_cas(&ppp_state, PPP_STATE_RUNNING, PPP_STATE_STOPPING)) {
+		ppp_stop_internal();
+		atomic_set(&ppp_state, PPP_STATE_STOPPED);
+		send_status_notification();
+	}
+}
+
 /* Automatically starts/stops PPP when the default PDN connection goes up/down. */
 static void pdp_ctx_event_handler(uint8_t cid, enum pdn_event event, int reason)
 {
 	switch (event) {
 	case PDN_EVENT_ACTIVATED:
 		LOG_INF("Connection up. Starting PPP.");
-		k_work_submit_to_queue(&slm_work_q, &ppp_restart_work);
+		k_work_submit_to_queue(&slm_work_q, &ppp_restart_work.work);
 		break;
 	case PDN_EVENT_DEACTIVATED:
-		if (slm_ppp_is_running()) {
-			LOG_INF("Connection down. Stopping PPP.");
-			ppp_stop();
-		} else {
-			LOG_DBG("Connection down.");
-		}
+		LOG_DBG("Connection down.");
+		ppp_stop();
 		break;
 	default:
 		LOG_DBG("Default PDN connection event %d received.", event);
@@ -371,20 +424,25 @@ static int at_cfun_set_callback(char *buf, size_t len, char *at_cmd)
 	return 0;
 }
 
-static void ppp_restarter(struct k_work *)
+static void ppp_controller(struct k_work *work)
 {
-	ppp_stop();
+	struct ppp_work *const ppp_work = CONTAINER_OF(work, struct ppp_work, work);
 
-	const int ret = ppp_start();
-
-	if (ret) {
-		LOG_ERR("Failed to start PPP (%d).", ret);
+	switch (ppp_work->action) {
+	case PPP_START:
+		ppp_start();
+		break;
+	case PPP_RESTART:
+		ppp_stop();
+		ppp_start();
+		break;
+	case PPP_STOP:
+		ppp_stop();
+		break;
+	default:
+		LOG_ERR("Unknown PPP action: %d.", ppp_work->action);
+		break;
 	}
-}
-
-static void ppp_stopper(struct k_work *)
-{
-	ppp_stop();
 }
 
 static void ppp_net_mgmt_event_handler(struct net_mgmt_event_callback *cb,
@@ -394,6 +452,7 @@ static void ppp_net_mgmt_event_handler(struct net_mgmt_event_callback *cb,
 	case NET_EVENT_PPP_PHASE_RUNNING:
 		LOG_INF("Peer connected.");
 		ppp_peer_connected = true;
+		send_status_notification();
 		break;
 	case NET_EVENT_PPP_PHASE_DEAD:
 		LOG_DBG("Peer not connected.");
@@ -402,16 +461,17 @@ static void ppp_net_mgmt_event_handler(struct net_mgmt_event_callback *cb,
 			break;
 		}
 		ppp_peer_connected = false;
-		/* Also ignore this event when it is received after PPP has been stopped. */
-		if (!slm_ppp_is_running()) {
+		/* Also ignore this event when PPP is not running anymore. */
+		if (!ppp_is_running()) {
 			break;
 		}
+		send_status_notification();
 		/* For the peer to be able to successfully reconnect
 		 * (handshake issues observed with pppd and Windows dial-up),
-		 * for some reason the Zephhyr PPP link needs to be restarted.
+		 * for some reason the Zephyr PPP link needs to be restarted.
 		 */
 		LOG_INF("Peer disconnected. Restarting PPP...");
-		k_work_submit_to_queue(&slm_work_q, &ppp_restart_work);
+		k_work_submit_to_queue(&slm_work_q, &ppp_restart_work.work);
 		break;
 	}
 }
@@ -457,15 +517,13 @@ int slm_ppp_init(void)
 		net_mgmt_add_event_callback(&ppp_net_mgmt_event_cb);
 	}
 
-	k_work_init(&ppp_restart_work, ppp_restarter);
-	k_work_init(&ppp_stop_work, ppp_stopper);
-
 	LOG_DBG("PPP initialized.");
 	return 0;
 }
 
-/* Handles AT#XPPP commands. */
-int handle_at_ppp(enum at_cmd_type cmd_type)
+SLM_AT_CMD_CUSTOM(xppp, "AT#XPPP", handle_at_ppp);
+static int handle_at_ppp(enum at_parser_cmd_type cmd_type, struct at_parser *parser,
+			 uint32_t param_count)
 {
 	int ret;
 	unsigned int op;
@@ -475,35 +533,29 @@ int handle_at_ppp(enum at_cmd_type cmd_type)
 		OP_COUNT
 	};
 
-	if (cmd_type == AT_CMD_TYPE_READ_COMMAND) {
-		rsp_send("\r\n#XPPP: %u,%u\r\n", slm_ppp_is_running(), ppp_peer_connected);
+	if (cmd_type == AT_PARSER_CMD_TYPE_READ) {
+		send_status_notification();
 		return 0;
 	}
-	if (cmd_type != AT_CMD_TYPE_SET_COMMAND
-	 || at_params_valid_count_get(&slm_at_param_list) != 2) {
+	if (cmd_type != AT_PARSER_CMD_TYPE_SET || param_count != 2) {
 		return -EINVAL;
 	}
 
-	ret = at_params_unsigned_int_get(&slm_at_param_list, 1, &op);
+	ret = at_parser_num_get(parser, 1, &op);
 	if (ret) {
 		return ret;
 	} else if (op >= OP_COUNT) {
 		return -EINVAL;
 	}
-	const bool is_running = slm_ppp_is_running();
 
-	if ((!is_running && op == OP_STOP) || (is_running && op == OP_START)) {
-		return -EALREADY;
-	}
+	/* Send "OK" first in case stopping PPP results in the CMUX AT channel switching. */
+	rsp_send_ok();
 	if (op == OP_START) {
-		ret = ppp_start();
+		k_work_submit_to_queue(&slm_work_q, &ppp_start_work.work);
 	} else {
-		/* Send "OK" first in case stopping PPP results in the CMUX AT channel switching. */
-		rsp_send_ok();
-		k_work_submit_to_queue(&slm_work_q, &ppp_stop_work);
-		ret = SILENT_AT_COMMAND_RET;
+		k_work_submit_to_queue(&slm_work_q, &ppp_stop_work.work);
 	}
-	return ret;
+	return -SILENT_AT_COMMAND_RET;
 }
 
 static void ppp_data_passing_thread(void*, void*, void*)

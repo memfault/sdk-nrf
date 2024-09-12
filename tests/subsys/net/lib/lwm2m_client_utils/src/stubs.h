@@ -62,7 +62,6 @@ DECLARE_FAKE_VALUE_FUNC(int, lte_lc_edrx_param_set, enum lte_lc_lte_mode, const 
 DECLARE_FAKE_VALUE_FUNC(int, lte_lc_edrx_req, bool);
 DECLARE_FAKE_VALUE_FUNC(int, lte_lc_neighbor_cell_measurement, struct lte_lc_ncellmeas_params *);
 DECLARE_FAKE_VALUE_FUNC(int, lte_lc_psm_param_set_seconds, int, int);
-DECLARE_FAKE_VOID_FUNC(lte_lc_register_handler, lte_lc_evt_handler_t);
 DECLARE_FAKE_VALUE_FUNC(int, nrf_cloud_agnss_process, const char *, size_t);
 DECLARE_FAKE_VALUE_FUNC(int, nrf_cloud_pgps_begin_update);
 DECLARE_FAKE_VALUE_FUNC(int, nrf_cloud_pgps_process_update, uint8_t *, size_t);
@@ -96,16 +95,19 @@ DECLARE_FAKE_VALUE_FUNC(int, net_mgmt_NET_REQUEST_WIFI_SCAN, uint32_t, struct ne
 DECLARE_FAKE_VALUE_FUNC(int, lte_lc_conn_eval_params_get, struct lte_lc_conn_eval_params *);
 DECLARE_FAKE_VALUE_FUNC(int, lwm2m_engine_pause);
 DECLARE_FAKE_VALUE_FUNC(int, lwm2m_engine_resume);
-DECLARE_FAKE_VALUE_FUNC(int, at_parser_max_params_from_str, const char *, char **,
-			struct at_param_list *, size_t);
-DECLARE_FAKE_VALUE_FUNC(int, at_params_int_get, const struct at_param_list *, size_t, int32_t *);
-DECLARE_FAKE_VALUE_FUNC(int, at_params_unsigned_short_get, const struct at_param_list *, size_t,
-			uint16_t *);
+DECLARE_FAKE_VALUE_FUNC(int, at_parser_init, struct at_parser *, const char *);
+DECLARE_FAKE_VALUE_FUNC(int, at_parser_int32_get, struct at_parser *, size_t, int32_t *);
+DECLARE_FAKE_VALUE_FUNC(int, at_parser_uint16_get, struct at_parser *, size_t, uint16_t *);
 DECLARE_FAKE_VALUE_FUNC_VARARG(int, nrf_modem_at_cmd_async, nrf_modem_at_resp_handler_t,
 			       const char *, ...);
-DECLARE_FAKE_VALUE_FUNC(int, at_params_list_init, struct at_param_list *, size_t);
 DECLARE_FAKE_VALUE_FUNC(int, z_impl_zsock_setsockopt, int, int, int, const void *, socklen_t);
-DECLARE_FAKE_VOID_FUNC(lwm2m_utils_rai_event_cb, struct lwm2m_ctx *, enum lwm2m_rd_client_event *)
+DECLARE_FAKE_VOID_FUNC(lwm2m_utils_rai_event_cb, struct lwm2m_ctx *, enum lwm2m_rd_client_event *);
+DECLARE_FAKE_VALUE_FUNC(uint8_t, lwm2m_firmware_get_update_state_inst, uint16_t);
+DECLARE_FAKE_VOID_FUNC(lwm2m_firmware_set_update_result_inst, uint16_t, uint8_t);
+DECLARE_FAKE_VOID_FUNC(lwm2m_registry_lock);
+DECLARE_FAKE_VOID_FUNC(lwm2m_registry_unlock);
+DECLARE_FAKE_VOID_FUNC(boot_is_img_confirmed);
+DECLARE_FAKE_VOID_FUNC(boot_write_img_confirmed);
 
 /* List of fakes used by this unit tester */
 #define DO_FOREACH_FAKE(FUNC) do { \
@@ -153,7 +155,6 @@ DECLARE_FAKE_VOID_FUNC(lwm2m_utils_rai_event_cb, struct lwm2m_ctx *, enum lwm2m_
 	FUNC(lte_lc_edrx_param_set)                     \
 	FUNC(lte_lc_edrx_req)                           \
 	FUNC(lte_lc_neighbor_cell_measurement)          \
-	FUNC(lte_lc_register_handler)                   \
 	FUNC(lte_lc_psm_param_set_seconds)              \
 	FUNC(nrf_cloud_agnss_process)			\
 	FUNC(nrf_cloud_pgps_begin_update)		\
@@ -173,13 +174,21 @@ DECLARE_FAKE_VOID_FUNC(lwm2m_utils_rai_event_cb, struct lwm2m_ctx *, enum lwm2m_
 	FUNC(lte_lc_conn_eval_params_get)               \
 	FUNC(lwm2m_engine_pause)                        \
 	FUNC(lwm2m_engine_resume)                       \
-	FUNC(at_parser_max_params_from_str)             \
-	FUNC(at_params_int_get)                         \
-	FUNC(at_params_unsigned_short_get)              \
+	FUNC(at_parser_init)                            \
+	FUNC(at_parser_int32_get)                       \
+	FUNC(at_parser_uint16_get)                      \
 	FUNC(nrf_modem_at_cmd_async)                    \
-	FUNC(at_params_list_init)                       \
 	FUNC(z_impl_zsock_setsockopt)                   \
 	FUNC(lwm2m_utils_rai_event_cb)                  \
+	FUNC(lwm2m_firmware_get_update_state_inst)	\
+	FUNC(lwm2m_firmware_set_update_result_inst)	\
+	FUNC(lwm2m_registry_lock)			\
+	FUNC(lwm2m_registry_unlock)			\
+	FUNC(boot_is_img_confirmed)			\
+	FUNC(boot_write_img_confirmed)			\
 	} while (0)
+
+int call_lwm2m_init_callbacks(void);
+void call_lte_handlers(const struct lte_lc_evt *const evt);
 
 #endif

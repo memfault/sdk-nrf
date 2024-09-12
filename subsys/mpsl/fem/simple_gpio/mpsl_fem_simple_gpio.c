@@ -30,7 +30,7 @@ static int fem_simple_gpio_configure(void)
 	int err;
 
 #if DT_NODE_HAS_PROP(DT_NODELABEL(nrf_radio_fem), ctx_gpios)
-	uint8_t ctx_gpiote_channel;
+	uint8_t ctx_gpiote_channel = MPSL_FEM_GPIOTE_INVALID_CHANNEL;
 	const nrfx_gpiote_t ctx_gpiote = NRFX_GPIOTE_INSTANCE(
 		NRF_DT_GPIOTE_INST(DT_NODELABEL(nrf_radio_fem), ctx_gpios));
 
@@ -40,7 +40,7 @@ static int fem_simple_gpio_configure(void)
 #endif
 
 #if DT_NODE_HAS_PROP(DT_NODELABEL(nrf_radio_fem), crx_gpios)
-	uint8_t crx_gpiote_channel;
+	uint8_t crx_gpiote_channel = MPSL_FEM_GPIOTE_INVALID_CHANNEL;
 	const nrfx_gpiote_t crx_gpiote = NRFX_GPIOTE_INSTANCE(
 		NRF_DT_GPIOTE_INST(DT_NODELABEL(nrf_radio_fem), crx_gpios));
 
@@ -140,7 +140,7 @@ static int mpsl_fem_init(void)
 	return fem_simple_gpio_configure();
 }
 
-SYS_INIT(mpsl_fem_init, POST_KERNEL, CONFIG_KERNEL_INIT_PRIORITY_DEVICE);
+SYS_INIT(mpsl_fem_init, POST_KERNEL, CONFIG_MPSL_FEM_INIT_PRIORITY);
 
 #else /* !defined(CONFIG_MPSL_FEM_PIN_FORWARDER) */
 

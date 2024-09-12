@@ -29,22 +29,5 @@
 - scenarios:
     - applications.asset_tracker_v2.*.sysbuild
   platforms:
-    - nrf9160dk_nrf9160_ns
+    - nrf9160dk/nrf9160/ns
   comment: "https://nordicsemi.atlassian.net/browse/NCSDK-26461"
-
-- scenarios:
-    - applications.matter_bridge.smp_dfu.br_ble
-  platforms:
-    - nrf7002dk_nrf5340_cpuapp
-  comment: "https://nordicsemi.atlassian.net/browse/SHEL-2579"
-
-- scenarios:
-    - sample.caf_sensor_manager.nrf54h20.multicore
-    - sample.cellular.modem_shell.modem_trace_shell_ext_flash
-    - sample.event_manager_proxy.nrf54h20pdk_cpuapp.icmsg
-    - sample.ipc.ipc_service.nrf54h20pdk_cpuapp_cpuppr_icmsg
-    - sample.multicore.hello_world.nrf54h20pdk_cpuapp_cpuppr
-    - sample.multicore.hello_world.nrf54h20pdk_cpuapp_cpuppr_ram
-  platforms:
-    - all
-  comment: "https://nordicsemi.atlassian.net/browse/NCSDK-26460"

@@ -481,7 +481,7 @@ static void delete_from_storage(uint16_t obj, uint16_t inst, uint16_t res)
 }
 
 static int write_cb_sec(uint16_t obj_inst_id, uint16_t res_id, uint16_t res_inst_id, uint8_t *data,
-			uint16_t data_len, bool last_block, size_t total_size)
+			uint16_t data_len, bool last_block, size_t total_size, size_t offset)
 {
 	if (loading_in_progress) {
 		return 0;
@@ -496,7 +496,7 @@ static int write_cb_sec(uint16_t obj_inst_id, uint16_t res_id, uint16_t res_inst
 }
 
 static int write_cb_srv(uint16_t obj_inst_id, uint16_t res_id, uint16_t res_inst_id, uint8_t *data,
-			uint16_t data_len, bool last_block, size_t total_size)
+			uint16_t data_len, bool last_block, size_t total_size, size_t offset)
 {
 	if (loading_in_progress) {
 		return 0;
@@ -597,19 +597,19 @@ static int init_default_security_obj(struct lwm2m_ctx *ctx, char *endpoint)
 					  SECURITY_SERVER_URI_ID), server_url_len + 1);
 
 	/* Security Mode, default to PSK with key written by application */
-	if (IS_ENABLED(CONFIG_LWM2M_DTLS_SUPPORT)) {
-		/* At minimum, we are storing endpoint name */
-		/* This works on PSK where credentials are already in modem */
-		lwm2m_security_set_psk(0, NULL, 0, false, endpoint);
-		/* But if modem has certificates, change the mode to match */
-		if (modem_has_credentials(ctx->tls_tag, SEC_MODE_CERTIFICATE)) {
-			lwm2m_set_u8(&LWM2M_OBJ(LWM2M_OBJECT_SECURITY_ID, 0, SECURITY_MODE_ID),
-				     SEC_MODE_CERTIFICATE);
-		}
-	} else {
+#if defined(CONFIG_LWM2M_DTLS_SUPPORT)
+	/* At minimum, we are storing endpoint name */
+	/* This works on PSK where credentials are already in modem */
+	lwm2m_security_set_psk(0, NULL, 0, false, endpoint);
+	/* But if modem has certificates, change the mode to match */
+	if (modem_has_credentials(ctx->tls_tag, SEC_MODE_CERTIFICATE)) {
 		lwm2m_set_u8(&LWM2M_OBJ(LWM2M_OBJECT_SECURITY_ID, 0, SECURITY_MODE_ID),
-			     SEC_MODE_NO_SEC);
+			     SEC_MODE_CERTIFICATE);
 	}
+#else /* CONFIG_LWM2M_DTLS_SUPPORT */
+	lwm2m_set_u8(&LWM2M_OBJ(LWM2M_OBJECT_SECURITY_ID, 0, SECURITY_MODE_ID),
+		     SEC_MODE_NO_SEC);
+#endif /* CONFIG_LWM2M_DTLS_SUPPORT */
 
 #if defined(CONFIG_LWM2M_RD_CLIENT_SUPPORT_BOOTSTRAP)
 	/* Mark 1st instance of security object as a bootstrap server */
@@ -709,6 +709,17 @@ static int set_socketoptions(struct lwm2m_ctx *ctx)
 			LOG_ERR("Failed to purge DTLS session cache");
 		}
 		purge_sessions = false;
+	}
+
+	if (IS_ENABLED(CONFIG_SOC_NRF9120)) {
+		/* Modem FW 2.0.1 allows keeping the socket open while PDN is down, or modem
+		 * is in flight mode.
+		 */
+		ret = zsock_setsockopt(ctx->sock_fd, SOL_SOCKET, SO_KEEPOPEN, &(int){1},
+				       sizeof(int));
+		if (ret) {
+			LOG_ERR("Failed to set SO_KEEPOPEN: %d", errno);
+		}
 	}
 
 	return lwm2m_set_default_sockopt(ctx);

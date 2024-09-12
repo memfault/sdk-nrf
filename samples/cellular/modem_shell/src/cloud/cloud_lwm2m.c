@@ -10,7 +10,6 @@
 #include <modem/modem_info.h>
 #include <lwm2m_object.h>
 #include <net/lwm2m_client_utils.h>
-#include <net/lwm2m_client_utils_location.h>
 
 #include "mosh_print.h"
 #include "cloud_lwm2m.h"
@@ -194,8 +193,6 @@ static void cloud_lwm2m_init(void)
 	/* Use IMEI as unique endpoint name. */
 	snprintk(endpoint_name, sizeof(endpoint_name), "%s%s", CONFIG_MOSH_LWM2M_ENDPOINT_PREFIX,
 		 imei_buf);
-
-	lwm2m_init_device();
 
 	cloud_lwm2m_init_device(imei_buf);
 	lwm2m_init_security(&client, endpoint_name, NULL);

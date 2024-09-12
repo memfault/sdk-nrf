@@ -23,9 +23,13 @@
 #include <zephyr/sys/util.h>
 #include <zephyr/logging/log.h>
 #include <modem/modem_info.h>
+#include <ncs_version.h>
+#include <ncs_commit.h>
 #include "cJSON_os.h"
 
 LOG_MODULE_REGISTER(nrf_cloud_codec_internal, CONFIG_NRF_CLOUD_LOG_LEVEL);
+
+#define SDK_VERSION NCS_VERSION_STRING "-" NCS_COMMIT_STRING
 
 /** @brief How the control section is handled when either a trimmed shadow
  *  or a delta shadow is received.
@@ -350,7 +354,6 @@ static int enabled_info_sections_get(struct nrf_cloud_device_status *const ds)
 
 	struct nrf_cloud_modem_info *modem =	ds->modem;
 	struct nrf_cloud_svc_info_fota *fota =	ds->svc ? ds->svc->fota : NULL;
-	struct nrf_cloud_svc_info_ui *ui =	ds->svc ? ds->svc->ui : NULL;
 
 	/* Modem info */
 	if (modem) {
@@ -378,19 +381,6 @@ static int enabled_info_sections_get(struct nrf_cloud_device_status *const ds)
 		fota->modem_full =  IS_ENABLED(CONFIG_NRF_CLOUD_FOTA_TYPE_MODEM_FULL_SUPPORTED);
 	}
 
-	/* Service info: UI */
-	if (ui && IS_ENABLED(CONFIG_NRF_CLOUD_SEND_SERVICE_INFO_UI)) {
-		ui->temperature =    IS_ENABLED(CONFIG_NRF_CLOUD_ENABLE_SVC_INF_UI_TEMP);
-		ui->gnss =	     IS_ENABLED(CONFIG_NRF_CLOUD_ENABLE_SVC_INF_UI_MAP);
-		ui->flip =	     IS_ENABLED(CONFIG_NRF_CLOUD_ENABLE_SVC_INF_UI_ORIENTATION);
-		ui->humidity =	     IS_ENABLED(CONFIG_NRF_CLOUD_ENABLE_SVC_INF_UI_HUMID);
-		ui->air_pressure =   IS_ENABLED(CONFIG_NRF_CLOUD_ENABLE_SVC_INF_UI_AIR_PRESSURE);
-		ui->rsrp =	     IS_ENABLED(CONFIG_NRF_CLOUD_ENABLE_SVC_INF_UI_RSRP);
-		ui->log =	     IS_ENABLED(CONFIG_NRF_CLOUD_ENABLE_SVC_INF_UI_LOGS);
-		ui->dictionary_log = IS_ENABLED(CONFIG_NRF_CLOUD_ENABLE_SVC_INF_UI_BIN_LOGS);
-		ui->air_quality =    IS_ENABLED(CONFIG_NRF_CLOUD_ENABLE_SVC_INF_UI_AIR_QUALITY);
-	}
-
 	return 0;
 }
 
@@ -400,19 +390,19 @@ static cJSON *json_object_decode(cJSON *obj, const char *str)
 	return obj ? cJSON_GetObjectItem(obj, str) : NULL;
 }
 
-static int json_decode_and_alloc(cJSON *obj, struct nrf_cloud_data *data)
+static int json_decode_and_alloc(cJSON *obj, struct mqtt_utf8 *const ep)
 {
-	if (!data || !cJSON_IsString(obj)) {
+	if (!ep || !cJSON_IsString(obj)) {
 		return -EINVAL;
 	}
 
-	data->ptr = json_strdup(obj);
+	ep->utf8 = (uint8_t *)json_strdup(obj);
 
-	if (data->ptr == NULL) {
+	if (ep->utf8 == NULL) {
 		return -ENOMEM;
 	}
 
-	data->len = strlen(data->ptr);
+	ep->size = (uint32_t)strlen(ep->utf8);
 
 	return 0;
 }
@@ -491,13 +481,16 @@ int nrf_cloud_state_encode(uint32_t reported_state, const bool update_desired_to
 	cJSON *reported_obj = cJSON_AddObjectToObjectCS(state_obj, NRF_CLOUD_JSON_KEY_REP);
 	cJSON *pairing_obj = cJSON_AddObjectToObjectCS(reported_obj, NRF_CLOUD_JSON_KEY_PAIRING);
 	cJSON *connection_obj = cJSON_AddObjectToObjectCS(reported_obj, NRF_CLOUD_JSON_KEY_CONN);
+	static bool disassociated_state_sent;
 
 	if (!pairing_obj || !connection_obj) {
 		cJSON_Delete(root_obj);
 		return -ENOMEM;
 	}
 
-	if (reported_state == STATE_UA_PIN_WAIT) {
+	if ((reported_state == STATE_UA_PIN_WAIT) && !disassociated_state_sent) {
+		disassociated_state_sent = true;
+		LOG_DBG("Clearing state; device is not associated");
 		/* This is a state used during JITP
 		 * or if the user exercises the deprecated DissociateDevice API.
 		 * The device exists in nRF Cloud but is not associated to an account.
@@ -517,10 +510,10 @@ int nrf_cloud_state_encode(uint32_t reported_state, const bool update_desired_to
 		ret += json_add_null_cs(reported_obj, NRF_CLOUD_JSON_KEY_STAGE);
 
 	} else if (reported_state == STATE_UA_PIN_COMPLETE) {
-		struct nrf_cloud_data rx_endp;
-		struct nrf_cloud_data tx_endp;
-		struct nrf_cloud_data m_endp;
+		struct nct_dc_endpoints eps;
 		struct nrf_cloud_ctrl_data device_ctrl = {0};
+
+		disassociated_state_sent = false;
 
 		/* Associated */
 		ret += json_add_str_cs(pairing_obj, NRF_CLOUD_JSON_KEY_STATE,
@@ -535,12 +528,13 @@ int nrf_cloud_state_encode(uint32_t reported_state, const bool update_desired_to
 							      NRF_CLOUD_JSON_KEY_TOPICS);
 
 		/* Get the endpoint information and add topics */
-		nct_dc_endpoint_get(&tx_endp, &rx_endp, NULL, NULL, &m_endp);
-		ret += json_add_str_cs(reported_obj, NRF_CLOUD_JSON_KEY_TOPIC_PRFX, m_endp.ptr);
+		nct_dc_endpoint_get(&eps);
+		ret += json_add_str_cs(reported_obj, NRF_CLOUD_JSON_KEY_TOPIC_PRFX,
+				       (char *)eps.e[DC_BASE].utf8);
 		ret += json_add_str_cs(topics_obj, NRF_CLOUD_JSON_KEY_DEVICE_TO_CLOUD,
-				       tx_endp.ptr);
+				       (char *)eps.e[DC_TX].utf8);
 		ret += json_add_str_cs(topics_obj, NRF_CLOUD_JSON_KEY_CLOUD_TO_DEVICE,
-				       rx_endp.ptr);
+				       (char *)eps.e[DC_RX].utf8);
 
 		if (update_desired_topic) {
 			/* Align desired c2d topic with reported to prevent delta events */
@@ -552,7 +546,7 @@ int nrf_cloud_state_encode(uint32_t reported_state, const bool update_desired_to
 								     NRF_CLOUD_JSON_KEY_TOPICS);
 
 			ret += json_add_str_cs(topic_obj, NRF_CLOUD_JSON_KEY_CLOUD_TO_DEVICE,
-					       rx_endp.ptr);
+					       (char *)eps.e[DC_RX].utf8);
 		}
 
 		/* Add reported control section */
@@ -568,22 +562,20 @@ int nrf_cloud_state_encode(uint32_t reported_state, const bool update_desired_to
 				ret = err;
 			}
 		}
+	} else {
+		goto out;
 	}
 
 	if (ret == 0) {
 		buffer = cJSON_PrintUnformatted(root_obj);
 	}
 
+out:
 	cJSON_Delete(root_obj);
-
-	if (buffer == NULL) {
-		return -ENOMEM;
-	}
-
 	output->ptr = buffer;
-	output->len = strlen(buffer);
+	output->len = (buffer ? strlen(buffer) : 0);
 
-	return 0;
+	return ret;
 }
 
 BUILD_ASSERT(sizeof(NRF_CLOUD_JSON_VAL_TOPIC_C2D) == sizeof(TOPIC_VAL_RCV_WILDCARD),
@@ -665,27 +657,16 @@ int json_send_to_cloud(cJSON *const request)
 }
 
 int nrf_cloud_obj_endpoint_decode(const struct nrf_cloud_obj *const desired_obj,
-				   struct nrf_cloud_data *tx_endpoint,
-				   struct nrf_cloud_data *rx_endpoint,
-				   struct nrf_cloud_data *bulk_endpoint,
-				   struct nrf_cloud_data *bin_endpoint,
-				   struct nrf_cloud_data *m_endpoint)
+				  struct nct_dc_endpoints *const eps)
 {
 	__ASSERT_NO_MSG(desired_obj != NULL);
 	__ASSERT_NO_MSG(desired_obj->json != NULL);
 	__ASSERT_NO_MSG(desired_obj->type == NRF_CLOUD_OBJ_TYPE_JSON);
-	__ASSERT_NO_MSG(tx_endpoint != NULL);
-	__ASSERT_NO_MSG(rx_endpoint != NULL);
-	__ASSERT_NO_MSG(bulk_endpoint != NULL);
-	__ASSERT_NO_MSG(bin_endpoint != NULL);
+	__ASSERT_NO_MSG(eps != NULL);
 
 	int err;
-	cJSON *endpoint_obj = NULL;
-
-	if (m_endpoint != NULL) {
-		endpoint_obj = json_object_decode(desired_obj->json, NRF_CLOUD_JSON_KEY_TOPIC_PRFX);
-	}
-
+	size_t len_tmp;
+	cJSON *endpoint_obj = json_object_decode(desired_obj->json, NRF_CLOUD_JSON_KEY_TOPIC_PRFX);
 	cJSON *pairing_obj = json_object_decode(desired_obj->json, NRF_CLOUD_JSON_KEY_PAIRING);
 	cJSON *pairing_state_obj = json_object_decode(pairing_obj, NRF_CLOUD_JSON_KEY_STATE);
 	cJSON *topic_obj = json_object_decode(pairing_obj, NRF_CLOUD_JSON_KEY_TOPICS);
@@ -702,7 +683,7 @@ int nrf_cloud_obj_endpoint_decode(const struct nrf_cloud_obj *const desired_obj,
 	}
 
 	if (endpoint_obj != NULL) {
-		err = json_decode_and_alloc(endpoint_obj, m_endpoint);
+		err = json_decode_and_alloc(endpoint_obj, &eps->e[DC_BASE]);
 		if (err) {
 			return err;
 		}
@@ -710,7 +691,7 @@ int nrf_cloud_obj_endpoint_decode(const struct nrf_cloud_obj *const desired_obj,
 
 	cJSON *tx_obj = json_object_decode(topic_obj, NRF_CLOUD_JSON_KEY_DEVICE_TO_CLOUD);
 
-	err = json_decode_and_alloc(tx_obj, tx_endpoint);
+	err = json_decode_and_alloc(tx_obj, &eps->e[DC_TX]);
 	if (err) {
 		LOG_ERR("Could not decode topic for %s", NRF_CLOUD_JSON_KEY_DEVICE_TO_CLOUD);
 		return err;
@@ -719,35 +700,31 @@ int nrf_cloud_obj_endpoint_decode(const struct nrf_cloud_obj *const desired_obj,
 	/* Populate bulk endpoint topic by copying and appending /bulk to the parsed
 	 * tx endpoint (d2c) topic.
 	 */
-	size_t bulk_ep_len_temp = tx_endpoint->len + sizeof(NRF_CLOUD_BULK_MSG_TOPIC);
-
-	bulk_endpoint->ptr = nrf_cloud_calloc(bulk_ep_len_temp, 1);
-	if (bulk_endpoint->ptr == NULL) {
+	len_tmp = eps->e[DC_TX].size + sizeof(NRF_CLOUD_BULK_MSG_TOPIC);
+	eps->e[DC_BULK].utf8 = (uint8_t *)nrf_cloud_calloc(len_tmp, 1);
+	if (eps->e[DC_BULK].utf8 == NULL) {
 		LOG_ERR("Could not allocate memory for bulk topic");
 		return -ENOMEM;
 	}
 
-	bulk_endpoint->len = snprintk((char *)bulk_endpoint->ptr, bulk_ep_len_temp, "%s%s",
-				       (char *)tx_endpoint->ptr,
-				       NRF_CLOUD_BULK_MSG_TOPIC);
+	eps->e[DC_BULK].size = snprintk((char *)eps->e[DC_BULK].utf8, len_tmp, "%s%s",
+					(char *)eps->e[DC_TX].utf8, NRF_CLOUD_BULK_MSG_TOPIC);
 
 	/* Populate bin endpoint topic by copying and appending /bin to the parsed
 	 * tx endpoint (d2c) topic.
 	 */
-	size_t bin_ep_len_temp = tx_endpoint->len + sizeof(NRF_CLOUD_JSON_VAL_TOPIC_BIN);
-
-	bin_endpoint->ptr = nrf_cloud_calloc(bin_ep_len_temp, 1);
-	if (bin_endpoint->ptr == NULL) {
+	len_tmp = eps->e[DC_TX].size + sizeof(NRF_CLOUD_JSON_VAL_TOPIC_BIN);
+	eps->e[DC_BIN].utf8 = (uint8_t *)nrf_cloud_calloc(len_tmp, 1);
+	if (eps->e[DC_BIN].utf8 == NULL) {
 		LOG_ERR("Could not allocate memory for bin topic");
 		return -ENOMEM;
 	}
 
-	bin_endpoint->len = snprintk((char *)bin_endpoint->ptr, bin_ep_len_temp, "%s%s",
-				       (char *)tx_endpoint->ptr,
-				       NRF_CLOUD_JSON_VAL_TOPIC_BIN);
+	eps->e[DC_BIN].size = snprintk((char *)eps->e[DC_BIN].utf8, len_tmp, "%s%s",
+				 (char *)eps->e[DC_TX].utf8, NRF_CLOUD_JSON_VAL_TOPIC_BIN);
 
 	err = json_decode_and_alloc(json_object_decode(topic_obj,
-		NRF_CLOUD_JSON_KEY_CLOUD_TO_DEVICE), rx_endpoint);
+		NRF_CLOUD_JSON_KEY_CLOUD_TO_DEVICE), &eps->e[DC_RX]);
 	if (err) {
 		LOG_ERR("Failed to parse \"%s\" from JSON, error: %d",
 			NRF_CLOUD_JSON_KEY_CLOUD_TO_DEVICE, err);
@@ -1106,79 +1083,8 @@ static int nrf_cloud_encode_service_info_ui(const struct nrf_cloud_svc_info_ui *
 		return -EINVAL;
 	}
 
-	if (ui == NULL) {
-		if (json_add_null_cs(svc_inf_obj, NRF_CLOUD_JSON_KEY_SRVC_INFO_UI) != 0) {
-			return -ENOMEM;
-		}
-	} else {
-		int item_cnt = 0;
-		cJSON *array = cJSON_AddArrayToObjectCS(svc_inf_obj,
-							NRF_CLOUD_JSON_KEY_SRVC_INFO_UI);
-
-		if (!array) {
-			return -ENOMEM;
-		}
-		if (ui->air_pressure) {
-			cJSON_AddItemToArray(array,
-				cJSON_CreateString(sensor_type_str[NRF_CLOUD_SENSOR_AIR_PRESS]));
-			++item_cnt;
-		}
-		if (ui->air_quality) {
-			cJSON_AddItemToArray(array,
-				cJSON_CreateString(sensor_type_str[NRF_CLOUD_SENSOR_AIR_QUAL]));
-			++item_cnt;
-		}
-		if (ui->gnss) {
-			cJSON_AddItemToArray(array,
-				cJSON_CreateString(sensor_type_str[NRF_CLOUD_SENSOR_GNSS]));
-			++item_cnt;
-		}
-		if (ui->flip) {
-			cJSON_AddItemToArray(array,
-				cJSON_CreateString(sensor_type_str[NRF_CLOUD_SENSOR_FLIP]));
-			++item_cnt;
-		}
-		if (ui->button) {
-			cJSON_AddItemToArray(array,
-				cJSON_CreateString(sensor_type_str[NRF_CLOUD_SENSOR_BUTTON]));
-			++item_cnt;
-		}
-		if (ui->temperature) {
-			cJSON_AddItemToArray(array,
-				cJSON_CreateString(sensor_type_str[NRF_CLOUD_SENSOR_TEMP]));
-			++item_cnt;
-		}
-		if (ui->humidity) {
-			cJSON_AddItemToArray(array,
-				cJSON_CreateString(sensor_type_str[NRF_CLOUD_SENSOR_HUMID]));
-			++item_cnt;
-		}
-		if (ui->light_sensor) {
-			cJSON_AddItemToArray(array,
-				cJSON_CreateString(sensor_type_str[NRF_CLOUD_SENSOR_LIGHT]));
-			++item_cnt;
-		}
-		if (ui->rsrp) {
-			cJSON_AddItemToArray(array,
-				cJSON_CreateString(sensor_type_str[NRF_CLOUD_LTE_LINK_RSRP]));
-			++item_cnt;
-		}
-		if (ui->log) {
-			cJSON_AddItemToArray(array,
-				cJSON_CreateString(sensor_type_str[NRF_CLOUD_LOG]));
-			++item_cnt;
-		}
-		if (ui->dictionary_log) {
-			cJSON_AddItemToArray(array,
-				cJSON_CreateString(sensor_type_str[NRF_CLOUD_DICTIONARY_LOG]));
-			++item_cnt;
-		}
-
-		if (cJSON_GetArraySize(array) != item_cnt) {
-			cJSON_DeleteItemFromObject(svc_inf_obj, NRF_CLOUD_JSON_KEY_SRVC_INFO_UI);
-			return -ENOMEM;
-		}
-	}
+	/* The UI section is no longer used by the cloud, remove it */
+	(void)json_add_null_cs(svc_inf_obj, NRF_CLOUD_JSON_KEY_SRVC_INFO_UI);
 
 	return 0;
 }
@@ -1476,7 +1382,7 @@ static int encode_modem_info_device(struct device_param *device, cJSON *json_obj
 		return -ENOMEM;
 	}
 
-	if (json_add_str_cs(json_obj, "sdkVer", device->app_version)) {
+	if (json_add_str_cs(json_obj, "sdkVer", SDK_VERSION)) {
 		return -ENOMEM;
 	}
 
@@ -1666,10 +1572,9 @@ int nrf_cloud_modem_info_json_encode(const struct nrf_cloud_modem_info *const mo
 int nrf_cloud_enabled_info_sections_json_encode(cJSON * const obj, const char * const app_ver)
 {
 	struct nrf_cloud_svc_info_fota fota = {0};
-	struct nrf_cloud_svc_info_ui ui = {0};
-	/* Only set service info items if they are enabled */
+	/* Only set FOTA service info if enabled */
 	struct nrf_cloud_svc_info svc_inf = {
-		.ui = IS_ENABLED(CONFIG_NRF_CLOUD_SEND_SERVICE_INFO_UI) ? &ui : NULL,
+		.ui = NULL,
 		.fota = IS_ENABLED(CONFIG_NRF_CLOUD_SEND_SERVICE_INFO_FOTA) ? &fota : NULL
 	};
 	struct nrf_cloud_modem_info mdm_inf = {
@@ -1708,8 +1613,8 @@ int nrf_cloud_enabled_info_sections_json_encode(cJSON * const obj, const char * 
 		ret = shadow_connection_info_update(device_obj);
 	}
 
-	/* Encode FOTA/UI service info if set */
-	if ((ds.svc->fota || ds.svc->ui)) {
+	/* Encode FOTA service info if set */
+	if (ds.svc->fota) {
 		cJSON *svc_inf_obj = cJSON_AddObjectToObjectCS(device_obj,
 							       NRF_CLOUD_JSON_KEY_SRVC_INFO);
 
@@ -1724,11 +1629,9 @@ int nrf_cloud_enabled_info_sections_json_encode(cJSON * const obj, const char * 
 			return -ENOMEM;
 		}
 
-		if (ds.svc->ui) {
-			ret = nrf_cloud_encode_service_info_ui(ds.svc->ui, svc_inf_obj);
-		}
-		if (ret) {
-			return -ENOMEM;
+		/* The UI section is no longer used by the cloud, remove it */
+		if (IS_ENABLED(CONFIG_NRF_CLOUD_SEND_SERVICE_INFO_UI)) {
+			(void)nrf_cloud_encode_service_info_ui(NULL, svc_inf_obj);
 		}
 	}
 
@@ -1742,13 +1645,9 @@ int nrf_cloud_service_info_json_encode(const struct nrf_cloud_svc_info *const sv
 		return -EINVAL;
 	}
 
-	int err = nrf_cloud_encode_service_info_fota(svc_inf->fota, svc_inf_obj);
+	(void)nrf_cloud_encode_service_info_ui(NULL, svc_inf_obj);
 
-	if (err) {
-		return err;
-	}
-
-	return nrf_cloud_encode_service_info_ui(svc_inf->ui, svc_inf_obj);
+	return nrf_cloud_encode_service_info_fota(svc_inf->fota, svc_inf_obj);
 }
 
 void nrf_cloud_device_status_free(struct nrf_cloud_data *status)
@@ -2449,6 +2348,26 @@ int get_num_from_obj(const cJSON *const obj, const char *const key,
 	return 0;
 }
 
+int get_bool_from_obj(const cJSON * const obj, const char * const key,
+		     bool *bool_out)
+{
+	__ASSERT_NO_MSG(bool_out != NULL);
+
+	if (!obj) {
+		return -ENOENT;
+	}
+
+	cJSON * item = cJSON_GetObjectItem(obj, key);
+
+	if (!cJSON_IsBool(item)) {
+		return item ? -ENOMSG : -ENODEV;
+	}
+
+	*bool_out = (bool)cJSON_IsTrue(item);
+
+	return 0;
+}
+
 static int add_ncells(cJSON * const lte_obj, const uint8_t ncells_count,
 	const struct lte_lc_ncell *const neighbor_cells)
 {
@@ -2920,8 +2839,9 @@ static int nrf_cloud_parse_location_json(const cJSON *const loc_obj,
 		LOG_WRN("Location type not found in message");
 	}
 
-	if (anchor) {
+	if (anchor && IS_ENABLED(CONFIG_NRF_CLOUD_LOCATION_PARSE_ANCHORS)) {
 		nrf_cloud_parse_location_anchors_json(loc_obj, location_out);
+
 	}
 
 	return 0;
@@ -4056,9 +3976,7 @@ int nrf_cloud_coap_shadow_default_process(struct nrf_cloud_obj_shadow_data *cons
 int nrf_cloud_shadow_control_process(struct nrf_cloud_obj_shadow_data *const input,
 				     struct nrf_cloud_data *const response_out)
 {
-	if (!input) {
-		return -EINVAL;
-	}
+	__ASSERT_NO_MSG(input != NULL);
 
 	NRF_CLOUD_OBJ_JSON_DEFINE(ctrl_obj);
 	enum nrf_cloud_ctrl_status ctrl_status = NRF_CLOUD_CTRL_NOT_PRESENT;
@@ -4123,6 +4041,9 @@ int nrf_cloud_shadow_control_process(struct nrf_cloud_obj_shadow_data *const inp
 		if (err) {
 			LOG_ERR("nrf_cloud_shadow_control_response_encode failed %d", err);
 			return -EIO;
+		}
+		if (ctrl_status == NRF_CLOUD_CTRL_REJECT) {
+			return -EINVAL;
 		}
 	}
 

@@ -19,6 +19,7 @@
 #include <zephyr/drivers/pinctrl.h>
 
 #include <soc.h>
+#include <nrf_erratas.h>
 #include <nrfx_qspi.h>
 #include <hal/nrf_clock.h>
 #include <hal/nrf_gpio.h>
@@ -58,18 +59,47 @@ BUILD_ASSERT(INST_0_SCK_FREQUENCY >= (NRF_QSPI_BASE_CLOCK_FREQ / 16),
  * PCLK192M frequency"), but after that operation is complete, the default
  * divider needs to be restored to avoid increased current consumption.
  */
-/* Use divider /2 for HFCLK192M. */
+#if (INST_0_SCK_FREQUENCY >= NRF_QSPI_BASE_CLOCK_FREQ)
+/* For requested SCK >= 96 MHz, use HFCLK192M / 1 / (2*1) = 96 MHz */
+#define BASE_CLOCK_DIV NRF_CLOCK_HFCLK_DIV_1
+#define INST_0_SCK_CFG NRF_QSPI_FREQ_DIV1
+/* If anomaly 159 is to be prevented, only /1 divider can be used. */
+#elif NRF53_ERRATA_159_ENABLE_WORKAROUND
+#define BASE_CLOCK_DIV NRF_CLOCK_HFCLK_DIV_1
+#define INST_0_SCK_CFG (DIV_ROUND_UP(NRF_QSPI_BASE_CLOCK_FREQ, \
+				     INST_0_SCK_FREQUENCY) - 1)
+#elif (INST_0_SCK_FREQUENCY >= (NRF_QSPI_BASE_CLOCK_FREQ / 2))
+/* For 96 MHz > SCK >= 48 MHz, use HFCLK192M / 2 / (2*1) = 48 MHz */
 #define BASE_CLOCK_DIV NRF_CLOCK_HFCLK_DIV_2
-#if (INST_0_SCK_FREQUENCY >= (NRF_QSPI_BASE_CLOCK_FREQ / 4))
-/* For requested SCK >= 24 MHz, use HFCLK192M / 2 / (2*2) = 24 MHz */
-#define INST_0_SCK_CFG NRF_QSPI_FREQ_DIV2
+#define INST_0_SCK_CFG NRF_QSPI_FREQ_DIV1
+#elif (INST_0_SCK_FREQUENCY >= (NRF_QSPI_BASE_CLOCK_FREQ / 3))
+/* For 48 MHz > SCK >= 32 MHz, use HFCLK192M / 1 / (2*3) = 32 MHz */
+#define BASE_CLOCK_DIV NRF_CLOCK_HFCLK_DIV_1
+#define INST_0_SCK_CFG NRF_QSPI_FREQ_DIV3
 #else
-/* For requested SCK < 24 MHz, calculate the configuration value. */
+/* For requested SCK < 32 MHz, use divider /2 for HFCLK192M. */
+#define BASE_CLOCK_DIV NRF_CLOCK_HFCLK_DIV_2
 #define INST_0_SCK_CFG (DIV_ROUND_UP(NRF_QSPI_BASE_CLOCK_FREQ / 2, \
 				     INST_0_SCK_FREQUENCY) - 1)
 #endif
+
+#if BASE_CLOCK_DIV == NRF_CLOCK_HFCLK_DIV_1
+/* For 8 MHz, use HFCLK192M / 1 / (2*12) */
+#define INST_0_SCK_CFG_WAKE NRF_QSPI_FREQ_DIV12
+#elif BASE_CLOCK_DIV == NRF_CLOCK_HFCLK_DIV_2
 /* For 8 MHz, use HFCLK192M / 2 / (2*6) */
 #define INST_0_SCK_CFG_WAKE NRF_QSPI_FREQ_DIV6
+#else
+#error "Unsupported base clock divider for wake-up frequency."
+#endif
+
+/* After the base clock divider is changed, some time is needed for the new
+ * setting to take effect. This value specifies the delay (in microseconds)
+ * to be applied to ensure that the clock is ready when the QSPI operation
+ * starts. It was measured with a logic analyzer (unfortunately, the nRF5340
+ * specification does not provide any numbers in this regard).
+ */
+#define BASE_CLOCK_SWITCH_DELAY_US 7
 
 #else
 /*
@@ -300,6 +330,12 @@ static inline int qspi_get_zephyr_ret_code(nrfx_err_t res)
 		return -EINVAL;
 	case NRFX_ERROR_INVALID_STATE:
 		return -ECANCELED;
+#if NRF53_ERRATA_159_ENABLE_WORKAROUND
+	case NRFX_ERROR_FORBIDDEN:
+		LOG_ERR("nRF5340 anomaly 159 conditions detected");
+		LOG_ERR("Set the CPU clock to 64 MHz before starting QSPI operation");
+		return -ECANCELED;
+#endif
 	case NRFX_ERROR_BUSY:
 	case NRFX_ERROR_TIMEOUT:
 	default:
@@ -329,6 +365,7 @@ static inline void qspi_lock(const struct device *dev)
 	 */
 #if defined(CONFIG_SOC_SERIES_NRF53X)
 	nrf_clock_hfclk192m_div_set(NRF_CLOCK, BASE_CLOCK_DIV);
+	k_busy_wait(BASE_CLOCK_SWITCH_DELAY_US);
 #endif
 }
 
@@ -338,6 +375,7 @@ static inline void qspi_unlock(const struct device *dev)
 	/* Restore the default base clock divider to reduce power consumption.
 	 */
 	nrf_clock_hfclk192m_div_set(NRF_CLOCK, NRF_CLOCK_HFCLK_DIV_4);
+	k_busy_wait(BASE_CLOCK_SWITCH_DELAY_US);
 #endif
 
 #ifdef CONFIG_MULTITHREADING
@@ -630,6 +668,7 @@ static inline void qspi_fill_init_struct(nrfx_qspi_config_t *initstruct)
 
 	/* Configure physical interface */
 	initstruct->phy_if.sck_freq = INST_0_SCK_CFG;
+
 	/* Using MHZ fails checkpatch constant check */
 	if (INST_0_SCK_FREQUENCY >= 16000000) {
 		qspi_config->qspi_slave_latency = 1;
@@ -666,6 +705,7 @@ static int qspi_nrfx_configure(const struct device *dev)
 	 * divider.
 	 */
 	nrf_clock_hfclk192m_div_set(NRF_CLOCK, BASE_CLOCK_DIV);
+	k_busy_wait(BASE_CLOCK_SWITCH_DELAY_US);
 #endif
 
 	nrfx_err_t res = _nrfx_qspi_init(&QSPIconfig, qspi_handler, dev_data);
@@ -673,6 +713,7 @@ static int qspi_nrfx_configure(const struct device *dev)
 #if defined(CONFIG_SOC_SERIES_NRF53X)
 	/* Restore the default /4 divider after the QSPI initialization. */
 	nrf_clock_hfclk192m_div_set(NRF_CLOCK, NRF_CLOCK_HFCLK_DIV_4);
+	k_busy_wait(BASE_CLOCK_SWITCH_DELAY_US);
 #endif
 
 	int ret = qspi_get_zephyr_ret_code(res);

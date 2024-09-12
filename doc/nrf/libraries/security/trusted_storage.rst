@@ -97,7 +97,8 @@ Use the Kconfig option :kconfig:option:`CONFIG_TRUSTED_STORAGE_BACKEND` to defin
 If this Kconfig option is set, the configuration defaults to the only currently available option :kconfig:option:`CONFIG_TRUSTED_STORAGE_BACKEND_AEAD` to use an AEAD scheme for encryption and authentication of stored data.
 
 Use the Kconfig option :kconfig:option:`CONFIG_TRUSTED_STORAGE_STORAGE_BACKEND` to define the backend that handles how the data are written to and from the non-volatile storage.
-If this Kconfig option is set, the configuration defaults to the only currently available option :kconfig:option:`CONFIG_TRUSTED_STORAGE_STORAGE_BACKEND_SETTINGS` to use Zephyr's settings subsystem.
+If this Kconfig option is set, the configuration defaults to the :kconfig:option:`CONFIG_TRUSTED_STORAGE_STORAGE_BACKEND_SETTINGS` option to use Zephyr's settings subsystem.
+Alternatively, you can use a custom storage backend by setting the Kconfig option :kconfig:option:`CONFIG_TRUSTED_STORAGE_STORAGE_BACKEND_CUSTOM`.
 
 The following options are used to configure the AEAD backend and its behavior:
 
@@ -130,8 +131,8 @@ The following options are used to configure the AEAD backend and its behavior:
 Usage
 *****
 
-The trusted storage library can only be used on a build using a build target with :ref:`CMSE disabled <app_boards_spe_nspe_cpuapp>` (``_cpuapp``).
-When you build for ``_cpuapp``, you build the firmware for the application core without CMSE and thus no TF-M.
+The trusted storage library can only be used on a build using a board target with :ref:`CMSE disabled <app_boards_spe_nspe_cpuapp>` (``/cpuapp``).
+When you build for ``/cpuapp``, you build the firmware for the application core without CMSE and thus no TF-M.
 The library can be used directly on such a build to store important assets.
 However, for cryptographic keys we suggest to use the `PSA functions for key management`_.
 These APIs will internally use this library to store persistent keys.

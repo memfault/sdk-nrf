@@ -29,7 +29,7 @@ The TF-M implementation in |NCS| is currently demonstrated in the following samp
 - All :ref:`cryptography samples <crypto_samples>` in this SDK
 - A series of :ref:`TF-M integration samples <zephyr:tfm_integration-samples>` available in Zephyr
 - The :ref:`https_client` sample for nRF91 Series devices in this SDK
-- The :ref:`openthread_samples` that support the ``nrf5340dk_nrf5340_cpuapp_ns`` build target in this SDK
+- The :ref:`openthread_samples` that support the ``nrf5340dk/nrf5340/cpuapp/ns`` board target in this SDK
 
 Building
 ********
@@ -43,16 +43,16 @@ To add TF-M to your build, enable the :kconfig:option:`CONFIG_BUILD_WITH_TFM` co
    If you use menuconfig to enable :kconfig:option:`CONFIG_BUILD_WITH_TFM`, you must also enable its dependencies.
 
 By default, TF-M is configured to build the :ref:`minimal version <tfm_minimal_build>`.
-To use the full TF-M, you must disable the :kconfig:option:`CONFIG_TFM_MINIMAL` option.
+To use the full TF-M, you must disable the :kconfig:option:`CONFIG_TFM_PROFILE_TYPE_MINIMAL` option.
 
-You must build TF-M using a non-secure build target.
+You must build TF-M using a non-secure board target.
 The following platforms are currently supported:
 
 * nRF5340
 * nRF91 Series
 
 TF-M uses UART1 for logging from the secure application.
-To disable logging, enable the :kconfig:option:`TFM_LOG_LEVEL_SILENCE` option.
+To disable logging, enable the :kconfig:option:`CONFIG_TFM_LOG_LEVEL_SILENCE` option.
 When building TF-M with logging enabled, UART1 must be disabled in the non-secure application, otherwise the non-secure application will fail to run.
 The recommended way to do this is to copy the .overlay file from the :ref:`tfm_hello_world` sample.
 
@@ -62,7 +62,7 @@ Enabling secure services
 When using the :ref:`nrf_security`, if :kconfig:option:`CONFIG_BUILD_WITH_TFM` is enabled together with :kconfig:option:`CONFIG_NORDIC_SECURITY_BACKEND`, the TF-M secure image will enable the use of the hardware acceleration of Arm CryptoCell.
 In such case, the Kconfig configurations in the Nordic Security Backend control the features enabled through TF-M.
 
-You can configure what crypto modules to include in TF-M by using the ``TFM_CRYPTO_`` Kconfig options found in file :file:`zephyr/modules/trusted-firmware-m/Kconfig.tfm.crypto_modules`.
+You can configure what crypto modules to include in TF-M by using the ``CONFIG_TFM_CRYPTO_*`` Kconfig options found in file :file:`zephyr/modules/trusted-firmware-m/Kconfig.tfm.crypto_modules`.
 
 TF-M utilizes :ref:`hardware unique keys <lib_hw_unique_key>` when the PSA Crypto key derivation APIs are used, and ``psa_key_derivation_setup`` is called with the algorithm ``TFM_CRYPTO_ALG_HUK_DERIVATION``.
 For more information about the PSA cryptography and the API, see `PSA Cryptography API 1.0.1`_.
@@ -174,22 +174,24 @@ The following limitations apply to TF-M and its usage:
 TF-M partition alignment requirements
 *************************************
 
-TF-M requires that secure and non-secure partition addresses must be aligned to the NRF_SPU flash region size :kconfig:option:`CONFIG_NRF_SPU_FLASH_REGION_SIZE`.
+TF-M requires that secure and non-secure partition addresses must be aligned to the flash region size :kconfig:option:`CONFIG_NRF_TRUSTZONE_FLASH_REGION_SIZE`.
 |NCS| ensures that they in fact are aligned and comply with the TF-M requirements.
 
-TF-M requires this alignment because it uses the SPU to enforce the security policy between the partitions.
+In nRF53 and nRF91 series TF-M uses the SPU to enforce the security policy between the partitions, so the :kconfig:option:`CONFIG_NRF_TRUSTZONE_FLASH_REGION_SIZE` is set to the SPU flash region size.
+In nRF54L15 TF-M uses the MPC to enforce the security policy between the partitions, so the :kconfig:option:`CONFIG_NRF_TRUSTZONE_FLASH_REGION_SIZE` is set to the MPC region size.
+
 When the :ref:`partition_manager` is enabled, it will take into consideration the alignment requirements.
 But when the static partitions are used, the user is responsible for following the alignment requirements.
 
 If you are experiencing any partition alignment issues when using the Partition Manager, check the :ref:`known_issues` page on the main branch.
 
-The partitions which need to be aligned to the SPU flash region size are partitions ``tfm_nonsecure`` and ``nonsecure_storage``.
-Both the partition start address and the partition size need to be aligned with the NRF_SPU flash region size :kconfig:option:`CONFIG_NRF_SPU_FLASH_REGION_SIZE`.
+The partitions which need to be aligned with the TrustZone flash region size are partitions ``tfm_nonsecure`` and ``nonsecure_storage``.
+Both the partition start address and the partition size need to be aligned with the flash region size :kconfig:option:`CONFIG_NRF_TRUSTZONE_FLASH_REGION_SIZE`.
 
 Note that the ``tfm_nonsecure`` partition is placed after the ``tfm_secure`` partition, thus the end address of the ``tfm_secure`` partition is the same as the start address of the ``tfm_nonsecure`` partition.
 As a result, altering the size of the ``tfm_secure`` partition affects the start address of the ``tfm_nonsecure`` partition.
 
-The following static partition snippet shows a non-aligned configuration for nRF5340 which has a SPU flash region size :kconfig:option:`CONFIG_NRF_SPU_FLASH_REGION_SIZE` of 0x4000.
+The following static partition snippet shows a non-aligned configuration for nRF5340 which has a TrustZone flash region size :kconfig:option:`CONFIG_NRF_TRUSTZONE_FLASH_REGION_SIZE` of 0x4000.
 
 .. code-block:: console
 
@@ -211,7 +213,7 @@ The following static partition snippet shows a non-aligned configuration for nRF
       address: 0x8200
       size: 0x4000
 
-In the above example, the ``tfm_nonsecure`` partition starts at address 0x8200, which is not aligned with the SPU requirement of 0x4000.
+In the above example, the ``tfm_nonsecure`` partition starts at address 0x8200, which is not aligned with the requirement of 0x4000.
 Since ``tfm_secure`` spans the ``mcuboot_pad`` and ``tfm`` partitions we can decrease the size of any of them by 0x200 to fix the alignment issue.
 We will decrease the size of the (optional) ``mcuboot_pad`` partition and thus the size of the ``tfm_secure`` partition as follows:
 

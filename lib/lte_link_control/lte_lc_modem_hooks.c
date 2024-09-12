@@ -11,10 +11,13 @@
 
 LOG_MODULE_DECLARE(lte_lc, CONFIG_LTE_LINK_CONTROL_LOG_LEVEL);
 
+#if defined(CONFIG_UNITY)
+void on_modem_init(int err, void *ctx)
+#else
 NRF_MODEM_LIB_ON_INIT(lte_lc_init_hook, on_modem_init, NULL);
-NRF_MODEM_LIB_ON_SHUTDOWN(lte_lc_shutdown_hook, on_modem_shutdown, NULL);
 
 static void on_modem_init(int err, void *ctx)
+#endif
 {
 	extern const enum lte_lc_system_mode lte_lc_sys_mode;
 	extern const enum lte_lc_system_mode_preference lte_lc_sys_mode_pref;
@@ -76,6 +79,14 @@ static void on_modem_init(int err, void *ctx)
 		(void)lte_lc_proprietary_psm_req(false);
 	}
 
+	/* Only supported in mfw 2.0.1 and newer.
+	 * Ignore the return value; an error likely means that the feature
+	 * is not supported. This optimization was enabled by default in firmware v2.0.0,
+	 * so that should not be a problem.
+	 */
+	(void)nrf_modem_at_printf("AT%%FEACONF=0,3,%d",
+		IS_ENABLED(CONFIG_LTE_PLMN_SELECTION_OPTIMIZATION));
+
 	err = lte_lc_edrx_req(IS_ENABLED(CONFIG_LTE_EDRX_REQ));
 	if (err) {
 		LOG_ERR("Failed to configure eDRX, err %d", err);
@@ -120,7 +131,13 @@ static void on_modem_init(int err, void *ctx)
 	}
 }
 
+#if defined(CONFIG_UNITY)
+void on_modem_shutdown(void *ctx)
+#else
+NRF_MODEM_LIB_ON_SHUTDOWN(lte_lc_shutdown_hook, on_modem_shutdown, NULL);
+
 static void on_modem_shutdown(void *ctx)
+#endif
 {
 	/* Make sure the Modem library was in normal mode and not in bootloader mode. */
 	if (nrf_modem_is_initialized()) {
@@ -128,7 +145,7 @@ static void on_modem_shutdown(void *ctx)
 	}
 }
 
-#if CONFIG_UNITY
+#if defined(CONFIG_UNITY)
 void lte_lc_on_modem_cfun(int mode, void *ctx)
 #else
 NRF_MODEM_LIB_ON_CFUN(lte_lc_cfun_hook, lte_lc_on_modem_cfun, NULL);

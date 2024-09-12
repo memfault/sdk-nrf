@@ -34,6 +34,8 @@ LOG_MODULE_REGISTER(coex, CONFIG_LOG_DEFAULT_LEVEL);
 #include <zephyr/net/net_event.h>
 #include <zephyr/net/socket.h>
 
+#include <net/wifi_mgmt_ext.h>
+
 /* For net_sprint_ll_addr_buf */
 #include "net_private.h"
 
@@ -189,47 +191,11 @@ static void net_mgmt_event_handler(struct net_mgmt_event_callback *cb,
 	}
 }
 
-static int __wifi_args_to_params(struct wifi_connect_req_params *params)
-{
-	params->timeout = SYS_FOREVER_MS;
-
-	/* Defaults */
-	params->band = WIFI_FREQ_BAND_UNKNOWN;
-	params->channel = WIFI_CHANNEL_ANY;
-	params->security = WIFI_SECURITY_TYPE_NONE;
-	params->mfp = WIFI_MFP_OPTIONAL;
-
-	/* SSID */
-	params->ssid = CONFIG_STA_SAMPLE_SSID;
-	params->ssid_length = strlen(params->ssid);
-
-#if defined(CONFIG_STA_KEY_MGMT_WPA2)
-	params->security = 1;
-#elif defined(CONFIG_STA_KEY_MGMT_WPA2_256)
-	params->security = 2;
-#elif defined(CONFIG_STA_KEY_MGMT_WPA3)
-	params->security = 3;
-#else
-	params->security = 0;
-#endif
-
-#if !defined(CONFIG_STA_KEY_MGMT_NONE)
-	params->psk = CONFIG_STA_SAMPLE_PASSWORD;
-	params->psk_length = strlen(params->psk);
-#endif
-
-	return 0;
-}
-
 static int wifi_connect(void)
 {
-	struct net_if *iface = net_if_get_default();
-	static struct wifi_connect_req_params cnx_params;
+	struct net_if *iface = net_if_get_first_wifi();
 
-	__wifi_args_to_params(&cnx_params);
-
-	if (net_mgmt(NET_REQUEST_WIFI_CONNECT, iface,
-		     &cnx_params, sizeof(struct wifi_connect_req_params))) {
+	if (net_mgmt(NET_REQUEST_WIFI_CONNECT_STORED, iface, NULL, 0)) {
 		LOG_ERR("Connection request failed");
 
 		return -ENOEXEC;
@@ -314,6 +280,9 @@ static void udp_upload_results_cb(enum zperf_status status,
 	case ZPERF_SESSION_STARTED:
 		LOG_INF("New UDP session started");
 		break;
+	case ZPERF_SESSION_PERIODIC_RESULT:
+		/* Ignored. */
+		break;
 	case ZPERF_SESSION_FINISHED:
 		LOG_INF("Wi-Fi benchmark: Upload completed!");
 		if (result->client_time_in_us != 0U) {
@@ -327,7 +296,7 @@ static void udp_upload_results_cb(enum zperf_status status,
 		}
 		/* print results */
 		LOG_INF("Upload results:");
-		LOG_INF("%u bytes in %u ms",
+		LOG_INF("%u bytes in %llu ms",
 				(result->nb_packets_sent * result->packet_size),
 				(result->client_time_in_us / USEC_PER_MSEC));
 		LOG_INF("%u packets sent", result->nb_packets_sent);
@@ -399,14 +368,14 @@ int main(void)
 	LOG_INF("test_wlan = %d and test_ble = %d\n", test_wlan, test_ble);
 
 
-#ifdef CONFIG_NRF700X_RADIO_COEX
+#ifdef CONFIG_NRF700X_SR_COEX_RF_SWITCH
 	/* Configure SR side (nRF5340 side) switch for nRF700x DK */
 	ret = nrf_wifi_config_sr_switch(separate_antennas);
 	if (ret != 0) {
 		LOG_ERR("Unable to configure SR side switch: %d\n", ret);
 		goto err;
 	}
-#endif /* CONFIG_NRF700X_RADIO_COEX */
+#endif /* CONFIG_NRF700X_SR_COEX_RF_SWITCH */
 
 	if (test_wlan) {
 		/* Wi-Fi connection */
@@ -512,6 +481,10 @@ int main(void)
 		LOG_INF("Disconnecting BLE\n");
 		bt_throughput_test_exit();
 	}
+
+	/* Disable coexistence hardware */
+	nrf_wifi_coex_hw_reset();
+
 	LOG_INF("\nCoexistence test complete\n");
 
 	return 0;

@@ -16,8 +16,7 @@
 #include <zephyr/bluetooth/bluetooth.h>
 #include <zephyr/bluetooth/conn.h>
 #include <zephyr/bluetooth/hci.h>
-
-#include "sdc_hci_vs.h"
+#include <bluetooth/hci_vs_sdc.h>
 
 #include "chmap_filter.h"
 
@@ -100,8 +99,7 @@ BUILD_ASSERT(THREAD_PRIORITY >= CONFIG_BT_HCI_TX_PRIO);
 
 static void ble_qos_thread_fn(void);
 
-static const struct device *const cdc_dev =
-	DEVICE_DT_GET_OR_NULL(DT_CHOSEN(ncs_ble_qos_uart));
+static const struct device *const cdc_dev = DEVICE_DT_GET_OR_NULL(DT_CHOSEN(ncs_ble_qos_uart));
 static uint32_t cdc_dtr;
 
 enum ble_qos_opt {
@@ -433,7 +431,7 @@ static bool on_vs_evt(struct net_buf_simple *buf)
 static void enable_qos_reporting(void)
 {
 	int err;
-	struct net_buf *buf;
+	sdc_hci_cmd_vs_qos_conn_event_report_enable_t cmd_enable;
 
 	err = bt_hci_register_vnd_evt_cb(on_vs_evt);
 	if (err) {
@@ -441,23 +439,11 @@ static void enable_qos_reporting(void)
 		return;
 	}
 
-	sdc_hci_cmd_vs_qos_conn_event_report_enable_t *cmd_enable;
+	cmd_enable.enable = 1;
 
-	buf = bt_hci_cmd_create(SDC_HCI_OPCODE_CMD_VS_QOS_CONN_EVENT_REPORT_ENABLE,
-				sizeof(*cmd_enable));
-	if (!buf) {
-		LOG_ERR("Failed to enable HCI VS QoS");
-		return;
-	}
-
-	cmd_enable = net_buf_add(buf, sizeof(*cmd_enable));
-	cmd_enable->enable = 1;
-
-	err = bt_hci_cmd_send_sync(
-		SDC_HCI_OPCODE_CMD_VS_QOS_CONN_EVENT_REPORT_ENABLE, buf, NULL);
+	err = hci_vs_sdc_qos_conn_event_report_enable(&cmd_enable);
 	if (err) {
 		LOG_ERR("Failed to enable HCI VS QoS");
-		return;
 	}
 }
 

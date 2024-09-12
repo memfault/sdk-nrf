@@ -16,7 +16,9 @@
 #include <sys/fcntl.h>
 LOG_MODULE_REGISTER(wpa_supplicant, LOG_LEVEL_DBG);
 
-#if !defined(CONFIG_WPA_SUPP_CRYPTO_NONE) && !defined(CONFIG_MBEDTLS_ENABLE_HEAP)
+#if defined(CONFIG_MBEDTLS_PLATFORM_C) && \
+	!defined(CONFIG_WPA_SUPP_CRYPTO_NONE) && \
+	!defined(CONFIG_MBEDTLS_ENABLE_HEAP)
 #include <mbedtls/platform.h>
 #endif /* !CONFIG_WPA_SUPP_CRYPTO_NONE && !CONFIG_MBEDTLS_ENABLE_HEAP */
 
@@ -75,6 +77,7 @@ static const struct wifi_mgmt_ops wpa_supp_ops = {
 	.iface_status = z_wpa_supplicant_status,
 #ifdef CONFIG_NET_STATISTICS_WIFI
 	.get_stats = z_wpa_supplicant_get_stats,
+	.reset_stats = z_wpa_supplicant_reset_stats,
 #endif
 	.set_power_save = z_wpa_supplicant_set_power_save,
 	.set_twt = z_wpa_supplicant_set_twt,
@@ -83,10 +86,12 @@ static const struct wifi_mgmt_ops wpa_supp_ops = {
 	.mode = z_wpa_supplicant_mode,
 	.filter = z_wpa_supplicant_filter,
 	.channel = z_wpa_supplicant_channel,
+	.set_rts_threshold = z_wpa_supplicant_set_rts_threshold,
 #ifdef CONFIG_AP
 	.ap_enable = z_wpa_supplicant_ap_enable,
 	.ap_disable = z_wpa_supplicant_ap_disable,
 	.ap_sta_disconnect = z_wpa_supplicant_ap_sta_disconnect,
+	.ap_config_params = z_wpa_supplicant_ap_config_params,
 #endif /* CONFIG_AP */
 };
 
@@ -184,6 +189,7 @@ static int z_wpas_add_interface(const char *ifname)
 
 	wpa_s->conf->filter_ssids = 1;
 	wpa_s->conf->ap_scan = 1;
+	wpa_s->conf->sae_pwe = 2;
 
 	/* Default interface, kick start wpa_supplicant */
 	if (z_wpas_get_iface_count() == 1) {
@@ -539,7 +545,9 @@ static void z_wpas_start(void)
 		return;
 	}
 
-#if !defined(CONFIG_WPA_SUPP_CRYPTO_NONE) && !defined(CONFIG_MBEDTLS_ENABLE_HEAP)
+#if defined(CONFIG_MBEDTLS_PLATFORM_C) && \
+	!defined(CONFIG_WPA_SUPP_CRYPTO_NONE) && \
+	!defined(CONFIG_MBEDTLS_ENABLE_HEAP)
 	/* Needed for crypto operation as default is no-op and fails */
 	mbedtls_platform_set_calloc_free(calloc, free);
 #endif /* !CONFIG_WPA_SUPP_CRYPTO_NONE && !CONFIG_MBEDTLS_ENABLE_HEAP */
@@ -551,6 +559,8 @@ static void z_wpas_start(void)
 					   K_THREAD_STACK_SIZEOF(z_wpas_wq_stack),
 					   CONFIG_WPA_SUPP_WQ_PRIORITY,
 					   NULL);
+
+	k_thread_name_set(&z_wpas_wq.thread, "wpa_supplicant_wq");
 
 	os_memset(&params, 0, sizeof(params));
 	params.wpa_debug_level = CONFIG_WPA_SUPP_DEBUG_LEVEL;
@@ -621,6 +631,8 @@ static int z_wpas_init(void)
 			(k_thread_entry_t)z_wpas_start,
 			NULL, NULL, NULL,
 			0, 0, K_NO_WAIT);
+
+	k_thread_name_set(&z_wpa_s_tid, "wpa_supplicant_main");
 
 	return 0;
 }

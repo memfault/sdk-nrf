@@ -30,18 +30,55 @@ enum nrf_cloud_fota_reboot_status {
 };
 
 /**
- * @brief  Event handler registered with the module to handle asynchronous
- * events from the module.
+ * @brief  Reboot event handler registered with the module to handle asynchronous
+ * reboot events from the module.
  *
  * @param[in]  status The reason for the reboot request.
  */
 typedef void (*fota_reboot_handler_t)(enum nrf_cloud_fota_reboot_status status);
 
+/**
+ * @brief  Error event handler registered with the module to handle asynchronous
+ * error events from the module.
+ *
+ * @param[in]  status The FOTA status for the error event.
+ * @param[in]  status_details Details about the error event.
+ */
+typedef void (*fota_error_handler_t)(enum nrf_cloud_fota_status status,
+				     const char *const status_details);
+
 struct nrf_cloud_fota_poll_ctx {
+	/* Internal variables */
 	struct nrf_cloud_rest_context *rest_ctx;
-	const char *device_id;
-	fota_reboot_handler_t reboot_fn;
+	struct k_work_delayable timeout_work;
+	bool is_nonblocking;
 	bool full_modem_fota_supported;
+	const char *device_id;
+
+	/* Public variables */
+
+	/** HTTP fragment size. Sets the size of the requested payload in each HTTP request when
+	 *  downloading the firmware image. Note that the header size is not included in this size.
+	 *  It is important that the total size of each fragment (HTTP headers + payload) fits in
+	 *  the buffers of the underlying network stack layers. Failing to do so, may result in
+	 *  failure to download new firmware images.
+	 *
+	 *  If this value is set to 0, the Kconfig option
+	 *  :kconfig:option:`CONFIG_NRF_CLOUD_FOTA_DOWNLOAD_FRAGMENT_SIZE` will be used.
+	 */
+	uint32_t fragment_size;
+
+	/** User-provided callback function to handle reboots */
+	fota_reboot_handler_t reboot_fn;
+
+	/** Optional, user-provided callback function to handle errors.
+	 *  If the function is provided, @ref nrf_cloud_fota_poll_process will be non-blocking and
+	 *  the user will receive error events asynchronously.
+	 *
+	 * If the function is not provided, @ref nrf_cloud_fota_poll_process will be blocking and
+	 * return an error code when an error occurs.
+	 */
+	fota_error_handler_t error_fn;
 };
 
 /**
@@ -75,8 +112,15 @@ int nrf_cloud_fota_poll_process_pending(struct nrf_cloud_fota_poll_ctx *ctx);
  *        Execute FOTA job.
  *        Save status and request reboot.
  *
+ *	  The function will be blocking during an update image download if the error_fn callback is
+ *	  not provided.
+ *	  If the error_fn callback is provided, the function will be non-blocking and the user
+ *	  will receive error events asynchronously.
+ *
  * @param[in] ctx Pointer to context used for FOTA polling operations.
  *
+ * @retval 0		    Only applicable if in non-blocking mode. Indicates successful start of
+ *			    FOTA processing.
  * @retval -EINVAL          Invalid ctx or module is not initialized.
  * @retval -ENOTRECOVERABLE Error performing FOTA action.
  * @retval -EBUSY           A reboot was requested but not performed by the application.

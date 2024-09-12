@@ -1,6 +1,4 @@
 /*
- * Copyright (c) 2020-2021 Silex Insight sa
- * Copyright (c) 2020-2021 Beerten Engineering scs
  * Copyright (c) 2023 Nordic Semiconductor ASA
  *
  * SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
@@ -20,6 +18,8 @@
 #include "regs_addr.h"
 #include <silexpk/ec_curves.h>
 #include <silexpk/ik.h>
+
+int cracen_prepare_ik_key(const uint8_t *user_data);
 
 int sx_pk_is_ik_cmd(sx_pk_req *req)
 {
@@ -74,6 +74,21 @@ int sx_pk_list_ik_inslots(sx_pk_req *req, unsigned int key, struct sx_pk_slot *i
 	int i = 0;
 	const struct sx_pk_capabilities *caps;
 
+	if (req->cmd->cmdcode == PK_OP_IK_EXIT) {
+		req->ik_mode = 0;
+	} else {
+		if (!req->ik_mode) {
+			int status = cracen_prepare_ik_key((uint8_t *)&key);
+
+			if (status != SX_OK) {
+				sx_pk_release_req(req);
+				return SX_ERR_INVALID_PARAM;
+			}
+			sx_pk_wrreg(&req->regs, PK_REG_CONTROL, PK_RB_CONTROL_CLEAR_IRQ);
+			req->ik_mode = 1;
+		}
+	}
+
 	caps = sx_pk_fetch_capabilities();
 
 	if (!caps->ik_opsz) {
@@ -85,23 +100,6 @@ int sx_pk_list_ik_inslots(sx_pk_req *req, unsigned int key, struct sx_pk_slot *i
 
 	req->op_size = caps->ik_opsz;
 	uint32_t rval = req->cmd->cmdcode & 0x301;
-
-	if (req->cmd->cmdcode == PK_OP_IK_EXIT) {
-		req->ik_mode = 0;
-	} else {
-		if (!req->ik_mode) {
-			sx_pk_wrreg(&req->regs, PK_REG_CONTROL, PK_RB_CONTROL_CLEAR_IRQ);
-			req->ik_mode = 1;
-		}
-		uint32_t config = sx_pk_rdreg(&req->regs, IK_REG_HW_CONFIG);
-		uint32_t max_hw_keys = ((config & IK_NB_PRIV_KEYS_MASK) >> 4);
-
-		if (key >= max_hw_keys) {
-			sx_pk_release_req(req);
-			return SX_ERR_INVALID_PARAM;
-		}
-		rval |= (key << 4);
-	}
 
 	/* Write IK cmd register */
 	sx_pk_wrreg(&req->regs, IK_REG_PK_COMMAND, rval);
@@ -226,8 +224,6 @@ void sx_pk_read_ik_capabilities(struct sx_regs *regs, struct sx_pk_capabilities 
 
 int sx_pk_ik_derive_keys(struct sx_pk_config_ik *cfg)
 {
-	/* Acquire a dummy req to ensure Cracen is powered on, and ready to be used. */
-	struct sx_pk_acq_req pkreq = sx_pk_acquire_req(NULL);
 	struct sx_regs *regs = sx_pk_get_regs();
 	int r = sx_ik_gen_keys(regs, cfg);
 
@@ -236,8 +232,6 @@ int sx_pk_ik_derive_keys(struct sx_pk_config_ik *cfg)
 
 		sx_pk_read_ik_capabilities(regs, caps);
 	}
-
-	sx_pk_release_req(pkreq.req);
 
 	return r;
 }

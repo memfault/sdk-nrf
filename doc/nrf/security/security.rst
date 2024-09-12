@@ -55,7 +55,7 @@ Different storage options have different features.
 One of the options is to use the :ref:`trusted_storage_readme` library.
 
 The trusted storage library enables the users to provide features like integrity, confidentiality and authenticity of the stored data, without using the TF-M Platform Root of Trust (PRoT).
-The library implements the PSA Cerified Secure Storage API.
+The library implements the PSA Certified Secure Storage API.
 It consists of PSA Internal Trusted Storage API and PSA Protected Storage API.
 
 The Internal Trusted Storage and the Protected Storage are designed to work in :ref:`environments both with and without security by separation <app_boards_spe_nspe>`.
@@ -74,13 +74,13 @@ The table below gives an overview of the trusted storage support for the product
      - Integrity
      - Authenticity
      - Isolation
-   * - nRF52840
-     - Trusted storage library
-     - Partial [1]_
+   * - nRF91 Series with TF-M
+     - TF-M secure storage service
      - Yes
      - Yes
-     - No
-   * - nRF5340 without TF-M
+     - Yes
+     - Yes
+   * - nRF91 Series without TF-M
      - Trusted storage library
      - Partial [1]_
      - Yes
@@ -92,22 +92,30 @@ The table below gives an overview of the trusted storage support for the product
      - Yes
      - Yes
      - Yes
-   * - nRF9160 without TF-M
+   * - nRF5340 without TF-M
      - Trusted storage library
      - Partial [1]_
      - Yes
      - Yes
      - No
-   * - nRF9160 with TF-M
-     - TF-M secure storage service
+   * - nRF52840
+     - Trusted storage library
+     - Partial [1]_
      - Yes
      - Yes
+     - No
+   * - nRF52833
+     - Trusted storage library
+     - Partial [2]_
      - Yes
      - Yes
+     - No
 .. [1] On systems without the isolation feature, the confidentiality is limited to protection of data at rest in a non-volatile internal or external memory.
        This partial confidentiality is based on a CPU-inaccessible master key used for data encryption.
        When the data is decrypted for usage, there is no mechanism providing access control and protecting its visibility.
        Use of a TrustZone-enabled system provides stronger protection, and is recommended if available.
+.. [2] The use of Hardware Unique Key (HUK) to provide the AEAD key is not available on nRF52833 devices.
+       The trusted storage library offers the use of SHA-256 to generate the key, which does not provide guarantees of security beyond the integrity check of the encrypted data.
 
 The trusted storage library addresses two of the PSA Certified Level 2 and Level 3 optional security functional requirements (SFRs):
 
@@ -137,7 +145,7 @@ The module can be enabled through the :kconfig:option:`CONFIG_NRF_SECURITY` Kcon
 The :ref:`nrf_security` acts as an orchestrator for the different cryptographic libraries available in the system.
 These libraries include the binary versions of accelerated cryptographic libraries listed in :ref:`nrfxlib:crypto`, and the open source Mbed TLS implementation in |NCS| located in `sdk-mbedtls`_.
 
-The Kconfig option :kconfig:option:`CONFIG_NRF_SECURITY` prioritizes the usage of the accelerated libraries by default when this is supported by the platform.
+HW accelerated libraries are prioritized over SW libraries when both are enabled.
 For more information about the configuration and usage of the :ref:`nrf_security`, see the :ref:`nrf_security_config` page.
 
 See also :ref:`crypto_samples` for examples of how to configure and perform different cryptographic operations in the |NCS|.

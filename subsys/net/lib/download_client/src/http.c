@@ -11,6 +11,7 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/sys/__assert.h>
 #include <net/download_client.h>
+#include "download_client_internal.h"
 
 LOG_MODULE_DECLARE(download_client, CONFIG_DOWNLOAD_CLIENT_LOG_LEVEL);
 
@@ -41,10 +42,6 @@ LOG_MODULE_DECLARE(download_client, CONFIG_DOWNLOAD_CLIENT_LOG_LEVEL);
 	"\r\n"
 
 extern char *strnstr(const char *haystack, const char *needle, size_t haystack_sz);
-
-int url_parse_host(const char *url, char *host, size_t len);
-int url_parse_file(const char *url, char *file, size_t len);
-int socket_send(const struct download_client *client, size_t len, int timeout);
 
 int http_get_request_send(struct download_client *client)
 {
@@ -127,7 +124,7 @@ static int http_header_parse(struct download_client *client, size_t *hdr_len)
 {
 	char *p;
 	char *q;
-	unsigned int http_status;
+	unsigned long http_status;
 
 	const unsigned int expected_status = (client->http.ranged || client->progress) ? 206 : 200;
 
@@ -151,7 +148,7 @@ static int http_header_parse(struct download_client *client, size_t *hdr_len)
 	}
 
 	/* Look for the status code just after "http/1.1 " */
-	p = strnstr(client->buf, "http/1.1 ", sizeof(client->buf));
+	p = strnstr(client->buf, "http/1.1 ", *hdr_len);
 	if (!p) {
 		LOG_ERR("Server response missing HTTP/1.1");
 		return -EBADMSG;
@@ -190,19 +187,19 @@ static int http_header_parse(struct download_client *client, size_t *hdr_len)
 	 */
 	if (client->file_size == 0) {
 		if (client->http.ranged) {
-			p = strnstr(client->buf, "\r\ncontent-range", sizeof(client->buf));
+			p = strnstr(client->buf, "\r\ncontent-range", *hdr_len);
 			if (!p) {
 				LOG_ERR("Server did not send "
 					"\"Content-Range\" in response");
 				return -EBADMSG;
 			}
-			p = strnstr(p, "/", sizeof(client->buf) - (p - client->buf));
+			p = strnstr(p, "/", *hdr_len - (p - client->buf));
 			if (!p) {
 				LOG_ERR("No file size in response");
 				return -EBADMSG;
 			}
 		} else { /* proto == PROTO_HTTP */
-			p = strnstr(client->buf, "\r\ncontent-length", sizeof(client->buf));
+			p = strnstr(client->buf, "\r\ncontent-length", *hdr_len);
 			if (!p) {
 				LOG_WRN("Server did not send "
 					"\"Content-Length\" in response");
@@ -223,7 +220,7 @@ static int http_header_parse(struct download_client *client, size_t *hdr_len)
 		LOG_DBG("File size = %u", client->file_size);
 	}
 
-	p = strnstr(client->buf, "\r\nconnection: close", sizeof(client->buf));
+	p = strnstr(client->buf, "\r\nconnection: close", *hdr_len);
 	if (p) {
 		LOG_WRN("Peer closed connection, will re-connect");
 		client->http.connection_close = true;

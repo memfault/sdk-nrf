@@ -26,15 +26,38 @@ endmacro()
 # Load static configuration if found.
 # Try user defined file first, then file found in configuration directory,
 # finally file from board directory.
+if(SYSBUILD)
+  zephyr_get(PM_STATIC_YML_FILE SYSBUILD GLOBAL)
+elseif(CONFIG_PARTITION_MANAGER_ENABLED)
+  message(DEPRECATION "
+          ---------------------------------------------------------------------
+          --- WARNING: Child and parent image functionality is deprecated   ---
+          --- and should be replaced with sysbuild. Child and parent image  ---
+          --- support remains only to allow existing customer applications  ---
+          --- to build and allow porting to sysbuild, it is no longer       ---
+          --- receiving updates or new features and it will not be possible ---
+          --- to build using child/parent image at all in nRF Connect SDK   ---
+          --- version 2.9 onwards.                                          ---
+          ---------------------------------------------------------------------"
+         )
+endif()
+
 if(DEFINED PM_STATIC_YML_FILE)
   string(CONFIGURE "${PM_STATIC_YML_FILE}" user_def_pm_static)
 endif()
 
-ncs_file(CONF_FILES ${APPLICATION_CONFIG_DIR}
-         PM conf_dir_pm_static
-         DOMAIN ${DOMAIN}
-         BUILD ${CONF_FILE_BUILD_TYPE}
-)
+zephyr_get(COMMON_CHILD_IMAGE_CONFIG_DIR)
+string(CONFIGURE "${COMMON_CHILD_IMAGE_CONFIG_DIR}" COMMON_CHILD_IMAGE_CONFIG_DIR)
+foreach(config_dir ${APPLICATION_CONFIG_DIR} ${COMMON_CHILD_IMAGE_CONFIG_DIR})
+  ncs_file(CONF_FILES ${config_dir}
+           PM conf_dir_pm_static
+           DOMAIN ${DOMAIN}
+           BUILD ${CONF_FILE_BUILD_TYPE}
+  )
+  if(EXISTS ${conf_dir_pm_static})
+    break()
+  endif()
+endforeach()
 
 ncs_file(CONF_FILES ${BOARD_DIR}
          PM board_dir_pm_static
@@ -75,7 +98,7 @@ if (NOT static_configuration AND CONFIG_PM_IMAGE_NOT_BUILT_FROM_SOURCE)
 endif()
 
 if (NOT static_configuration AND
-  (CONFIG_BOOTLOADER_MCUBOOT OR CONFIG_SECURE_BOOT))
+  (CONFIG_BOOTLOADER_MCUBOOT OR CONFIG_SECURE_BOOT) AND NOT SYSBUILD)
       message(WARNING "
         ---------------------------------------------------------------------
         --- WARNING: Using a bootloader without pm_static.yml.            ---

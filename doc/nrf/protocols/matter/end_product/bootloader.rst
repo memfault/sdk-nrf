@@ -24,7 +24,12 @@ MCUboot minimal configuration
 MCUboot is by default configured to enable debug features, such as logs.
 You can reduce the size of the bootloader image by disabling unnecessary features.
 
-See the `Kconfig.mcuboot.defaults`_ file for the MCUboot minimal configuration used by :ref:`Matter samples <matter_samples>` in the |NCS|.
+See the following files for the MCUboot minimal configuration used by :ref:`Matter samples <matter_samples>` in the |NCS|:
+
+* :file:`prj.conf` file located in each sample's :file:`sysbuild/mcuboot` directory
+* Board files located in each sample's :file:`sysbuild/mcuboot/boards` directory
+* :file:`Kconfig.sysbuild` file located in each sample's directory.
+
 This configuration allows to reduce the flash partition occupied by MCUboot to 24 kB.
 
 .. _ug_matter_device_bootloader_partition_layout:
@@ -58,6 +63,11 @@ Settings partition
 The nRF Connect platform in Matter uses Zephyr's :ref:`zephyr:settings_api` API to provide the storage capabilities to the Matter stack.
 This requires that you define the ``settings_storage`` partition in the flash.
 The recommended minimum size of the partition is 32 kB, but you can reserve even more space if your application uses the storage extensively.
+
+The Zephyr settings storage is implemented by the Zephyr NVS (Non-Volatile Storage) module.
+The NVS uses multiple sectors of 4 kB each and it has to use the appropriate number of sectors to cover all settings partition area.
+To configure the number of sectors used by the NVS, set the :kconfig:option:`CONFIG_SETTINGS_NVS_SECTOR_COUNT` Kconfig option to the desired value.
+For example, to cover a settings partition of 32 kB in size, you require 8 sectors.
 
 As you can see in :ref:`ug_matter_hw_requirements_layouts`, Matter samples in the |NCS| reserve exactly 32 kB for the ``settings_storage`` partition.
 
@@ -93,7 +103,7 @@ MCUboot uses asymmetric cryptography to validate the authenticity of firmware.
 The public key embedded in the bootloader image is used to validate the signature of a firmware image that is about to be booted.
 If the signature check fails, MCUboot rejects the image and either:
 
-* rolls back to the last valid firmware image if the fallback recovery has not been disabled using the MCUboot's :kconfig:option:`CONFIG_BOOT_UPGRADE_ONLY` Kconfig option.
+* rolls back to the last valid firmware image if the fallback recovery has not been disabled using the MCUboot's ``SB_CONFIG_MCUBOOT_MODE_OVERWRITE_ONLY`` Kconfig option.
 * fails to boot.
 
 .. note::
@@ -108,4 +118,4 @@ Downgrade protection
 
 The :ref:`downgrade protection <ug_fw_update_image_versions_mcuboot_downgrade>` mechanism makes it impossible for an attacker to trick a user to install a firmware image older than the currently installed one.
 The attacker might want to do this to reintroduce old security vulnerabilities that have already been fixed in newer firmware revisions.
-You should enable the downgrade protection mechanism if you choose to enable MCUboot's :kconfig:option:`CONFIG_BOOT_UPGRADE_ONLY` Kconfig option, which disables the fallback recovery in case of a faulty upgrade.
+You should enable the downgrade protection mechanism if you choose to enable MCUboot's ``SB_CONFIG_MCUBOOT_MODE_OVERWRITE_ONLY`` Kconfig option, which disables the fallback recovery in case of a faulty upgrade.

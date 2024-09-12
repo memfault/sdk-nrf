@@ -414,7 +414,7 @@ nRF5340 Audio
   * Renderer - This module handles rendering, such as volume up and down.
   * Content Control - This module handles content control, such as play and pause.
 
-* Added back the QDID number for the :ref:`lib_bt_ll_acs_nrf53_readme` to the documentation.
+* Added back the QDID number for the LE Audio controller for nRF5340 to the documentation.
 * Updated the :ref:`application documentation <nrf53_audio_app>` by splitting it into several pages.
 
 nRF Machine Learning (Edge Impulse)
@@ -838,7 +838,7 @@ Debug libraries
 Binary libraries
 ----------------
 
-* :ref:`lib_bt_ll_acs_nrf53_readme` library:
+* LE Audio controller for nRF5340 library:
 
   * Added a limitation about the lack of support for the +20 dBm setting when :ref:`building the nRF5340 Audio application with the nRF21540 FEM support <nrf53_audio_app_adding_FEM_support>`.
 
@@ -931,7 +931,7 @@ Modem libraries
 
   * Updated:
 
-    * The functions :c:func:`lte_lc_rai_req` and :c:func:`lte_lc_rai_param_set` and the Kconfig option :kconfig:option:`CONFIG_LTE_RAI_REQ_VALUE` are now deprecated.
+    * The functions ``lte_lc_rai_req`` and ``lte_lc_rai_param_set`` and the Kconfig option ``CONFIG_LTE_RAI_REQ_VALUE`` are now deprecated.
       The application uses the Kconfig option :kconfig:option:`CONFIG_LTE_RAI_REQ` and ``SO_RAI_*`` socket options instead.
     * The CE level enum names for :c:enum:`lte_lc_ce_level` to not include the number of repetitions.
     * The default network mode from :kconfig:option:`CONFIG_LTE_NETWORK_MODE_LTE_M` to :kconfig:option:`CONFIG_LTE_NETWORK_MODE_LTE_M_GPS`.

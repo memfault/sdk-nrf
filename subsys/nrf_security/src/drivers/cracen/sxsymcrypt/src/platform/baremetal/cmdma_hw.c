@@ -1,5 +1,4 @@
 /*
- * Copyright (c) 2019-2020 Silex Insight
  * Copyright (c) 2023 Nordic Semiconductor ASA
  *
  * SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
@@ -13,6 +12,9 @@
 #include <security/cracen.h>
 #include <cracen/statuscodes.h>
 
+#include <nrf_security_mutexes.h>
+
+#include <zephyr/kernel.h>
 /* Enable interrupts showing that an operation finished or aborted.
  * For that, we're interested in :
  *     - Fetcher DMA error (bit: 2)
@@ -22,10 +24,16 @@
  */
 #define CMDMA_INTMASK_EN ((1 << 2) | (1 << 5) | (1 << 4))
 
+NRF_SECURITY_MUTEX_DEFINE(cracen_mutex_symmetric);
+
 void sx_hw_reserve(struct sx_dmactl *dma)
 {
 	cracen_acquire();
-	dma->hw_acquired = true;
+	nrf_security_mutex_lock(cracen_mutex_symmetric);
+
+	if (dma) {
+		dma->hw_acquired = true;
+	}
 
 	/* Enable CryptoMaster interrupts. */
 	sx_wrreg(REG_INT_EN, 0);
@@ -38,8 +46,11 @@ void sx_hw_reserve(struct sx_dmactl *dma)
 
 void sx_cmdma_release_hw(struct sx_dmactl *dma)
 {
-	if (dma->hw_acquired) {
+	if (dma == NULL || dma->hw_acquired) {
 		cracen_release();
-		dma->hw_acquired = false;
+		nrf_security_mutex_unlock(cracen_mutex_symmetric);
+		if (dma) {
+			dma->hw_acquired = false;
+		}
 	}
 }

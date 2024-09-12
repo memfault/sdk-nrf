@@ -72,7 +72,7 @@ OTP regions
 
 The one-time programmable (OTP) region is a special region of the *User Information Configuration Registers* (UICR) that only allows flash memory writes in half-word lengths, and *only* when the target half-word has the value of ``0xFFFF``.
 
-On the SoCs that support an OTP region, such as the nRF9160 and nRF5340, the provisioned data is held in the OTP region instead of the internal flash memory.
+On products that support an OTP region, such as the nRF91 Series and nRF5340, the provisioned data is held in the OTP region instead of the internal flash memory.
 
 Because of these design constraints, the following limitations apply:
 
@@ -84,7 +84,7 @@ Because of these design constraints, the following limitations apply:
   When programming images that contain flash memory content in the UICR region, such as the NSIB image, the UICR must first be erased.
 
 .. note::
-   On the nRF9160 and nRF5340, the UICR can only be erased by erasing the entire flash memory.
+   On the nRF91 Series and nRF5340 devices, the UICR can only be erased by erasing the entire flash memory.
 
 For information how to erase the entire flash memory when flashing, see :ref:`programming`.
 
@@ -149,11 +149,11 @@ See :ref:`bootloader_signature_keys_guide` for more information.
 Monotonic counter
 =================
 
-.. include:: ../../doc/nrf/config_and_build/bootloaders/bootloader_downgrade_protection.rst
+.. include:: ../../doc/nrf/app_dev/bootloaders_dfu/mcuboot_nsib/bootloader_downgrade_protection.rst
    :start-after: bootloader_monotonic_counter_start
    :end-before: bootloader_monotonic_counter_end
 
-.. include:: ../../doc/nrf/config_and_build/bootloaders/bootloader_downgrade_protection.rst
+.. include:: ../../doc/nrf/app_dev/bootloaders_dfu/mcuboot_nsib/bootloader_downgrade_protection.rst
    :start-after: bootloader_monotonic_counter_nsib_start
    :end-before: bootloader_monotonic_counter_nsib_end
 

@@ -10,29 +10,28 @@
 
 #include <zephyr/sys/printk.h>
 #include <zephyr/kernel.h>
-#if defined(CLOCK_FEATURE_HFCLK_DIVIDE_PRESENT) || NRF_CLOCK_HAS_HFCLK192M
+#if NRFX_CLOCK_ENABLED && (defined(CLOCK_FEATURE_HFCLK_DIVIDE_PRESENT) || NRF_CLOCK_HAS_HFCLK192M)
 #include <nrfx_clock.h>
 #endif
 #include <zephyr/device.h>
 #include <zephyr/net/net_config.h>
 
-#ifdef CONFIG_SLIP
-/* Fixed address as the static IP given from Kconfig will be
- * applied to Wi-Fi interface.
- */
-#define CONFIG_NET_CONFIG_SLIP_IPV4_ADDR "192.0.2.1"
-#define CONFIG_NET_CONFIG_SLIP_IPV4_MASK "255.255.255.0"
-#endif /* CONFIG_SLIP */
+#if defined(CONFIG_USB_DEVICE_STACK) && !defined(CONFIG_BOARD_THINGY91X_NRF5340_CPUAPP)
+#define USES_USB_ETH 1
+#else
+#define USES_USB_ETH 0
+#endif
 
-#ifdef CONFIG_USB_DEVICE_STACK
+#if USES_USB_ETH
 #include <zephyr/usb/usb_device.h>
+#endif
 
-/* Fixed address as the static IP given from Kconfig will be
- * applied to Wi-Fi interface.
- */
-#define CONFIG_NET_CONFIG_USB_IPV4_ADDR "192.0.2.1"
-#define CONFIG_NET_CONFIG_USB_IPV4_MASK "255.255.255.0"
+#if USES_USB_ETH || defined(CONFIG_SLIP)
+static struct in_addr addr = { { { 192, 0, 2, 1 } } };
+static struct in_addr mask = { { { 255, 255, 255, 0 } } };
+#endif /* CONFIG_USB_DEVICE_STACK || CONFIG_SLIP */
 
+#if USES_USB_ETH
 int init_usb(void)
 {
 	int ret;
@@ -50,18 +49,14 @@ int init_usb(void)
 
 int main(void)
 {
-#if defined(CONFIG_USB_DEVICE_STACK) || defined(CONFIG_SLIP)
-	struct in_addr addr;
-#endif
-
-#if defined(CLOCK_FEATURE_HFCLK_DIVIDE_PRESENT) || NRF_CLOCK_HAS_HFCLK192M
+#if NRFX_CLOCK_ENABLED && (defined(CLOCK_FEATURE_HFCLK_DIVIDE_PRESENT) || NRF_CLOCK_HAS_HFCLK192M)
 	/* For now hardcode to 128MHz */
 	nrfx_clock_divider_set(NRF_CLOCK_DOMAIN_HFCLK,
 			       NRF_CLOCK_HFCLK_DIV_1);
 #endif
 	printk("Starting %s with CPU frequency: %d MHz\n", CONFIG_BOARD, SystemCoreClock/MHZ(1));
 
-#ifdef CONFIG_USB_DEVICE_STACK
+#if USES_USB_ETH
 	init_usb();
 
 	/* Redirect static IP address to netusb*/
@@ -72,22 +67,9 @@ int main(void)
 		printk("Cannot find network interface: %s", "eth_netusb");
 		return -1;
 	}
-	if (sizeof(CONFIG_NET_CONFIG_USB_IPV4_ADDR) > 1) {
-		if (net_addr_pton(AF_INET, CONFIG_NET_CONFIG_USB_IPV4_ADDR, &addr)) {
-			printk("Invalid address: %s", CONFIG_NET_CONFIG_USB_IPV4_ADDR);
-			return -1;
-		}
-		net_if_ipv4_addr_add(iface, &addr, NET_ADDR_MANUAL, 0);
-	}
 
-	if (sizeof(CONFIG_NET_CONFIG_USB_IPV4_MASK) > 1) {
-		/* If not empty */
-		if (net_addr_pton(AF_INET, CONFIG_NET_CONFIG_USB_IPV4_MASK, &addr)) {
-			printk("Invalid netmask: %s", CONFIG_NET_CONFIG_USB_IPV4_MASK);
-		} else {
-			net_if_ipv4_set_netmask(iface, &addr);
-		}
-	}
+	net_if_ipv4_addr_add(iface, &addr, NET_ADDR_MANUAL, 0);
+	net_if_ipv4_set_netmask_by_addr(iface, &addr, &mask);
 #endif
 
 #ifdef CONFIG_SLIP
@@ -99,22 +81,8 @@ int main(void)
 		return -1;
 	}
 
-	if (sizeof(CONFIG_NET_CONFIG_SLIP_IPV4_ADDR) > 1) {
-		if (net_addr_pton(AF_INET, CONFIG_NET_CONFIG_SLIP_IPV4_ADDR, &addr)) {
-			printk("Invalid address: %s", CONFIG_NET_CONFIG_SLIP_IPV4_ADDR);
-			return -1;
-		}
-		net_if_ipv4_addr_add(slip_iface, &addr, NET_ADDR_MANUAL, 0);
-	}
-
-	if (sizeof(CONFIG_NET_CONFIG_SLIP_IPV4_MASK) > 1) {
-		/* If not empty */
-		if (net_addr_pton(AF_INET, CONFIG_NET_CONFIG_SLIP_IPV4_MASK, &addr)) {
-			printk("Invalid netmask: %s", CONFIG_NET_CONFIG_SLIP_IPV4_MASK);
-		} else {
-			net_if_ipv4_set_netmask(slip_iface, &addr);
-		}
-	}
+	net_if_ipv4_addr_add(slip_iface, &addr, NET_ADDR_MANUAL, 0);
+	net_if_ipv4_set_netmask_by_addr(slip_iface, &addr, &mask);
 #endif /* CONFIG_SLIP */
 
 #ifdef CONFIG_NET_CONFIG_SETTINGS

@@ -42,9 +42,12 @@ config BT_ADV_PROV_FAST_PAIR_ADV_BUF_SIZE
 config BT_ADV_PROV_FAST_PAIR_SHOW_UI_PAIRING
 	bool "Show UI indication in Fast Pair not discoverable advertising"
 	default y
+	depends on BT_FAST_PAIR_SUBSEQUENT_PAIRING
 	help
 	  The UI indication should be displayed if device is ready for pairing.
 	  The provider also exposes API to show/hide UI indication in runtime.
+	  This Kconfig option is only available when the Fast Pair Subsequent
+	  Pairing feature is supported.
 
 choice BT_ADV_PROV_FAST_PAIR_BATTERY_DATA_MODE
 	prompt "Select advertising battery data mode"
@@ -54,12 +57,14 @@ choice BT_ADV_PROV_FAST_PAIR_BATTERY_DATA_MODE
 
 config BT_ADV_PROV_FAST_PAIR_BATTERY_DATA_SHOW_UI
 	bool "Include battery data in Fast Pair not discoverable advertising and show UI indication"
+	depends on BT_FAST_PAIR_BN
 	help
 	  When this option is enabled, battery data is included in Fast Pair not discoverable
 	  advertising and the show battery data UI indication mode is enabled.
 
 config BT_ADV_PROV_FAST_PAIR_BATTERY_DATA_HIDE_UI
 	bool "Include battery data in Fast Pair not discoverable advertising and hide UI indication"
+	depends on BT_FAST_PAIR_BN
 	help
 	  When this option is enabled, battery data is included in Fast Pair not discoverable
 	  advertising and the hide battery data UI indication mode is enabled.

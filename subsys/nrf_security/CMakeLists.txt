@@ -20,22 +20,30 @@ set(mbedtls_target    mbedtls)
 # Populate ARM_MBEDTLS_PATH with the value of ZEPHYR_MBEDTLS_MODULE_DIR
 set(ARM_MBEDTLS_PATH ${ZEPHYR_MBEDTLS_MODULE_DIR})
 
+if(CONFIG_SSF_SERVER_PSA_CRYPTO_SERVICE_ENABLED)
+# Inside the SSF server, when the PSA crypto service is enabled we need to
+# use the OWNER id to give key ownership to the differrent domains.
+set(CONFIG_MBEDTLS_PSA_CRYPTO_KEY_ID_ENCODES_OWNER     True)
+else()
 # MBEDTLS_PSA_CRYPTO_KEY_ID_ENCODES_OWNER must be disabled for Zephyr
 # builds or when MBEDTLS_USE_PSA_CRYPTO is enabled (e.g. for TLS/DTLS
 # and x.509 support) Note: This configuration is internal and may be
 # removed with a new mbed TLS version
 set(CONFIG_MBEDTLS_PSA_CRYPTO_KEY_ID_ENCODES_OWNER     False)
+endif()
 
 if(CONFIG_BUILD_WITH_TFM)
-  # TF-M is enabled and we are not inside the TF-M build system.
-  # Thus, do not build regular `mbedcrypto` library, instead export
-  # needed settings to the TF-M build system using TFM_CMAKE_OPTIONS.
-
-  # NS-build: PSA APIs are already compiled in TF-M image
-  set(COMPILE_PSA_APIS                          False)
-
   # Execute Cmake logic to forward configurations to TF-M build
   include(${NRF_SECURITY_ROOT}/cmake/config_to_tf-m.cmake)
+endif()
+
+if(CONFIG_BUILD_WITH_TFM OR CONFIG_PSA_SSF_CRYPTO_CLIENT)
+  # We enable either TF-M or the SSF client PSA crypto interface but we are
+  # not in the secure image build
+
+  # NS-build: PSA APIs are already compiled in the secure image and is
+  # exposed as a service
+  set(COMPILE_PSA_APIS                          False)
 
   # Add replacement platform.c for NS build
   list(APPEND src_zephyr
@@ -49,7 +57,7 @@ if(CONFIG_BUILD_WITH_TFM)
 
   get_cmake_property(all_vars VARIABLES)
 
-  # 1. Non-secure should not build anything PSA related
+  # 1. Non-secure should not build the PSA core or drivers
   set(CONFIG_MBEDTLS_PSA_CRYPTO_C               False)
 
   # 2. Enable OBERON_BACKEND, disable CC3XX_BACKEND
@@ -91,6 +99,8 @@ else()
     set(COMPILE_PSA_APIS                        True)
   endif()
 endif()
+
+set(CONFIG_MBEDTLS_PSA_CRYPTO_EXTERNAL_RNG  True)
 
 # Finally adding the crypto lib
 add_subdirectory(${NRFXLIB_DIR}/crypto crypto_copy)

@@ -66,6 +66,44 @@ static const bsec_sensor_configuration_t bsec_requested_virtual_sensors[] = {
 	},
 };
 
+static const bsec_sensor_configuration_t quick_init_sensor_config[] = {
+	/* Gas Measurements */
+	{
+		.sensor_id   = BSEC_OUTPUT_IAQ,
+		.sample_rate = BSEC_SAMPLE_RATE_CONT,
+	},
+	{
+		.sensor_id   = BSEC_OUTPUT_CO2_EQUIVALENT,
+		.sample_rate = BSEC_SAMPLE_RATE_CONT,
+	},
+	{
+		.sensor_id   = BSEC_OUTPUT_BREATH_VOC_EQUIVALENT,
+		.sample_rate = BSEC_SAMPLE_RATE_CONT,
+	},
+	{
+		.sensor_id   = BSEC_OUTPUT_STABILIZATION_STATUS,
+		.sample_rate = BSEC_SAMPLE_RATE_CONT,
+	},
+	{
+		.sensor_id   = BSEC_OUTPUT_RUN_IN_STATUS,
+		.sample_rate = BSEC_SAMPLE_RATE_CONT,
+	},
+
+	/* Temperature, Pressure, Humidity */
+	{
+		.sensor_id   = BSEC_OUTPUT_SENSOR_HEAT_COMPENSATED_TEMPERATURE,
+		.sample_rate = BSEC_SAMPLE_RATE_CONT,
+	},
+	{
+		.sensor_id   = BSEC_OUTPUT_RAW_PRESSURE,
+		.sample_rate = BSEC_SAMPLE_RATE_CONT,
+	},
+	{
+		.sensor_id   = BSEC_OUTPUT_SENSOR_HEAT_COMPENSATED_HUMIDITY,
+		.sample_rate = BSEC_SAMPLE_RATE_CONT,
+	},
+};
+
 
 /* Definitions used to store and retrieve BSEC state from the settings API */
 #define SETTINGS_NAME_BSEC "bsec"
@@ -212,12 +250,12 @@ static void output_ready(const struct device *dev, const bsec_output_t *outputs,
 		case BSEC_OUTPUT_CO2_EQUIVALENT:
 			data->latest.co2 = (float) outputs[i].signal;
 			data->latest.co2_accuracy = (enum bme68x_accuracy) outputs[i].accuracy;
-			LOG_DBG("CO2: %.2f ppm", data->latest.co2);
+			LOG_DBG("CO2: %.2f ppm", (double)data->latest.co2);
 			break;
 		case BSEC_OUTPUT_BREATH_VOC_EQUIVALENT:
 			data->latest.voc = (float) outputs[i].signal;
 			data->latest.voc_accuracy = (enum bme68x_accuracy) outputs[i].accuracy;
-			LOG_DBG("VOC: %.2f ppm", data->latest.voc);
+			LOG_DBG("VOC: %.2f ppm", (double)data->latest.voc);
 			break;
 		case BSEC_OUTPUT_STABILIZATION_STATUS:
 			data->latest.gas_stabilizasion_status = (bool)(outputs[i].signal != 0.0f);
@@ -229,15 +267,15 @@ static void output_ready(const struct device *dev, const bsec_output_t *outputs,
 			break;
 		case BSEC_OUTPUT_SENSOR_HEAT_COMPENSATED_TEMPERATURE:
 			data->latest.temperature = (float) outputs[i].signal;
-			LOG_DBG("Temp: %.2f C", data->latest.temperature);
+			LOG_DBG("Temp: %.2f C", (double)data->latest.temperature);
 			break;
 		case BSEC_OUTPUT_RAW_PRESSURE:
 			data->latest.pressure = (float) outputs[i].signal;
-			LOG_DBG("Press: %.2f Pa", data->latest.pressure);
+			LOG_DBG("Press: %.2f Pa", (double)data->latest.pressure);
 			break;
 		case BSEC_OUTPUT_SENSOR_HEAT_COMPENSATED_HUMIDITY:
 			data->latest.humidity = (float) outputs[i].signal;
-			LOG_DBG("Hum: %.2f %%", data->latest.humidity);
+			LOG_DBG("Hum: %.2f %%", (double)data->latest.humidity);
 			break;
 		default:
 			LOG_WRN("unknown bsec output id: %d", outputs[i].sensor_id);
@@ -262,7 +300,7 @@ static size_t sensor_data_to_bsec_inputs(bsec_bme_settings_t sensor_settings,
 		inputs[i].sensor_id = BSEC_INPUT_HEATSOURCE;
 		inputs[i].signal = temp_offset;
 		inputs[i].time_stamp = timestamp_ns;
-		LOG_DBG("Temp offset: %.2f", inputs[i].signal);
+		LOG_DBG("Temp offset: %.2f", (double)inputs[i].signal);
 		i++;
 
 		/* append temperature input */
@@ -275,7 +313,7 @@ static size_t sensor_data_to_bsec_inputs(bsec_bme_settings_t sensor_settings,
 		}
 
 		inputs[i].time_stamp = timestamp_ns;
-		LOG_DBG("Temp: %.2f", inputs[i].signal);
+		LOG_DBG("Temp: %.2f", (double)inputs[i].signal);
 		i++;
 	}
 	if (BSEC_INPUT_PRESENT(sensor_settings, BSEC_INPUT_HUMIDITY)) {
@@ -288,21 +326,21 @@ static size_t sensor_data_to_bsec_inputs(bsec_bme_settings_t sensor_settings,
 		}
 
 		inputs[i].time_stamp = timestamp_ns;
-		LOG_DBG("Hum: %.2f", inputs[i].signal);
+		LOG_DBG("Hum: %.2f", (double)inputs[i].signal);
 		i++;
 	}
 	if (BSEC_INPUT_PRESENT(sensor_settings, BSEC_INPUT_PRESSURE)) {
 		inputs[i].sensor_id = BSEC_INPUT_PRESSURE;
 		inputs[i].signal =  data->pressure;
 		inputs[i].time_stamp = timestamp_ns;
-		LOG_DBG("Press: %.2f", inputs[i].signal);
+		LOG_DBG("Press: %.2f", (double)inputs[i].signal);
 		i++;
 	}
 	if (BSEC_INPUT_PRESENT(sensor_settings, BSEC_INPUT_GASRESISTOR)) {
 		inputs[i].sensor_id = BSEC_INPUT_GASRESISTOR;
 		inputs[i].signal =  data->gas_resistance;
 		inputs[i].time_stamp = timestamp_ns;
-		LOG_DBG("Gas: %.2f", inputs[i].signal);
+		LOG_DBG("Gas: %.2f", (double)inputs[i].signal);
 		i++;
 	}
 	if (BSEC_INPUT_PRESENT(sensor_settings, BSEC_INPUT_PROFILE_PART)) {
@@ -313,7 +351,7 @@ static size_t sensor_data_to_bsec_inputs(bsec_bme_settings_t sensor_settings,
 			inputs[i].signal =  data->gas_index;
 		}
 		inputs[i].time_stamp = timestamp_ns;
-		LOG_DBG("Profile: %.2f", inputs[i].signal);
+		LOG_DBG("Profile: %.2f", (double)inputs[i].signal);
 		i++;
 	}
 	return i;
@@ -380,7 +418,7 @@ static int apply_sensor_settings(const struct device *dev, bsec_bme_settings_t s
 	return 0;
 }
 
-static void fetch_and_process_output(const struct device *dev,
+static int fetch_and_process_output(const struct device *dev,
 				     bsec_bme_settings_t *sensor_settings,
 				     uint64_t timestamp_ns)
 {
@@ -395,7 +433,7 @@ static void fetch_and_process_output(const struct device *dev,
 
 	if (ret) {
 		LOG_DBG("bme68x_get_data err: %d", ret);
-		return;
+		return ret;
 	}
 
 	for (size_t i = 0; i < n_fields; ++i) {
@@ -414,6 +452,7 @@ static void fetch_and_process_output(const struct device *dev,
 		}
 		output_ready(dev, outputs, n_outputs);
 	}
+	return ret;
 }
 
 /* Manage all recurrings tasks for the sensor:
@@ -425,31 +464,62 @@ static void fetch_and_process_output(const struct device *dev,
 static void bsec_thread_fn(const struct device *dev)
 {
 	int ret;
+	bool wait_for_first_data = true;
+	struct bme68x_iaq_data *data = dev->data;
 	bsec_bme_settings_t sensor_settings = {0};
 
+
+	data->n_required_sensor_settings = ARRAY_SIZE(data->required_sensor_settings);
+	ret = bsec_update_subscription(
+		quick_init_sensor_config,
+		ARRAY_SIZE(quick_init_sensor_config),
+		data->required_sensor_settings, &data->n_required_sensor_settings);
+	if (ret) {
+		LOG_ERR("bsec_update_subscription failed: %d", ret);
+	}
+
 	while (true) {
-		uint64_t timestamp_ns = k_ticks_to_ns_floor64(k_uptime_ticks());
+		uint64_t timestamp_ns = k_ticks_to_ns_near64(k_uptime_ticks());
 
 		if (timestamp_ns < sensor_settings.next_call) {
-			LOG_DBG("bsec_sensor_control not ready yet");
 			k_sleep(K_NSEC(sensor_settings.next_call - timestamp_ns));
-			continue;
+			continue; /* restart to get new timestamp */
 		}
-
 		memset(&sensor_settings, 0, sizeof(sensor_settings));
+
 		ret = bsec_sensor_control((int64_t)timestamp_ns, &sensor_settings);
 		if (ret != BSEC_OK) {
 			LOG_ERR("bsec_sensor_control err: %d", ret);
-			continue;
+			continue; /* retry */
 		}
 
-		if (apply_sensor_settings(dev, sensor_settings)) {
-			continue;
+		ret = apply_sensor_settings(dev, sensor_settings);
+		if (ret) {
+			LOG_ERR("apply_sensor_settings failed: %d", ret);
+			continue; /* retry */
 		}
 
 		if (sensor_settings.trigger_measurement &&
 		    sensor_settings.op_mode != BME68X_SLEEP_MODE) {
-			fetch_and_process_output(dev, &sensor_settings, timestamp_ns);
+			ret = fetch_and_process_output(dev, &sensor_settings, timestamp_ns);
+			if ((ret == BSEC_OK) && wait_for_first_data) {
+				/* sensor values initialized, switch to regular settings */
+				LOG_DBG("switching to regular interval");
+				wait_for_first_data = false;
+				data->n_required_sensor_settings =
+					ARRAY_SIZE(data->required_sensor_settings);
+				ret = bsec_update_subscription(
+					bsec_requested_virtual_sensors,
+					ARRAY_SIZE(bsec_requested_virtual_sensors),
+					data->required_sensor_settings,
+					&data->n_required_sensor_settings);
+				if (ret) {
+					LOG_ERR("bsec_update_subscription failed: %d", ret);
+				}
+			}
+			if (ret) {
+				LOG_DBG("fetch_and_process_output failed: %d", ret);
+			}
 		}
 
 		/* if save timer is expired, save and restart timer */
@@ -459,8 +529,6 @@ static void bsec_thread_fn(const struct device *dev)
 				      K_MINUTES(CONFIG_BME68X_IAQ_SAVE_INTERVAL_MINUTES),
 				      K_NO_WAIT);
 		}
-
-		k_sleep(K_SECONDS(BSEC_SAMPLE_PERIOD_S));
 	}
 
 }
@@ -527,10 +595,6 @@ static int bme68x_bsec_init(const struct device *dev)
 	} else if (err == BSEC_OK) {
 		LOG_DBG("Setting BSEC state successful.");
 	}
-
-	bsec_update_subscription(bsec_requested_virtual_sensors,
-				 ARRAY_SIZE(bsec_requested_virtual_sensors),
-				 data->required_sensor_settings, &data->n_required_sensor_settings);
 
 	k_thread_create(&data->thread,
 			thread_stack,

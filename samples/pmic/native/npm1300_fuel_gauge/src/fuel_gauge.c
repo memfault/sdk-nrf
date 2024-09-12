@@ -15,7 +15,7 @@
 #include "nrf_fuel_gauge.h"
 
 /* nPM1300 CHARGER.BCHGCHARGESTATUS.CONSTANTCURRENT register bitmask */
-#define NPM1300_CHG_STATUS_CC_MASK BIT_MASK(3)
+#define NPM1300_CHG_STATUS_CC_MASK BIT(3)
 
 static float max_charge_current;
 static float term_charge_current;
@@ -107,8 +107,8 @@ int fuel_gauge_update(const struct device *charger)
 	tte = nrf_fuel_gauge_tte_get();
 	ttf = nrf_fuel_gauge_ttf_get(cc_charging, -term_charge_current);
 
-	printk("V: %.3f, I: %.3f, T: %.2f, ", voltage, current, temp);
-	printk("SoC: %.2f, TTE: %.0f, TTF: %.0f\n", soc, tte, ttf);
+	printk("V: %.3f, I: %.3f, T: %.2f, ", (double)voltage, (double)current, (double)temp);
+	printk("SoC: %.2f, TTE: %.0f, TTF: %.0f\n", (double)soc, (double)tte, (double)ttf);
 
 	return 0;
 }

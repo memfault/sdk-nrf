@@ -56,7 +56,7 @@ Supported backends
 ==================
 
 When so configured, this library includes a Zephyr logging backend that can transport log messages to nRF Cloud using REST, MQTT, or CoAP.
-The logging backend can also use either JSON messages or dictionary-based compact binary messages (binary messages are only supported with MQTT).
+The logging backend can also use either JSON messages or dictionary-based compact binary messages.
 
 Multiple JSON log messages are sent together as a JSON array to the `d2c/bulk device message topic <nRF Cloud MQTT Topics_>`_.
 The nRF Cloud backend splits the array into individual JSON messages for display.
@@ -100,7 +100,7 @@ Configure one of the following Kconfig options to select the data transport meth
 
 Configure the message encoding:
 
-* :kconfig:option:`CONFIG_LOG_BACKEND_NRF_CLOUD_OUTPUT_TEXT` or :kconfig:option:`CONFIG_LOG_BACKEND_NRF_CLOUD_OUTPUT_DICTIONARY` (MQTT only)
+* :kconfig:option:`CONFIG_LOG_BACKEND_NRF_CLOUD_OUTPUT_TEXT` or :kconfig:option:`CONFIG_LOG_BACKEND_NRF_CLOUD_OUTPUT_DICTIONARY`
 
 See `Dictionary-based Logging`_ to learn how dictionary-based logging works, how the dictionary is built, and how to decode the binary log output.
 Dictionary logs are compact binary log messages that require decoding using an offline script.
@@ -141,7 +141,7 @@ Usage
 To use this library, complete the following steps:
 
 1. Include the :file:`nrf_cloud_log.h` file.
-#. If the :kconfig:option:`CONFIG_NRF_CLOUD_LOG_DIRECT` Kconfig option is enabled, call the :c:func:`nrf_cloud_log_send` function when connected to nRF Cloud using MQTT or :c:func:`nrf_cloud_rest_log_send` when using REST.
+#. If the :kconfig:option:`CONFIG_NRF_CLOUD_LOG_DIRECT` Kconfig option is enabled, call the :c:func:`nrf_cloud_log_send` function when connected to nRF Cloud using MQTT or CoAP, or call :c:func:`nrf_cloud_rest_log_send` when using REST.
 #. If the :kconfig:option:`CONFIG_NRF_CLOUD_LOG_BACKEND` option is enabled, use the normal Zephyr logging macros :c:macro:`LOG_ERR`, :c:macro:`LOG_WRN`, :c:macro:`LOG_INF`, or :c:macro:`LOG_DBG`, as well as the ``_HEXDUMP_ forms``.
 
 Samples using the library

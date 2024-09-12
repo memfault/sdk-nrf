@@ -13,8 +13,10 @@ LOG_MODULE_DECLARE(nfc_platform, CONFIG_NFC_PLATFORM_LOG_LEVEL);
 
 #ifdef CONFIG_NFC_LOW_LATENCY_IRQ
 #define SWI_NAME(number)	SWI_NAME2(number)
-#ifdef CONFIG_SOC_SERIES_NRF53X
+#if defined(CONFIG_SOC_SERIES_NRF53X)
 #define SWI_NAME2(number)	EGU ## number ## _IRQn
+#elif defined(CONFIG_SOC_SERIES_NRF54LX)
+#define SWI_NAME2(number)	SWI0 ## number ## _IRQn
 #else
 #define SWI_NAME2(number)	SWI ## number ## _IRQn
 #endif
@@ -62,6 +64,10 @@ static int ring_buf_get_data(struct ring_buf *buf, uint8_t **data, uint32_t size
 	uint32_t tmp;
 	int err;
 
+	if (!buf || !data || !is_alloc) {
+		return -EINVAL;
+	}
+
 	*is_alloc = false;
 
 	/* Try to access data without copying.
@@ -77,7 +83,7 @@ static int ring_buf_get_data(struct ring_buf *buf, uint8_t **data, uint32_t size
 		}
 
 		*data = k_malloc(size);
-		if (data == NULL) {
+		if (*data == NULL) {
 			LOG_DBG("Could not allocate %d bytes.", size);
 			return -ENOMEM;
 		}

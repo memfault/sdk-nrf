@@ -566,12 +566,16 @@ int sock_open_and_connect(
 	}
 
 	/* Set port to address info */
-	if (family == AF_INET) {
-		((struct sockaddr_in *)socket_info->addrinfo->ai_addr)->sin_port = htons(port);
-	} else if (family == AF_INET6) {
-		((struct sockaddr_in6 *)socket_info->addrinfo->ai_addr)->sin6_port = htons(port);
-	} else {
-		assert(0);
+	if ((address != NULL) && (strlen(address) != 0)) {
+		if (family == AF_INET) {
+			((struct sockaddr_in *)socket_info->addrinfo->ai_addr)->sin_port =
+				htons(port);
+		} else if (family == AF_INET6) {
+			((struct sockaddr_in6 *)socket_info->addrinfo->ai_addr)->sin6_port =
+				htons(port);
+		} else {
+			assert(0);
+		}
 	}
 
 	/* Create socket */
@@ -686,7 +690,7 @@ static void print_throughput_summary(uint32_t data_len, int64_t time_ms)
 
 	mosh_print("Summary:");
 	mosh_print("  Data length: %7u bytes", data_len);
-	mosh_print("  Time:       %8.3f s", (float)time_ms / 1000);
+	mosh_print("  Time:       %8.3f s", (double)time_ms / 1000.0);
 	mosh_print("  Throughput:  %7.0f bit/s", throughput);
 }
 
@@ -836,7 +840,7 @@ static void sock_send_random_data_length(struct sock_info *socket_info)
 			mosh_print(
 				"%7u bytes, %6.2fs, %6.0f bit/s",
 				socket_info->send_bytes_sent,
-				(float)ul_time_intermediate_ms / 1000,
+				(double)ul_time_intermediate_ms / 1000.0,
 				throughput);
 
 			socket_info->send_print_interval += 10;

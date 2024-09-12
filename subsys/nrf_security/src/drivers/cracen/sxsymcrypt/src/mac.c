@@ -1,5 +1,4 @@
 /*
- *  Copyright (c) 2020 Silex Insight
  *  Copyright (c) 2023 Nordic Semiconductor ASA
  *
  *  SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
@@ -189,6 +188,10 @@ int sx_mac_status(struct sxmac *c)
 	if (r == SX_ERR_HW_PROCESSING) {
 		return r;
 	}
+
+#if CONFIG_DCACHE
+	sys_cache_data_invd_range((void *)&c->extramem, sizeof(c->extramem));
+#endif
 
 	sx_mac_free(c);
 

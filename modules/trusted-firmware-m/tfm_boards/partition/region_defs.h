@@ -9,9 +9,6 @@
 
 #include "flash_layout.h"
 
-#define BL2_HEAP_SIZE	   (0x00001000)
-#define BL2_MSP_STACK_SIZE (0x00001800)
-
 #ifdef ENABLE_HEAP
 #define S_HEAP_SIZE (0x00001000)
 #endif
@@ -22,10 +19,6 @@
 #define NS_HEAP_SIZE  (0x00001000)
 #define NS_STACK_SIZE (0x000001E0)
 
-/* Size of nRF SPU (Nordic IDAU) regions */
-#define SPU_FLASH_REGION_SIZE	   (CONFIG_NRF_SPU_FLASH_REGION_SIZE)
-#define SPU_SRAM_REGION_SIZE	   (CONFIG_NRF_SPU_RAM_REGION_SIZE)
-#define SPU_FLASH_REGION_ALIGNMENT (CONFIG_NRF_SPU_FLASH_REGION_ALIGNMENT)
 
 #if !defined(LINK_TO_SECONDARY_PARTITION)
 #ifdef NRF_NS_SECONDARY
@@ -61,6 +54,14 @@
 #endif
 #endif
 
+
+/* In nR53 and nRF91 series the SPU is used to configure S/NS/NSC regions. */
+#if defined(CONFIG_CPU_HAS_NRF_IDAU)
+
+/* These definitions are being used by the spu.c file in the TF-M repo. */
+#define SPU_FLASH_REGION_SIZE     (CONFIG_NRF_TRUSTZONE_FLASH_REGION_SIZE)
+#define SPU_SRAM_REGION_SIZE      (CONFIG_NRF_TRUSTZONE_RAM_REGION_SIZE)
+
 /* The veneers needs to be placed at the end of the secure image.
  * This is because the NCS sub-region is defined as starting at the highest
  * address of an SPU region and going downwards.
@@ -75,12 +76,14 @@
  * these override the default start and end alignments.
  */
 #define TFM_LINKER_VENEERS_START                                        \
-	(ALIGN(SPU_FLASH_REGION_ALIGNMENT) - TFM_LINKER_VENEERS_SIZE +      \
-	 (. > (ALIGN(SPU_FLASH_REGION_ALIGNMENT) - TFM_LINKER_VENEERS_SIZE) \
-		  ? SPU_FLASH_REGION_ALIGNMENT                                  \
+	(ALIGN(CONFIG_NRF_TRUSTZONE_FLASH_REGION_SIZE) - TFM_LINKER_VENEERS_SIZE +      \
+	 (. > (ALIGN(CONFIG_NRF_TRUSTZONE_FLASH_REGION_SIZE) - TFM_LINKER_VENEERS_SIZE) \
+		  ? CONFIG_NRF_TRUSTZONE_FLASH_REGION_SIZE                                  \
 		  : 0))
 
-#define TFM_LINKER_VENEERS_END ALIGN(SPU_FLASH_REGION_ALIGNMENT)
+#define TFM_LINKER_VENEERS_END ALIGN(CONFIG_NRF_TRUSTZONE_FLASH_REGION_SIZE)
+
+#endif /* CONFIG_CPU_HAS_NRF_IDAU */
 
 /* Non-secure regions */
 #define NS_CODE_START (PM_APP_OFFSET)
@@ -104,17 +107,6 @@
 #define NRF_NS_STORAGE_PARTITION_START (PM_NONSECURE_STORAGE_ADDRESS)
 #define NRF_NS_STORAGE_PARTITION_SIZE  (PM_NONSECURE_STORAGE_SIZE)
 #endif
-
-#ifdef BL2
-/* Bootloader regions */
-#define BL2_CODE_START (FLASH_AREA_BL2_OFFSET)
-#define BL2_CODE_SIZE  (FLASH_AREA_BL2_SIZE)
-#define BL2_CODE_LIMIT (BL2_CODE_START + BL2_CODE_SIZE - 1)
-
-#define BL2_DATA_START (PM_TFM_SRAM_ADDRESS)
-#define BL2_DATA_SIZE  (PM_TFM_SRAM_SIZE)
-#define BL2_DATA_LIMIT (BL2_DATA_START + BL2_DATA_SIZE - 1)
-#endif /* BL2 */
 
 /* Shared data area between bootloader and runtime firmware.
  * Shared data area is allocated at the beginning of the RAM, it is overlapping

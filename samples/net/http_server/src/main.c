@@ -12,6 +12,7 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/logging/log_ctrl.h>
 #include <zephyr/net/net_ip.h>
+#include <zephyr/net/dns_sd.h>
 #include <zephyr/net/socket.h>
 #include <zephyr/sys/reboot.h>
 
@@ -24,7 +25,16 @@
 #include <zephyr/net/http/client.h>
 #include <zephyr/net/http/parser.h>
 
+#if defined(CONFIG_DK_LIBRARY)
 #include <dk_buttons_and_leds.h>
+#endif /* defined(CONFIG_DK_LIBRARY) */
+
+#if defined(CONFIG_POSIX_API)
+#include <zephyr/posix/arpa/inet.h>
+#include <zephyr/posix/netdb.h>
+#include <zephyr/posix/unistd.h>
+#include <zephyr/posix/sys/socket.h>
+#endif
 
 #include "credentials_provision.h"
 
@@ -45,6 +55,12 @@ LOG_MODULE_REGISTER(http_server, CONFIG_HTTP_SERVER_SAMPLE_LOG_LEVEL);
 				  " Rebooting the device" : "");		\
 	LOG_PANIC();								\
 	IF_ENABLED(CONFIG_REBOOT, (sys_reboot(0)))
+
+#if defined(CONFIG_NET_HOSTNAME)
+/* Register service */
+DNS_SD_REGISTER_TCP_SERVICE(http_server_sd, CONFIG_NET_HOSTNAME, "_http", "local",
+			    DNS_SD_EMPTY_TXT, SERVER_PORT);
+#endif /* CONFIG_NET_HOSTNAME */
 
 /* Zephyr NET management event callback structures. */
 static struct net_mgmt_event_callback l4_cb;
@@ -136,8 +152,6 @@ static void connectivity_event_handler(struct net_mgmt_event_callback *cb,
 /* Update the LED states. Returns 0 if it was updated, otherwise -1. */
 static int led_update(uint8_t index, uint8_t state)
 {
-	int ret;
-
 	if (state <= 1) {
 		led_states[index] = state;
 	} else {
@@ -145,12 +159,16 @@ static int led_update(uint8_t index, uint8_t state)
 		return -EBADMSG;
 	}
 
+#if defined(CONFIG_DK_LIBRARY)
+	int ret;
+
 	ret = dk_set_led(index, led_states[index]);
 	if (ret) {
 		LOG_ERR("Failed to update LED %d state to %d", index, led_states[index]);
 		FATAL_ERROR();
 		return -EIO;
 	}
+#endif /* defined(CONFIG_DK_LIBRARY) */
 
 	LOG_INF("LED %d state updated to %d", index, led_states[index]);
 
@@ -655,12 +673,14 @@ int main(void)
 
 	parser_init();
 
+#if defined(CONFIG_DK_LIBRARY)
 	ret = dk_leds_init();
 	if (ret) {
 		LOG_ERR("dk_leds_init, error: %d", ret);
 		FATAL_ERROR();
 		return ret;
 	}
+#endif /* defined(CONFIG_DK_LIBRARY) */
 
 	/* Setup handler for Zephyr NET Connection Manager events. */
 	net_mgmt_init_event_callback(&l4_cb, l4_event_handler, L4_EVENT_MASK);
@@ -684,6 +704,16 @@ int main(void)
 		LOG_ERR("conn_mgr_all_if_connect, error: %d", ret);
 		FATAL_ERROR();
 		return ret;
+	}
+
+	/* Resend connection status if the sample is built for NATIVE_SIM.
+	 * This is necessary because the network interface is automatically brought up
+	 * at SYS_INIT() before main() is called.
+	 * This means that NET_EVENT_L4_CONNECTED fires before the
+	 * appropriate handler l4_event_handler() is registered.
+	 */
+	if (IS_ENABLED(CONFIG_BOARD_NATIVE_SIM)) {
+		conn_mgr_mon_resend_status();
 	}
 
 	k_sem_take(&network_connected_sem, K_FOREVER);

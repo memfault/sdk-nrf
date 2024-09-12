@@ -1,8 +1,7 @@
-/** PSA cryptographic AEAD driver for Silex Insight offload hardware.
+/**
  *
  * @file
  *
- * @copyright Copyright (c) 2021 Silex Insight
  * @copyright Copyright (c) 2023 Nordic Semiconductor ASA
  *
  * SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
@@ -173,7 +172,7 @@ static psa_status_t initialize_or_resume_context(cracen_aead_operation_t *operat
 	case CRACEN_NOT_INITIALIZED:
 		status = initialize_ctx(operation);
 
-		operation->context_state = CRACEN_CONTEXT_INITIALIZED;
+		operation->context_state = CRACEN_HW_RESERVED;
 		break;
 	case CRACEN_CONTEXT_INITIALIZED:
 		status = silex_statuscodes_to_psa(sx_aead_resume_state(&operation->ctx));
@@ -291,8 +290,8 @@ static psa_status_t setup(cracen_aead_operation_t *operation, enum cipher_operat
 
 	memcpy(operation->key_buffer, key_buffer, key_buffer_size);
 
-	psa_status_t status =
-		cracen_load_keyref(attributes, key_buffer, key_buffer_size, &operation->keyref);
+	psa_status_t status = cracen_load_keyref(attributes, operation->key_buffer, key_buffer_size,
+						 &operation->keyref);
 	if (status != PSA_SUCCESS) {
 		return status;
 	}
@@ -391,6 +390,12 @@ static psa_status_t cracen_aead_update_internal(cracen_aead_operation_t *operati
 			memcpy(operation->unprocessed_input + operation->unprocessed_input_bytes,
 			       input, input_length);
 			operation->unprocessed_input_bytes += input_length;
+			/* The output_length can be NULL when we process the additional data because
+			 * the value is not needed by any of the supported algorithms.
+			 */
+			if (output_length != NULL) {
+				*output_length = 0;
+			}
 			return PSA_SUCCESS;
 		}
 

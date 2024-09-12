@@ -57,19 +57,19 @@ Currently, the following configurations are supported:
 * nRF7002 EK + SPIM
 
 
-To build for the nRF7002 DK, use the ``nrf7002dk_nrf5340_cpuapp`` build target.
+To build for the nRF7002 DK, use the ``nrf7002dk/nrf5340/cpuapp`` board target.
 The following is an example of the CLI command:
 
 .. code-block:: console
 
-   west build -b nrf7002dk_nrf5340_cpuapp
+   west build -b nrf7002dk/nrf5340/cpuapp
 
-To build for the nRF7002 EK and nRF5340 DK, use the ``nrf5340dk_nrf5340_cpuapp`` build target with the ``SHIELD`` CMake option set to ``nrf7002ek``.
+To build for the nRF7002 EK and nRF5340 DK, use the ``nrf5340dk/nrf5340/cpuapp`` board target with the ``SHIELD`` CMake option set to ``nrf7002ek``.
 The following is an example of the CLI command:
 
 .. code-block:: console
 
-   west build -b nrf5340dk_nrf5340_cpuapp -- -DSHIELD=nrf7002ek
+   west build -b nrf5340dk/nrf5340/cpuapp -- -DSHIELD=nrf7002ek
 
 See also :ref:`cmake_options` for instructions on how to provide CMake options.
 
@@ -100,7 +100,7 @@ Testing
 
               tx_pkt_tput_mode = 0
               tx_pkt_sgi = 0
-              tx_pkt_preamble = 1
+              tx_pkt_preamble = 0
               tx_pkt_mcs = 0
               tx_pkt_rate = 6
               tx_pkt_gap = 0
@@ -111,7 +111,7 @@ Testing
               phy_calib_txiq = 1
               tx_pkt_num = -1
               tx_pkt_len = 1400
-              tx_power = 0
+              tx_power = 30
               he_ltf = 2
               he_gi = 2
               xo_val = 42
@@ -120,12 +120,14 @@ Testing
               rx = 0
               tx_tone_freq = 0
               rx_lna_gain = 0
-              rx_lna_gain = 0
+              rx_bb_gain = 0
               rx_capture_length = 0
               wlan_ant_switch_ctrl = 0
               tx_pkt_cw = 15
               reg_domain = 00
-              bypass_reg_domian = 0
+              bypass_reg_domain = 0
+              ru_tone = 26
+              ru_index = 1
 
          * To run a continuous Orthogonal frequency-division multiplexing (OFDM) TX traffic sequence with the following configuration:
 
@@ -169,7 +171,7 @@ Testing
          .. note::
 
             Edge backoff and antenna gain are configured in the Kconfig file.
-            To overwrite these backoffs with user-specified backoffs, use the``set_edge_bo`` and ``set_ant_gain`` commands.
+            To overwrite these backoffs with user-specified backoffs, use the ``set_edge_bo`` and ``set_ant_gain`` commands.
             These backoffs are applied only when the ``bypass_reg_domain`` is set to ``0``.
 
 
@@ -185,7 +187,7 @@ Testing
            .. code-block:: console
 
               wifi_radio_test init 14
-              wifi_radio_test tx_pkt_preamble 1
+              wifi_radio_test tx_pkt_preamble 0
               wifi_radio_test tx_pkt_rate 1
               wifi_radio_test tx_pkt_len 1024
               wifi_radio_test tx_power 10
@@ -475,6 +477,7 @@ Testing
 
               wifi_radio_test init 144
               wifi_radio_test rx_capture_length 64
+              wifi_radio_test rx_capture_timeout 10
               wifi_radio_test rx_cap 2
 
            The sample shows the following output:
@@ -493,6 +496,11 @@ Testing
               FDDF45
               07CF3D
 
+           Packet detection does not take place in a clean RF environment, producing the following output:
+
+           .. code-block:: console
+
+              ************* Packet detection failed ***********
 
          .. note::
 
@@ -504,6 +512,8 @@ Testing
               The captured samples will vary from run to run.
             * The capture is taken after WLAN packet detection, so it will not have the first few samples in the first WLAN packet.
             * Smaller packets should be used so that multiple packets can be seen in the capture.
+            * Packet detection does not take place in a clean RF environment.
+            * The command will timeout if no packets are detected within set timeout period.
 
 
       .. group-tab:: FICR/OTP programming

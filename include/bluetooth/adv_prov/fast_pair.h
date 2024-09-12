@@ -31,6 +31,10 @@ void bt_le_adv_prov_fast_pair_enable(bool enable);
 
 /** Show/hide UI indication in Fast Pair not discoverable advertising.
  *
+ * This API is only available when the @kconfig{CONFIG_BT_FAST_PAIR_SUBSEQUENT_PAIRING}
+ * Kconfig option is enabled. With this Kconfig option disabled, UI indications are always
+ * hidden.
+ *
  * This configuration does not affect Fast Pair discoverable advertising.
  *
  * User shall make sure that this function is not called while Fast Pair advertising data provider
@@ -41,6 +45,9 @@ void bt_le_adv_prov_fast_pair_enable(bool enable);
 void bt_le_adv_prov_fast_pair_show_ui_pairing(bool enable);
 
 /** Set advertising battery mode in Fast Pair not dicoverable advertising.
+ *
+ * This API can only be used when the @kconfig{CONFIG_BT_FAST_PAIR_BN} Kconfig option is enabled.
+ * With this Kconfig option disabled, battery data is not included in the advertising packet.
  *
  * To prevent tracking, the Fast Pair Provider should not include battery data in the advertising
  * packet all the time.
