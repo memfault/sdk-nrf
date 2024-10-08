@@ -216,6 +216,14 @@ static void lte_lc_event_handler(const struct lte_lc_evt *const evt)
 		TEST_ASSERT_EQUAL(test_event_data[index].modem_evt, evt->modem_evt);
 		break;
 
+	case LTE_LC_EVT_RAI_UPDATE:
+		TEST_ASSERT_EQUAL(test_event_data[index].rai_cfg.cell_id, evt->rai_cfg.cell_id);
+		TEST_ASSERT_EQUAL(test_event_data[index].rai_cfg.mcc, evt->rai_cfg.mcc);
+		TEST_ASSERT_EQUAL(test_event_data[index].rai_cfg.mnc, evt->rai_cfg.mnc);
+		TEST_ASSERT_EQUAL(test_event_data[index].rai_cfg.as_rai, evt->rai_cfg.as_rai);
+		TEST_ASSERT_EQUAL(test_event_data[index].rai_cfg.cp_rai, evt->rai_cfg.cp_rai);
+		break;
+
 	default:
 		TEST_FAIL_MESSAGE("Unhandled test event");
 		break;
@@ -266,7 +274,6 @@ static int sys_init_helper(void)
 }
 
 extern void on_modem_init(int err, void *ctx);
-extern void on_modem_shutdown(void *ctx);
 extern void lte_lc_on_modem_cfun(int mode, void *ctx);
 
 void test_lte_lc_on_modem_init_success(void)
@@ -342,21 +349,6 @@ void test_lte_lc_on_modem_init_rai_fail(void)
 	__mock_nrf_modem_at_printf_ExpectAndReturn("AT%RAI=0", -NRF_EFAULT);
 
 	on_modem_init(0, NULL);
-}
-
-void test_lte_lc_on_modem_shutdown(void)
-{
-	__cmock_nrf_modem_is_initialized_ExpectAndReturn(true);
-	__mock_nrf_modem_at_printf_ExpectAndReturn("AT+CFUN=0", EXIT_SUCCESS);
-
-	on_modem_shutdown(NULL);
-}
-
-void test_lte_lc_on_modem_shutdown_not_initialized(void)
-{
-	__cmock_nrf_modem_is_initialized_ExpectAndReturn(false);
-
-	on_modem_shutdown(NULL);
 }
 
 static int lte_lc_on_modem_cfun_callback_count;
@@ -4449,6 +4441,71 @@ void test_lte_lc_reduced_mobility_get_null(void)
 
 	ret = lte_lc_reduced_mobility_get(NULL);
 	TEST_ASSERT_EQUAL(-EINVAL, ret);
+}
+
+void test_lte_lc_rai_update(void)
+{
+	int index = 0;
+
+	lte_lc_callback_count_expected = 2;
+
+	test_event_data[index].type = LTE_LC_EVT_RAI_UPDATE;
+	test_event_data[index].rai_cfg.cell_id = 0x12beef;
+	test_event_data[index].rai_cfg.mcc = 100;
+	test_event_data[index].rai_cfg.mnc = 99;
+	test_event_data[index].rai_cfg.as_rai = false;
+	test_event_data[index].rai_cfg.cp_rai = false;
+
+	strcpy(at_notif, "%RAI: \"0x12BEEF\",\"10099\",0,0\r\n");
+	at_monitor_dispatch(at_notif);
+	index++;
+
+	test_event_data[index].type = LTE_LC_EVT_RAI_UPDATE;
+	test_event_data[index].rai_cfg.cell_id = 0xdead;
+	test_event_data[index].rai_cfg.mcc = 999;
+	test_event_data[index].rai_cfg.mnc = 111;
+	test_event_data[index].rai_cfg.as_rai = false;
+	test_event_data[index].rai_cfg.cp_rai = true;
+
+	strcpy(at_notif, "%RAI: \"0x0000DEAD\",\"999111\",0,1\r\n");
+	at_monitor_dispatch(at_notif);
+}
+
+void test_lte_lc_rai_update_fail(void)
+{
+	lte_lc_callback_count_expected = 0;
+
+	/* Cell ID bigger than LTE_LC_CELL_EUTRAN_ID_MAX */
+	strcpy(at_notif, "%RAI: \"0x1111BEEF\",\"10099\",0,0\r\n");
+	at_monitor_dispatch(at_notif);
+
+	/* Non integer Cell Id value */
+	strcpy(at_notif, "%RAI: 0x0012BEEF,\"99910\",0,0\r\n");
+	at_monitor_dispatch(at_notif);
+
+	/* Non integer AS RAI configuration value */
+	strcpy(at_notif, "%RAI: \"0x0000BEEF\",\"99910\",\"invalid_as_rai_type\",0\r\n");
+	at_monitor_dispatch(at_notif);
+
+	/* Non integer CP RAI configuration value */
+	strcpy(at_notif, "%RAI: \"0x0000BEEF\",\"99910\",1,\"invalid_cp_rai_type\"\r\n");
+	at_monitor_dispatch(at_notif);
+
+	/* Non integer MCC value */
+	strcpy(at_notif, "%RAI: \"0x0000BEEF\",\"Hey10\",0,0\r\n");
+	at_monitor_dispatch(at_notif);
+
+	/* Non integer MNC value */
+	strcpy(at_notif, "%RAI: \"0x0000BEEF\",\"999Hi\",0,0\r\n");
+	at_monitor_dispatch(at_notif);
+
+	/* Too long PLMN string */
+	strcpy(at_notif, "%RAI: \"0x0012BEEF\",\"1234567\",0,0\r\n");
+	at_monitor_dispatch(at_notif);
+
+	/* Missing parameters */
+	strcpy(at_notif, "%RAI: \"0x0012BEEF\",\"123456\"\r\n");
+	at_monitor_dispatch(at_notif);
 }
 
 /* It is required to be added to each test. That is because unity's

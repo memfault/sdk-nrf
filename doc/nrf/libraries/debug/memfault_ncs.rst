@@ -125,5 +125,3 @@ API documentation
 | Source files: :file:`modules/memfault/`
 
 .. doxygengroup:: memfault_ncs
-   :project: nrf
-   :members:

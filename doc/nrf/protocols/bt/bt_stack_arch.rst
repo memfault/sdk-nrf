@@ -1,5 +1,5 @@
-Blutooth stack architecture
-###########################
+Bluetooth stack architecture
+############################
 
 .. contents::
    :local:
@@ -51,7 +51,10 @@ For this controller the support includes:
 
 The Zephyr Project has a community support :ref:`ug_ble_controller`.
 This Bluetooth controller will be the default when using Zephyr RTOS stand-alone.
-It is possible to configure projects in the |NCS| to use the Zephyr Controller, but Nordic Semiconductor does not support this configuration for production.
+
+.. note::
+   It is possible to configure projects in the |NCS| to use the Zephyr Controller.
+   Nordic Semiconductor does not support the Zephyr Bluetooth LE Controller for production.
 
 .. _ug_ble_controller_softdevice:
 
@@ -87,7 +90,7 @@ Most :ref:`Bluetooth LE samples <ble_samples>` in the |NCS|, including the :ref:
 Exceptions are the :ref:`ble_llpm` sample, which requires the SoftDevice Controller that supports LLPM, and the :ref:`nrf53_audio_app`, which require the SoftDevice Controller that supports :ref:`LE Isochronous Channels <nrfxlib:softdevice_controller_iso>`.
 
 By default, all samples are currently configured to use SoftDevice Controller.
-To use the Zephyr Bluetooth LE Controller instead, set :kconfig:option:`CONFIG_BT_LL_SW_SPLIT` to ``y`` in the :file:`prj.conf` file (see :ref:`configure_application`) and make sure to build from a clean build directory.
+To use the Zephyr Bluetooth LE Controller instead, use the :ref:`bt-ll-sw-split <zephyr:snippet-bt-ll-sw-split>` snippet (see :ref:`app_build_snippets`) and make sure to build from a clean build directory.
 
 .. note::
    If your Bluetooth application requires the LE Secure Connections pairing and you want to use the Zephyr Bluetooth LE Controller, make sure to enable the :kconfig:option:`CONFIG_BT_TINYCRYPT_ECC` Kconfig option as the ECDH cryptography is not supported by this Bluetooth LE Controller.

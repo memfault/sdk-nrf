@@ -22,7 +22,7 @@ See the testing steps for each of the application for more information.
 Gateway and headset roles
 *************************
 
-The gateway is a common term for a base device, such as the unicast client or an Auracast/broadast source, often used with USB or analog jack input.
+The gateway is a common term for a base device, such as the unicast client or an `Auracast™`_ (broadcast) source, often used with USB or analog jack input.
 Often, but not always, the gateway is the largest or most stationary device, and is commonly the Bluetooth Central (if applicable).
 
 The headset is a common term for a receiver device that plays back the audio it gets from the gateway.
@@ -62,7 +62,7 @@ Connected Isochronous Stream (CIS)
 Broadcast Isochronous Stream (BIS)
   BIS is a unidirectional communication protocol that allows for broadcasting one or more audio streams from a source device to an unlimited number of receivers that are not connected to the source.
 
-  This is the mode available for the broadcast applications (:ref:`broadcast source<nrf53_audio_broadcast_source_app>` for headset and :ref:`broadcast sink<nrf53_audio_broadcast_sink_app>` for gateway).
+  This is the mode available for the broadcast applications (:ref:`broadcast source<nrf53_audio_broadcast_source_app>` for gateway and :ref:`broadcast sink<nrf53_audio_broadcast_sink_app>` for headset).
   In this mode, you can use the nRF5340 Audio development kit in the role of the gateway or as one of the headsets.
   Use multiple nRF5340 Audio development kits to test BIS having multiple receiving headsets.
 
@@ -274,7 +274,7 @@ Synchronization module flow
 The received audio data in the I2S-based firmware devices follows the following path:
 
 1. The SoftDevice Controller running on the network core receives the compressed audio data.
-#. The controller, running in the :ref:`zephyr:bluetooth-hci-ipc-sample` sample on the nRF5340 SoC network core, sends the audio data to the Zephyr Bluetooth LE host running on the nRF5340 SoC application core.
+#. The controller, running in the :zephyr:code-sample:`bluetooth_hci_ipc` sample on the nRF5340 SoC network core, sends the audio data to the Zephyr Bluetooth LE host running on the nRF5340 SoC application core.
 #. The host sends the data to the stream control module.
 #. The data is sent to a FIFO buffer.
 #. The data is sent from the FIFO buffer to the :file:`audio_datapath.c` synchronization module.

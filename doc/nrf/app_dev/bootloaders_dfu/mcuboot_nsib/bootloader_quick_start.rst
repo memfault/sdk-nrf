@@ -11,7 +11,7 @@ This guide is intended to assist you in the initial setup and deployment of boot
 It covers essential concepts, practical steps for implementation, and references to further detailed documentation.
 
 .. note::
-  You can use this quick start guide in case you are not familiar with bootloaders and Device Firmware Update (DFU).
+  You can use this quick start guide in case you are not familiar with bootloaders and Device Firmware Upgrade (DFU).
   Otherwise, refer to further articles in the :ref:`ug_bootloader_mcuboot_nsib` documentation.
 
 .. rst-class:: numbered-step
@@ -61,8 +61,6 @@ This setup supports both UART and Bluetooth® LE connections.
 The following samples are supported:
 
 * :zephyr:code-sample:`smp-svr`
-* :ref:`smp_svr_ext_xip`
-* :ref:`bootloader`
 * :ref:`zephyr:with_mcuboot`
 
 .. rst-class:: numbered-step

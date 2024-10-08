@@ -12,6 +12,8 @@
 #include "nrf_cloud_fota.h"
 #endif
 
+#include "nrf_cloud_dns.h"
+
 #include <zephyr/kernel.h>
 #include <stdio.h>
 #include <fcntl.h>
@@ -36,12 +38,6 @@ BUILD_ASSERT((sizeof(CONFIG_NRF_CLOUD_CLIENT_ID) - 1) <= NRF_CLOUD_CLIENT_ID_MAX
 
 #define NRF_CLOUD_HOSTNAME CONFIG_NRF_CLOUD_HOST_NAME
 #define NRF_CLOUD_PORT CONFIG_NRF_CLOUD_PORT
-
-#if defined(CONFIG_NRF_CLOUD_IPV6)
-#define NRF_CLOUD_AF_FAMILY AF_INET6
-#else
-#define NRF_CLOUD_AF_FAMILY AF_INET
-#endif /* defined(CONFIG_NRF_CLOUD_IPV6) */
 
 /* nRF Cloud's custom update topic (device PUB).
  * Functionally identical to the AWS shadow update topic.
@@ -77,6 +73,17 @@ BUILD_ASSERT((sizeof(CONFIG_NRF_CLOUD_CLIENT_ID) - 1) <= NRF_CLOUD_CLIENT_ID_MAX
  */
 #define NCT_SHDW_TPC_DELTA_TRIM		"%s/shadow/update/delta/trim"
 
+/* nRF Cloud's custom shadow transform (JSONata expression) request topic (device PUB).
+ * Request shadow data according to the provided transform.
+ */
+#define NCT_SHDW_TPC_GET_TF		"%s/shadow/get/tf"
+
+/* nRF Cloud's custom shadow transform topic (device SUB).
+ * Receives the shadow data from a requested transform.
+ */
+#define NCT_SHDW_TPC_GET_ACCEPT_TF	"%s/shadow/get/accepted/tf"
+
+
 /* Buffers to hold stage and tenant strings. */
 static char stage[NRF_CLOUD_STAGE_ID_MAX_LEN];
 static char tenant[NRF_CLOUD_TENANT_ID_MAX_LEN];
@@ -107,7 +114,6 @@ static void nct_mqtt_evt_handler(struct mqtt_client *client,
 static struct nct {
 	struct mqtt_sec_config tls_config;
 	struct mqtt_client client;
-	struct sockaddr_storage broker;
 	struct nct_cc_endpoints cc;
 	struct nct_dc_endpoints dc;
 	uint16_t message_id;
@@ -116,18 +122,26 @@ static struct nct {
 	uint8_t payload_buf[CONFIG_NRF_CLOUD_MQTT_PAYLOAD_BUFFER_LEN + 1];
 } nct;
 
+#if defined(CONFIG_NRF_CLOUD_MQTT_SHADOW_TRANSFORMS)
+#define CC_RX_LIST_CNT 4
+#define CC_TX_LIST_CNT 3
+#else
 #define CC_RX_LIST_CNT 3
+#define CC_TX_LIST_CNT 2
+#endif
 static uint32_t const nct_cc_rx_opcode_map[CC_RX_LIST_CNT] = {
 	NCT_CC_OPCODE_UPDATE_ACCEPTED,
 	NCT_CC_OPCODE_UPDATE_REJECTED,
-	NCT_CC_OPCODE_UPDATE_DELTA
+	NCT_CC_OPCODE_UPDATE_DELTA,
+#if defined(CONFIG_NRF_CLOUD_MQTT_SHADOW_TRANSFORMS)
+	NCT_CC_OPCODE_TRANSFORM
+#endif
 };
 static struct mqtt_topic nct_cc_rx_list[CC_RX_LIST_CNT];
 
 BUILD_ASSERT(ARRAY_SIZE(nct_cc_rx_opcode_map) == ARRAY_SIZE(nct_cc_rx_list),
 	"nct_cc_rx_opcode_map should be the same size as nct_cc_rx_list");
 
-#define CC_TX_LIST_CNT 2
 static struct mqtt_topic nct_cc_tx_list[CC_TX_LIST_CNT];
 
 /* Internal routine to reset data endpoint information. */
@@ -216,12 +230,6 @@ static int endp_send(const struct nct_dc_data *dc_data, struct mqtt_utf8 *endp, 
 	return mqtt_publish(&nct.client, &publish);
 }
 
-static bool strings_compare(const char *s1, const char *s2, uint32_t s1_len,
-			    uint32_t s2_len)
-{
-	return (strncmp(s1, s2, MIN(s1_len, s2_len))) ? false : true;
-}
-
 /* Verify if the RX topic is a control channel topic or not. */
 static bool nrf_cloud_cc_rx_topic_decode(const struct mqtt_topic *topic, enum nct_cc_opcode *opcode)
 {
@@ -230,11 +238,12 @@ static bool nrf_cloud_cc_rx_topic_decode(const struct mqtt_topic *topic, enum nc
 	const uint32_t topic_sz = topic->topic.size;
 
 	for (uint32_t index = 0; index < list_size; ++index) {
-		const char *list_topic = (const char *)nct_cc_rx_list[index].topic.utf8;
-		uint32_t list_topic_sz = nct_cc_rx_list[index].topic.size;
+		if (topic_sz != nct_cc_rx_list[index].topic.size) {
+			continue;
+		}
 
 		/* Compare incoming topic with the entry in the RX topic list */
-		if (strings_compare(topic_str, list_topic, topic_sz, list_topic_sz)) {
+		if (strncmp(topic_str, (char *)nct_cc_rx_list[index].topic.utf8, topic_sz) == 0) {
 			*opcode = nct_cc_rx_opcode_map[index];
 			return true;
 		}
@@ -385,6 +394,12 @@ static void nct_topic_lists_populate(void)
 			nct_cc_rx_list[idx].qos = MQTT_QOS_1_AT_LEAST_ONCE;
 			nct_cc_rx_list[idx].topic = nct.cc.e[CC_RX_DELTA];
 			break;
+#if defined(CONFIG_NRF_CLOUD_MQTT_SHADOW_TRANSFORMS)
+		case NCT_CC_OPCODE_TRANSFORM:
+			nct_cc_rx_list[idx].qos = MQTT_QOS_1_AT_LEAST_ONCE;
+			nct_cc_rx_list[idx].topic = nct.cc.e[CC_RX_ACCEPT_TF];
+			break;
+#endif
 		default:
 			__ASSERT(false, "Op code not added to RX list");
 			break;
@@ -392,11 +407,16 @@ static void nct_topic_lists_populate(void)
 	}
 
 	/* Add TX topics */
-	nct_cc_tx_list[0].qos = MQTT_QOS_1_AT_LEAST_ONCE;
-	nct_cc_tx_list[0].topic = nct.cc.e[CC_TX_GET];
+	nct_cc_tx_list[NCT_CC_OPCODE_GET_REQ].qos = MQTT_QOS_1_AT_LEAST_ONCE;
+	nct_cc_tx_list[NCT_CC_OPCODE_GET_REQ].topic = nct.cc.e[CC_TX_GET];
 
-	nct_cc_tx_list[1].qos = MQTT_QOS_1_AT_LEAST_ONCE;
-	nct_cc_tx_list[1].topic = nct.cc.e[CC_TX_UPDATE];
+	nct_cc_tx_list[NCT_CC_OPCODE_UPDATE_ACCEPTED].qos = MQTT_QOS_1_AT_LEAST_ONCE;
+	nct_cc_tx_list[NCT_CC_OPCODE_UPDATE_ACCEPTED].topic = nct.cc.e[CC_TX_UPDATE];
+
+#if defined(CONFIG_NRF_CLOUD_MQTT_SHADOW_TRANSFORMS)
+	nct_cc_tx_list[NCT_CC_OPCODE_TRANSFORM].qos = MQTT_QOS_1_AT_LEAST_ONCE;
+	nct_cc_tx_list[NCT_CC_OPCODE_TRANSFORM].topic = nct.cc.e[CC_TX_GET_TF];
+#endif
 }
 
 static int nct_topics_populate(void)
@@ -427,6 +447,17 @@ static int nct_topics_populate(void)
 	if (ret) {
 		goto err_cleanup;
 	}
+
+#if defined(CONFIG_NRF_CLOUD_MQTT_SHADOW_TRANSFORMS)
+	ret = allocate_and_format_topic(&nct.cc.e[CC_TX_GET_TF], NCT_SHDW_TPC_GET_TF);
+	if (ret) {
+		goto err_cleanup;
+	}
+	ret = allocate_and_format_topic(&nct.cc.e[CC_RX_ACCEPT_TF], NCT_SHDW_TPC_GET_ACCEPT_TF);
+	if (ret) {
+		goto err_cleanup;
+	}
+#endif
 
 	LOG_DBG("CC topics:");
 	for (int cnt = 0; cnt < CC__COUNT; ++cnt) {
@@ -610,78 +641,6 @@ static void nrf_cloud_fota_cb_handler(const struct nrf_cloud_fota_evt
 	}
 }
 #endif
-
-/* Connect to MQTT broker. */
-int nct_mqtt_connect(void)
-{
-	int err;
-	if (!mqtt_client_initialized) {
-
-		mqtt_client_init(&nct.client);
-
-		nct.client.broker = (struct sockaddr *)&nct.broker;
-		nct.client.evt_cb = nct_mqtt_evt_handler;
-		nct.client.client_id.utf8 = (uint8_t *)client_id_ptr;
-		nct.client.client_id.size = strlen(client_id_ptr);
-		nct.client.protocol_version = MQTT_VERSION_3_1_1;
-		nct.client.password = NULL;
-		nct.client.user_name = NULL;
-		nct.client.keepalive = CONFIG_NRF_CLOUD_MQTT_KEEPALIVE;
-		nct.client.clean_session = persistent_session ? 0U : 1U;
-		LOG_DBG("MQTT clean session flag: %u",
-			nct.client.clean_session);
-
-#if defined(CONFIG_MQTT_LIB_TLS)
-		nct.client.transport.type = MQTT_TRANSPORT_SECURE;
-		nct.client.rx_buf = nct.rx_buf;
-		nct.client.rx_buf_size = sizeof(nct.rx_buf);
-		nct.client.tx_buf = nct.tx_buf;
-		nct.client.tx_buf_size = sizeof(nct.tx_buf);
-
-		struct mqtt_sec_config *tls_config =
-			   &nct.client.transport.tls.config;
-		memcpy(tls_config, &nct.tls_config,
-			   sizeof(struct mqtt_sec_config));
-#else
-		nct.client.transport.type = MQTT_TRANSPORT_NON_SECURE;
-#endif
-		mqtt_client_initialized = true;
-	}
-
-	err = mqtt_connect(&nct.client);
-	if (err != 0) {
-		LOG_DBG("mqtt_connect failed %d", err);
-		return err;
-	}
-
-	if (IS_ENABLED(CONFIG_NRF_CLOUD_SEND_NONBLOCKING)) {
-		err = fcntl(nct_socket_get(), F_SETFL, O_NONBLOCK);
-		if (err == -1) {
-			LOG_ERR("Failed to set socket as non-blocking, err: %d",
-				errno);
-			LOG_WRN("Continuing with blocking socket");
-			err = 0;
-		} else {
-			LOG_DBG("Using non-blocking socket");
-		}
-	}  else if (IS_ENABLED(CONFIG_NRF_CLOUD_SEND_TIMEOUT)) {
-		struct timeval timeout = {
-			.tv_sec = CONFIG_NRF_CLOUD_SEND_TIMEOUT_SEC
-		};
-
-		err = setsockopt(nct_socket_get(), SOL_SOCKET, SO_SNDTIMEO,
-				 &timeout, sizeof(timeout));
-		if (err == -1) {
-			LOG_ERR("Failed to set timeout, errno: %d", errno);
-			err = 0;
-		} else {
-			LOG_DBG("Using socket send timeout of %d seconds",
-				CONFIG_NRF_CLOUD_SEND_TIMEOUT_SEC);
-		}
-	}
-
-	return err;
-}
 
 static int publish_get_payload(struct mqtt_client *client, size_t length)
 {
@@ -897,7 +856,7 @@ static void nct_mqtt_evt_handler(struct mqtt_client *const mqtt_client,
 	}
 }
 
-int nct_initialize(const char * const client_id)
+int nct_initialize(const struct nrf_cloud_init_param *param)
 {
 	int err;
 
@@ -910,7 +869,12 @@ int nct_initialize(const char * const client_id)
 	}
 
 #if defined(CONFIG_NRF_CLOUD_FOTA)
-	err = nrf_cloud_fota_init(nrf_cloud_fota_cb_handler);
+	struct nrf_cloud_fota_init_param fota_init = {
+		.evt_cb = nrf_cloud_fota_cb_handler,
+		.smp_reset_cb = param->smp_reset_cb
+	};
+
+	err = nrf_cloud_fota_init(&fota_init);
 	if (err < 0) {
 		return err;
 	} else if (err && persistent_session) {
@@ -918,7 +882,8 @@ int nct_initialize(const char * const client_id)
 		nct_save_session_state(0);
 	}
 #endif
-	err = nct_client_id_set(client_id);
+
+	err = nct_client_id_set(param->client_id);
 	if (err) {
 		return err;
 	}
@@ -943,100 +908,104 @@ void nct_uninit(void)
 	mqtt_client_initialized = false;
 }
 
-#if defined(CONFIG_NRF_CLOUD_STATIC_IPV4)
-int nct_connect(void)
+
+static void nct_init_mqtt(void)
 {
-	int err;
+	if (!mqtt_client_initialized) {
+		mqtt_client_init(&nct.client);
 
-	struct sockaddr_in *broker = ((struct sockaddr_in *)&nct.broker);
+		nct.client.evt_cb = nct_mqtt_evt_handler;
+		nct.client.client_id.utf8 = (uint8_t *)client_id_ptr;
+		nct.client.client_id.size = strlen(client_id_ptr);
+		nct.client.protocol_version = MQTT_VERSION_3_1_1;
+		nct.client.password = NULL;
+		nct.client.user_name = NULL;
+		nct.client.keepalive = CONFIG_NRF_CLOUD_MQTT_KEEPALIVE;
+		nct.client.clean_session = persistent_session ? 0U : 1U;
+		LOG_DBG("MQTT clean session flag: %u",
+			nct.client.clean_session);
 
-	inet_pton(AF_INET, CONFIG_NRF_CLOUD_STATIC_IPV4_ADDR,
-		  &broker->sin_addr);
-	broker->sin_family = AF_INET;
-	broker->sin_port = htons(NRF_CLOUD_PORT);
+#if defined(CONFIG_MQTT_LIB_TLS)
+		nct.client.transport.type = MQTT_TRANSPORT_SECURE;
+		nct.client.rx_buf = nct.rx_buf;
+		nct.client.rx_buf_size = sizeof(nct.rx_buf);
+		nct.client.tx_buf = nct.tx_buf;
+		nct.client.tx_buf_size = sizeof(nct.tx_buf);
 
-	LOG_DBG("IPv4 Address %s", CONFIG_NRF_CLOUD_STATIC_IPV4_ADDR);
-	err = nct_mqtt_connect();
-
-	return err;
-}
+		struct mqtt_sec_config *tls_config =
+			   &nct.client.transport.tls.config;
+		memcpy(tls_config, &nct.tls_config,
+			   sizeof(struct mqtt_sec_config));
 #else
-int nct_connect(void)
+		nct.client.transport.type = MQTT_TRANSPORT_NON_SECURE;
+#endif
+		mqtt_client_initialized = true;
+	}
+}
+
+static int nct_connect_host_cb(struct sockaddr *const addr)
 {
 	int err;
-	struct addrinfo *result;
-	struct addrinfo *addr;
+
+	/* Initialize MQTT client if it is not already initialized. */
+	nct_init_mqtt();
+
+	/* Attempt to connect to the provided address */
+	nct.client.broker = addr;
+	err = mqtt_connect(&nct.client);
+
+	if (err != 0) {
+		LOG_DBG("mqtt_connect failed %d", err);
+		return err;
+	}
+
+	/* Success, return the resulting socket. */
+	return nct_socket_get();
+}
+
+int nct_connect(void)
+{
+	int err = 0;
+	const char *const host_name = NRF_CLOUD_HOSTNAME;
+	uint16_t port = htons(NRF_CLOUD_PORT);
 	struct addrinfo hints = {
-		.ai_family = NRF_CLOUD_AF_FAMILY,
 		.ai_socktype = SOCK_STREAM
 	};
+	int sock = nrf_cloud_connect_host(host_name, port, &hints, &nct_connect_host_cb);
 
-	LOG_DBG("Connecting to host: %s", NRF_CLOUD_HOSTNAME);
-	err = getaddrinfo(NRF_CLOUD_HOSTNAME, NULL, &hints, &result);
-	if (err) {
-		LOG_DBG("getaddrinfo failed %d", err);
-		return -ECHILD;
+	if (sock < 0) {
+		LOG_ERR("Could not connect to nRF Cloud MQTT Broker %s, port: %d. err: %d",
+			host_name, port, sock);
+		return -ECONNREFUSED;
 	}
 
-	addr = result;
-	err = -ECHILD;
-
-	/* Look for address of the broker. */
-	while (addr != NULL) {
-		/* IPv4 Address. */
-		if ((addr->ai_addrlen == sizeof(struct sockaddr_in)) &&
-		    (NRF_CLOUD_AF_FAMILY == AF_INET)) {
-			char addr_str[INET_ADDRSTRLEN];
-			struct sockaddr_in *broker =
-				((struct sockaddr_in *)&nct.broker);
-
-			broker->sin_addr.s_addr =
-				((struct sockaddr_in *)addr->ai_addr)
-					->sin_addr.s_addr;
-			broker->sin_family = AF_INET;
-			broker->sin_port = htons(NRF_CLOUD_PORT);
-
-			inet_ntop(AF_INET,
-				 &broker->sin_addr.s_addr,
-				 addr_str,
-				 sizeof(addr_str));
-
-			LOG_DBG("IPv4 address: %s", addr_str);
-
-			err = nct_mqtt_connect();
-			break;
-		} else if ((addr->ai_addrlen == sizeof(struct sockaddr_in6)) &&
-			   (NRF_CLOUD_AF_FAMILY == AF_INET6)) {
-			/* IPv6 Address. */
-			struct sockaddr_in6 *broker =
-				((struct sockaddr_in6 *)&nct.broker);
-
-			memcpy(broker->sin6_addr.s6_addr,
-			       ((struct sockaddr_in6 *)addr->ai_addr)
-				       ->sin6_addr.s6_addr,
-			       sizeof(struct in6_addr));
-			broker->sin6_family = AF_INET6;
-			broker->sin6_port = htons(NRF_CLOUD_PORT);
-
-			LOG_DBG("IPv6 Address");
-			err = nct_mqtt_connect();
-			break;
+	if (IS_ENABLED(CONFIG_NRF_CLOUD_SEND_NONBLOCKING)) {
+		err = fcntl(sock, F_SETFL, O_NONBLOCK);
+		if (err == -1) {
+			LOG_ERR("Failed to set socket as non-blocking, err: %d",
+				errno);
+			LOG_WRN("Continuing with blocking socket");
+			err = 0;
 		} else {
-			LOG_DBG("ai_addrlen = %u should be %u or %u",
-				(unsigned int)addr->ai_addrlen,
-				(unsigned int)sizeof(struct sockaddr_in),
-				(unsigned int)sizeof(struct sockaddr_in6));
+			LOG_DBG("Using non-blocking socket");
 		}
+	}  else if (IS_ENABLED(CONFIG_NRF_CLOUD_SEND_TIMEOUT)) {
+		struct timeval timeout = {
+			.tv_sec = CONFIG_NRF_CLOUD_SEND_TIMEOUT_SEC
+		};
 
-		addr = addr->ai_next;
+		err = setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
+		if (err == -1) {
+			LOG_ERR("Failed to set timeout, errno: %d", errno);
+			err = 0;
+		} else {
+			LOG_DBG("Using socket send timeout of %d seconds",
+				CONFIG_NRF_CLOUD_SEND_TIMEOUT_SEC);
+		}
 	}
-
-	/* Free the address. */
-	freeaddrinfo(result);
 
 	return err;
 }
-#endif /* defined(CONFIG_NRF_CLOUD_STATIC_IPV4) */
 
 int nct_cc_connect(void)
 {

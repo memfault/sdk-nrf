@@ -134,7 +134,7 @@ For example:
 
    .. code-block:: console
 
-      west build -b nrf5340dk/nrf5340/cpuapp -p -- -Dlock_SHIELD=nrf7002ek -Dipc_radio_SHIELD=nrf7002ek_coex -DFILE_SUFFIX=thread_wifi_switched -DSB_CONFIG_WIFI_PATCHES_EXT_FLASH_STORE=y -DSB_CONFIG_MCUBOOT_UPDATEABLE_IMAGES=3 -DCONFIG_CHIP_DFU_OVER_BT_SMP=y -DSB_CONFIG_WIFI_NRF700X=y -DSB_CONFIG_DFU_MULTI_IMAGE_PACKAGE_WIFI_FW_PATCH=y
+      west build -b nrf5340dk/nrf5340/cpuapp -p -- -Dlock_SHIELD=nrf7002ek  -DFILE_SUFFIX=thread_wifi_switched -DSB_CONFIG_WIFI_PATCHES_EXT_FLASH_STORE=y -DSB_CONFIG_MCUBOOT_UPDATEABLE_IMAGES=3 -DCONFIG_CHIP_DFU_OVER_BT_SMP=y -DSB_CONFIG_WIFI_NRF70=y -DSB_CONFIG_DFU_MULTI_IMAGE_PACKAGE_WIFI_FW_PATCH=y
 
 .. _matter_lock_sample_ble_nus:
 
@@ -282,7 +282,7 @@ Device Firmware Upgrade support
 
 .. note::
    You can enable over-the-air Device Firmware Upgrade only on hardware platforms that have external flash memory.
-   Currently only nRF52840 DK, nRF5340 DK, nRF7002 DK and nRF54L15 PDK support Device Firmware Upgrade feature.
+   Currently only nRF52840 DK, nRF5340 DK, nRF7002 DK and nRF54L15 DK support Device Firmware Upgrade feature.
 
 The sample supports over-the-air (OTA) device firmware upgrade (DFU) using one of the two following protocols:
 
@@ -441,7 +441,7 @@ See `Configuration`_ for information about building the sample with the DFU supp
 
 .. code-block:: console
 
-    west build -b nrf54h20dk/nrf54h20/cpuapp -p -- -DSB_CONFIG_WIFI_NRF700X=y -DCONFIG_CHIP_WIFI=y -Dlock_SHIELD=nrf700x_nrf54h20dk
+    west build -b nrf54h20dk/nrf54h20/cpuapp -p -- -DSB_CONFIG_WIFI_NRF70=y -DCONFIG_CHIP_WIFI=y -Dlock_SHIELD=nrf700x_nrf54h20dk
 
 Selecting a configuration
 =========================
@@ -773,7 +773,7 @@ To test this feature, complete the following steps:
 
    .. code-block:: console
 
-      west build -b nrf5340dk/nrf5340/cpuapp -- -DFILE_SUFFIX=thread_wifi_switched -Dlock_SHIELD=nrf7002ek -Dipc_radio_SHIELD=nrf7002ek_coex -DSB_CONFIG_WIFI_NRF700X=y
+      west build -b nrf5340dk/nrf5340/cpuapp -- -DFILE_SUFFIX=thread_wifi_switched -Dlock_SHIELD=nrf7002ek  -DSB_CONFIG_WIFI_NRF70=y
 
 #. |connect_terminal_ANSI|
 #. Program the application to the kit using the following command:

@@ -9,14 +9,14 @@
 menuconfig PARTITION_MANAGER
 	bool "Partition Manager"
 	default y if SOC_FAMILY_NORDIC_NRF
-	depends on !SOC_SERIES_NRF54HX
+	depends on !(SOC_SERIES_NRF54HX || SOC_SERIES_NRF92X)
 	depends on !EXTERNAL_CONFIGURED_NETCORE
 
 if PARTITION_MANAGER
 
 config PM_MCUBOOT_PAD
 	hex "Memory reserved for MCUBOOT_PAD"
-	default 0x800 if BOARD_NRF54L15PDK_NRF54L15_CPUAPP
+	default 0x800 if SOC_SERIES_NRF54LX
 	default 0x200
 	depends on BOOTLOADER_MCUBOOT
 	help
@@ -79,3 +79,4 @@ rsource "Kconfig.zip"
 rsource "Kconfig.matter"
 rsource "Kconfig.wifi"
 rsource "Kconfig.suit"
+rsource "Kconfig.sdp"

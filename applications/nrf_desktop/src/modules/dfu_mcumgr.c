@@ -75,6 +75,43 @@ static void dfu_timeout_handler(struct k_work *work)
 	}
 }
 
+static bool smp_cmd_is_suit_dfu_cmd(const struct mgmt_evt_op_cmd_arg *cmd,
+				    const char **smp_cmd_name)
+{
+#if CONFIG_MGMT_SUITFU_GRP_SUIT
+	if (cmd->group == CONFIG_MGMT_GROUP_ID_SUIT) {
+		*smp_cmd_name = "SUIT Management";
+		return true;
+	}
+#endif /* CONFIG_MGMT_SUITFU_GRP_SUIT */
+
+	return false;
+}
+
+static bool smp_cmd_is_dfu_cmd(const struct mgmt_evt_op_cmd_arg *cmd)
+{
+	const char *smp_cmd_name = "Unknown";
+	bool dfu_transfer_cmd = true;
+
+	if (cmd->group == MGMT_GROUP_ID_IMAGE) {
+		smp_cmd_name = "Image Management";
+	} else if ((cmd->group == MGMT_GROUP_ID_OS) && (cmd->id == OS_MGMT_ID_RESET)) {
+		smp_cmd_name = "OS Management Reset";
+	} else {
+		dfu_transfer_cmd = false;
+	}
+
+	if (IS_ENABLED(CONFIG_DESKTOP_DFU_BACKEND_SUIT) && !dfu_transfer_cmd) {
+		dfu_transfer_cmd = smp_cmd_is_suit_dfu_cmd(cmd, &smp_cmd_name);
+	}
+
+	if (dfu_transfer_cmd && smp_cmd_name) {
+		LOG_DBG("MCUmgr %s event", smp_cmd_name);
+	}
+
+	return dfu_transfer_cmd;
+}
+
 static enum mgmt_cb_return smp_cmd_recv(uint32_t event, enum mgmt_cb_return prev_status,
 					int32_t *rc, uint16_t *group, bool *abort_more,
 					void *data, size_t data_size)
@@ -87,8 +124,6 @@ static enum mgmt_cb_return smp_cmd_recv(uint32_t event, enum mgmt_cb_return prev
 		return MGMT_CB_ERROR_RC;
 	}
 
-	LOG_DBG("MCUmgr SMP Command Recv Event");
-
 	if (data_size != sizeof(*cmd_recv)) {
 		LOG_ERR("Invalid data size in recv cb: %zu (expected: %zu)",
 			data_size, sizeof(*cmd_recv));
@@ -98,14 +133,13 @@ static enum mgmt_cb_return smp_cmd_recv(uint32_t event, enum mgmt_cb_return prev
 
 	cmd_recv = data;
 
+	LOG_DBG("MCUmgr SMP Command Recv Event: group_id=%d cmd_id=%d",
+		cmd_recv->group, cmd_recv->id);
+
 	/* Ignore commands not related to DFU over SMP. */
-	if (!(cmd_recv->group == MGMT_GROUP_ID_IMAGE) &&
-	    !((cmd_recv->group == MGMT_GROUP_ID_OS) && (cmd_recv->id == OS_MGMT_ID_RESET))) {
+	if (!smp_cmd_is_dfu_cmd(cmd_recv)) {
 		return MGMT_CB_OK;
 	}
-
-	LOG_DBG("MCUmgr %s event", (cmd_recv->group == MGMT_GROUP_ID_IMAGE) ?
-		"Image Management" : "OS Management Reset");
 
 	k_work_reschedule(&dfu_timeout, DFU_TIMEOUT);
 	if (IS_ENABLED(CONFIG_DESKTOP_DFU_LOCK) && dfu_lock_claim(&mcumgr_owner)) {
@@ -141,21 +175,68 @@ static void dfu_backend_init(void)
 	LOG_INF("MCUboot image version: %s", CONFIG_MCUBOOT_IMGTOOL_SIGN_VERSION);
 }
 #elif CONFIG_DESKTOP_DFU_BACKEND_SUIT
+static const char *suit_release_type_str_get(suit_version_release_type_t type)
+{
+	switch (type) {
+	case SUIT_VERSION_RELEASE_NORMAL:
+		return NULL;
+	case SUIT_VERSION_RELEASE_RC:
+		return "rc";
+	case SUIT_VERSION_RELEASE_BETA:
+		return "beta";
+	case SUIT_VERSION_RELEASE_ALPHA:
+		return "alpha";
+	default:
+		__ASSERT(0, "Unknown release type");
+		return NULL;
+	}
+};
+
 static void dfu_backend_init(void)
 {
+	int err;
+	bool is_semver_supported;
 	unsigned int seq_num = 0;
 	suit_ssf_manifest_class_info_t class_info;
+	suit_semver_raw_t version_raw;
+	suit_version_t version;
 
-	int err = suit_get_supported_manifest_info(SUIT_MANIFEST_APP_ROOT, &class_info);
-
+	err = suit_get_supported_manifest_info(SUIT_MANIFEST_APP_ROOT, &class_info);
 	if (!err) {
 		err = suit_get_installed_manifest_info(&(class_info.class_id),
-				&seq_num, NULL, NULL, NULL, NULL);
+				&seq_num, &version_raw, NULL, NULL, NULL);
 	}
 	if (!err) {
-		LOG_INF("SUIT sequence number: %d", seq_num);
+		/* Semantic versioning support has been added to the SDFW in the v0.6.2
+		 * public release. Older SDFW versions return empty array in the version
+		 * variable.
+		 */
+		is_semver_supported = (version_raw.len != 0);
+		if (is_semver_supported) {
+			err = suit_metadata_version_from_array(&version,
+							       version_raw.raw,
+							       version_raw.len);
+		}
+	}
+
+	if (!err) {
+		if (is_semver_supported) {
+			const char *release_type;
+
+			release_type = suit_release_type_str_get(version.type);
+			if (release_type) {
+				LOG_INF("SUIT manifest version: %d.%d.%d-%s%d",
+					version.major, version.minor, version.patch,
+					release_type, version.pre_release_number);
+			} else {
+				LOG_INF("SUIT manifest version: %d.%d.%d",
+					version.major, version.minor, version.patch);
+			}
+		}
+
+		LOG_INF("SUIT manifest sequence number: %d", seq_num);
 	} else {
-		LOG_ERR("suit retrieve manifest seq num failed (err: %d)", err);
+		LOG_ERR("SUIT manifest info retrieval failed (err: %d)", err);
 	}
 }
 #else

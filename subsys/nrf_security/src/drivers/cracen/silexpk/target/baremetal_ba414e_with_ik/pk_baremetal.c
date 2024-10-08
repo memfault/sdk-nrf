@@ -108,7 +108,7 @@ void sx_pk_wrreg(struct sx_regs *regs, uint32_t addr, uint32_t v)
 	volatile uint32_t *p = (uint32_t *)(regs->base + addr);
 
 #ifdef INSTRUMENT_MMIO_WITH_PRINTFS
-	printk("sx_pk_wrreg(addr=0x%x, sum=0x%x, val=0x%x);\n", addr, (uint32_t)p, v);
+	printk("sx_pk_wrreg(addr=0x%x, sum=0x%x, val=0x%x);\r\n", addr, (uint32_t)p, v);
 #endif
 
 	*p = v;
@@ -122,8 +122,8 @@ uint32_t sx_pk_rdreg(struct sx_regs *regs, uint32_t addr)
 	v = *p;
 
 #ifdef INSTRUMENT_MMIO_WITH_PRINTFS
-	printk("sx_pk_rdreg(addr=0x%x, sum=0x%x);\n", addr, (uint32_t)p);
-	printk("result = 0x%x\n", v);
+	printk("sx_pk_rdreg(addr=0x%x, sum=0x%x);\r\n", addr, (uint32_t)p);
+	printk("result = 0x%x\r\n", v);
 #endif
 
 	return v;
@@ -183,7 +183,7 @@ struct sx_pk_acq_req sx_pk_acquire_req(const struct sx_pk_cmd_def *cmd)
 {
 	struct sx_pk_acq_req req = {NULL, SX_OK};
 
-	nrf_security_mutex_lock(cracen_mutex_asymmetric);
+	nrf_security_mutex_lock(&cracen_mutex_asymmetric);
 	req.req = &silex_pk_engine.instance;
 	req.req->cmd = cmd;
 	req.req->cnx = &silex_pk_engine;
@@ -220,7 +220,7 @@ void sx_pk_release_req(sx_pk_req *req)
 	cracen_release();
 	req->cmd = NULL;
 	req->userctxt = NULL;
-	nrf_security_mutex_unlock(cracen_mutex_asymmetric);
+	nrf_security_mutex_unlock(&cracen_mutex_asymmetric);
 }
 
 struct sx_regs *sx_pk_get_regs(void)

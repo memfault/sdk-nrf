@@ -1,13 +1,13 @@
 .. _broadcast_configuration_tool:
 
-Broadcast Configuration Tool
-############################
+Auracast: Broadcast Configuration Tool
+######################################
 
 .. contents::
    :local:
    :depth: 2
 
-The Broadcast Configuration Tool sample implements the :ref:`BIS gateway mode <nrf53_audio_app_overview>` and may act as an Auracast broadcaster if you are using a preset compatible with Auracast.
+The Broadcast Configuration Tool sample implements the :ref:`BIS gateway mode <nrf53_audio_app_overview>` and may act as an `Auracast™`_ broadcaster if you are using a preset compatible with Auracast.
 The sample features a shell interface that allows you to configure the broadcast source in many different ways.
 
 In the BIS gateway mode, transmitting audio from the broadcast source happens using Broadcast Isochronous Stream (BIS) and Broadcast Isochronous Group (BIG).
@@ -166,6 +166,56 @@ Example output:
                Location:
                        BIS 0: Mono Audio
 
+----
+
+file list
+=========
+
+Lists the files and directories in the given directory on the SD card.
+If no directory is given, contents of the root directory is listed.
+
+Usage:
+
+.. code-block:: console
+
+      bct file list [directory]
+
+Example output:
+
+.. code-block:: console
+
+   bct file list
+
+   [DIR ]  16000hz
+   [DIR ]  24000hz
+   [DIR ]  32000hz
+   [FILE]  left-channel-announcement.wav
+   [FILE]  right-channel-announcement.wav
+
+----
+
+file select
+===========
+
+Selects a file from the SD card to be used as the audio source for the given stream.
+The file must be in the LC3 format, and one file may be used for multiple streams at the same time.
+
+Usage:
+
+.. code-block:: console
+
+   bct file select <file> <BIG index> <subgroup index> <BIS index>
+
+Example:
+
+  .. code-block:: console
+
+     bct file select 16000hz/24_kbps/left-channel-announcement_16kHz_left_24kbps.lc3 1 2 0
+
+This command command selects the file :file:`16000hz/24_kbps/left-channel-announcement_16kHz_left_24kbps.lc3` for the BIS 0 in the subgroup 2 in the BIG 1.
+
+----
+
 packing
 =======
 
@@ -184,6 +234,8 @@ Example:
    bct packing int 0
 
 This command sets the packing for the BIG 0 to interleaved.
+
+----
 
 preset
 ======
@@ -212,6 +264,8 @@ Examples:
 
      bct preset 24_2_1 0 0
 
+----
+
 lang
 ====
 
@@ -233,6 +287,8 @@ Example:
 
 This command sets the language for the subgroup 0 in the BIG 0 to English.
 
+----
+
 immediate
 =========
 
@@ -251,6 +307,8 @@ Example:
    bct immediate 1 0 0
 
 This command sets the immediate rendering flag for the subgroup 0 in the BIG 0 to ``true``.
+
+----
 
 num_subgroups
 =============
@@ -272,6 +330,8 @@ Example:
 
 This command sets the number of subgroups for the BIG 0 to 2.
 
+----
+
 num_bises
 =========
 
@@ -291,6 +351,8 @@ Example:
    bct num_bises 2 0 0
 
 This command sets the number of BISes for the subgroup 0 in the BIG 0 to 2.
+
+----
 
 context
 =======
@@ -312,6 +374,8 @@ Example:
 
 This command sets the context for the subgroup 0 in the BIG 0 to Media.
 
+----
+
 location
 ========
 
@@ -331,6 +395,8 @@ Example:
    bct location fl 0 0 0
 
 This command sets the location for the BIS 0 in the subgroup 0 in the BIG 0 to Front Left.
+
+----
 
 broadcast_name
 ==============
@@ -356,6 +422,8 @@ Examples:
   .. code-block:: console
 
      bct broadcast_name "Lecture hall" 0
+
+----
 
 encrypt
 =======
@@ -383,6 +451,8 @@ Examples:
 
      bct encrypt 0 0
 
+----
+
 usecase
 =======
 
@@ -408,6 +478,8 @@ Example:
 
 This command sets a unique configuration for the given use case and then calls ``show`` to display the configuration.
 
+----
+
 clear
 =====
 
@@ -418,6 +490,8 @@ Usage:
 .. code-block:: console
 
    bct clear
+
+----
 
 adv_name
 ========
@@ -446,6 +520,8 @@ This command sets the advertising name for the BIG 0 to "Lecture hall".
 .. note::
     The name must be enclosed in quotation marks if it contains spaces.
 
+----
+
 program_info
 ============
 
@@ -464,6 +540,8 @@ Example:
    bct program_info "Mathematics 101" 0 0
 
 This command sets the program info for the subgroup 0 in the BIG 0 to "Mathematics 101".
+
+----
 
 phy
 ===
@@ -489,6 +567,8 @@ Example:
 
 This command sets the PHY for the subgroup 0 in the BIG 0 to 2M.
 
+----
+
 framing
 =======
 
@@ -508,6 +588,8 @@ Example:
 
 This command sets the framing for the subgroup 0 in the BIG 0 to ``unframed``.
 
+----
+
 rtn
 ===
 
@@ -526,6 +608,8 @@ Example:
    bct rtn 2 0 0
 
 This command sets the number of retransmits for the subgroup 0 in the BIG 0 to 2.
+
+----
 
 sdu
 ===
@@ -550,6 +634,8 @@ Example:
 
 This command sets the SDU size for the subgroup 0 in the BIG 0 to 60 octets.
 
+----
+
 mtl
 ===
 
@@ -568,6 +654,8 @@ Example:
    bct mtl 10 0 0
 
 This command sets the maximum transport latency for the subgroup 0 in the BIG 0 to 10 ms.
+
+----
 
 frame_interval
 ==============
@@ -592,6 +680,8 @@ Example:
 
 This command sets the frame interval for the subgroup 0 in the BIG 0 to 10 ms (10000 us).
 
+----
+
 pd
 ==
 
@@ -610,6 +700,55 @@ Example:
    bct pd 40000 0 0
 
 This command sets the presentation delay for the subgroup 0 in BIG0 to 40 ms (40000 us).
+
+----
+
+broadcast_id fixed
+==================
+
+Set a fixed broadcast ID for a BIG.
+The broadcast ID is used to identify the broadcast.
+Its value is three octets long.
+
+Usage:
+
+.. code-block:: console
+
+   bct broadcast_id fixed <BIG index> <broadcast_id in hexadecimal (3 octets)>
+
+Examples:
+
+.. code-block:: console
+
+   bct broadcast_id fixed 0 0xAA1234
+
+This command sets a fixed broadcast ID for the BIG 0 to ``0xAA1234``.
+This value will remain if the broadcast is stopped and started again.
+
+----
+
+broadcast_id random
+===================
+
+Set a random broadcast ID for a BIG.
+The broadcast ID is used to identify the broadcast.
+The broadcast ID will be generated anew every time the broadcaster is started.
+
+Usage:
+
+.. code-block:: console
+
+   bct broadcast_id random <BIG index>
+
+Examples:
+
+.. code-block:: console
+
+   bct broadcast_id random 0
+
+This command sets a random broadcast ID for the BIG 0 each time it is started.
+
+----
 
 .. _broadcast_configuration_tool_configuration:
 

@@ -119,6 +119,8 @@
 #define NRF_CLOUD_FOTA_TYPE_MODEM_FULL		"MDM_FULL"
 #define NRF_CLOUD_FOTA_TYPE_BOOT		"BOOT"
 #define NRF_CLOUD_FOTA_TYPE_APP			"APP"
+#define NRF_CLOUD_FOTA_TYPE_SMP			"SMP"
+#define NRF_CLOUD_FOTA_TYPE_CUSTOM		"CUSTOM"
 #define NRF_CLOUD_FOTA_REST_KEY_JOB_DOC		"jobDocument"
 #define NRF_CLOUD_FOTA_REST_KEY_JOB_ID		"jobId"
 #define NRF_CLOUD_FOTA_REST_KEY_PATH		"path"
@@ -196,6 +198,7 @@
 #define NRF_CLOUD_JSON_KEY_KEEPALIVE		"keepalive"
 #define NRF_CLOUD_JSON_KEY_CONN			"connection"
 #define NRF_CLOUD_JSON_KEY_APP_VER		"appVersion"
+#define NRF_CLOUD_JSON_KEY_SMP_APP_VER		"smpDevAppVer"
 #define NRF_CLOUD_JSON_KEY_CONN_INFO		"connectionInfo"
 #define NRF_CLOUD_JSON_KEY_PROTOCOL		"protocol"
 #define NRF_CLOUD_JSON_KEY_METHOD		"method"
@@ -233,6 +236,15 @@
 #define NRF_CLOUD_JSON_VAL_PROTO_REST		"REST"
 #define NRF_CLOUD_JSON_VAL_METHOD_LTE		"LTE"
 #define NRF_CLOUD_JSON_VAL_METHOD_WIFI		"Wi-Fi"
+
+/** Default maximum response length to a shadow transform request */
+#define NRF_CLOUD_TRANSFORM_MAX_RESPONSE_LEN	1792
+#define NRF_CLOUD_TRANSFORM_REQ_LEN_KEY		"l"
+#define NRF_CLOUD_TRANSFORM_REQ_TF_KEY		"t"
+#define NRF_CLOUD_TRANSFORM_RSP_TF_KEY		"tf"
+#define NRF_CLOUD_TRANSFORM_RSP_ERR_KEY		"err"
+#define NRF_CLOUD_TRANSFORM_RSP_POS_KEY		"position"
+#define NRF_CLOUD_TRANSFORM_RSP_MSG_KEY		"message"
 
 /** @} */
 #endif /* NRF_CLOUD_DEFS_H__ */

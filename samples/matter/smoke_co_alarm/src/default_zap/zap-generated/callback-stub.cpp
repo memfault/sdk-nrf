@@ -40,6 +40,9 @@ void emberAfClusterInitCallback(EndpointId endpoint, ClusterId clusterId)
 	case app::Clusters::Descriptor::Id:
 		emberAfDescriptorClusterInitCallback(endpoint);
 		break;
+	case app::Clusters::DiagnosticLogs::Id:
+		emberAfDiagnosticLogsClusterInitCallback(endpoint);
+		break;
 	case app::Clusters::GeneralCommissioning::Id:
 		emberAfGeneralCommissioningClusterInitCallback(endpoint);
 		break;
@@ -49,11 +52,11 @@ void emberAfClusterInitCallback(EndpointId endpoint, ClusterId clusterId)
 	case app::Clusters::GroupKeyManagement::Id:
 		emberAfGroupKeyManagementClusterInitCallback(endpoint);
 		break;
+	case app::Clusters::IcdManagement::Id:
+		emberAfIcdManagementClusterInitCallback(endpoint);
+		break;
 	case app::Clusters::Identify::Id:
 		emberAfIdentifyClusterInitCallback(endpoint);
-		break;
-	case app::Clusters::LocalizationConfiguration::Id:
-		emberAfLocalizationConfigurationClusterInitCallback(endpoint);
 		break;
 	case app::Clusters::NetworkCommissioning::Id:
 		emberAfNetworkCommissioningClusterInitCallback(endpoint);
@@ -70,11 +73,14 @@ void emberAfClusterInitCallback(EndpointId endpoint, ClusterId clusterId)
 	case app::Clusters::PowerSource::Id:
 		emberAfPowerSourceClusterInitCallback(endpoint);
 		break;
-	case app::Clusters::PowerSourceConfiguration::Id:
-		emberAfPowerSourceConfigurationClusterInitCallback(endpoint);
-		break;
 	case app::Clusters::SmokeCoAlarm::Id:
 		emberAfSmokeCoAlarmClusterInitCallback(endpoint);
+		break;
+	case app::Clusters::SoftwareDiagnostics::Id:
+		emberAfSoftwareDiagnosticsClusterInitCallback(endpoint);
+		break;
+	case app::Clusters::ThreadNetworkDiagnostics::Id:
+		emberAfThreadNetworkDiagnosticsClusterInitCallback(endpoint);
 		break;
 	default:
 		// Unrecognized cluster ID
@@ -102,6 +108,11 @@ void __attribute__((weak)) emberAfDescriptorClusterInitCallback(EndpointId endpo
 	// To prevent warning
 	(void)endpoint;
 }
+void __attribute__((weak)) emberAfDiagnosticLogsClusterInitCallback(EndpointId endpoint)
+{
+	// To prevent warning
+	(void)endpoint;
+}
 void __attribute__((weak)) emberAfGeneralCommissioningClusterInitCallback(EndpointId endpoint)
 {
 	// To prevent warning
@@ -117,12 +128,12 @@ void __attribute__((weak)) emberAfGroupKeyManagementClusterInitCallback(Endpoint
 	// To prevent warning
 	(void)endpoint;
 }
-void __attribute__((weak)) emberAfIdentifyClusterInitCallback(EndpointId endpoint)
+void __attribute__((weak)) emberAfIcdManagementClusterInitCallback(EndpointId endpoint)
 {
 	// To prevent warning
 	(void)endpoint;
 }
-void __attribute__((weak)) emberAfLocalizationConfigurationClusterInitCallback(EndpointId endpoint)
+void __attribute__((weak)) emberAfIdentifyClusterInitCallback(EndpointId endpoint)
 {
 	// To prevent warning
 	(void)endpoint;
@@ -152,12 +163,17 @@ void __attribute__((weak)) emberAfPowerSourceClusterInitCallback(EndpointId endp
 	// To prevent warning
 	(void)endpoint;
 }
-void __attribute__((weak)) emberAfPowerSourceConfigurationClusterInitCallback(EndpointId endpoint)
+void __attribute__((weak)) emberAfSmokeCoAlarmClusterInitCallback(EndpointId endpoint)
 {
 	// To prevent warning
 	(void)endpoint;
 }
-void __attribute__((weak)) emberAfSmokeCoAlarmClusterInitCallback(EndpointId endpoint)
+void __attribute__((weak)) emberAfSoftwareDiagnosticsClusterInitCallback(EndpointId endpoint)
+{
+	// To prevent warning
+	(void)endpoint;
+}
+void __attribute__((weak)) emberAfThreadNetworkDiagnosticsClusterInitCallback(EndpointId endpoint)
 {
 	// To prevent warning
 	(void)endpoint;

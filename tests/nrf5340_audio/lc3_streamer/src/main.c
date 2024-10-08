@@ -92,6 +92,48 @@ ZTEST(lc3_streamer, test_lc3_streamer_stream_register_valid_register_closed)
 	zassert_equal(1, num_active, "Number of active streams should be 1");
 }
 
+ZTEST(lc3_streamer, test_lc3_streamer_register_valid_used_slot)
+{
+	int ret;
+	uint8_t streamer_idx;
+
+	char result_filename[CONFIG_FS_FATFS_MAX_LFN];
+	static const char test_filename[] = "test";
+	static const char long_filename[] = "this_is_a_long_filename_for_testing";
+	static const char short_filename[] = "short";
+
+	/* Fill all three available slots */
+	ret = lc3_streamer_stream_register(long_filename, &streamer_idx, false);
+	zassert_equal(0, ret, "lc3_streamer_stream_register should return success");
+	zassert_equal(0, streamer_idx, "lc3_streamer_stream_register should return index 0");
+
+	ret = lc3_streamer_stream_register(long_filename, &streamer_idx, false);
+	zassert_equal(0, ret, "lc3_streamer_stream_register should return success");
+	zassert_equal(1, streamer_idx, "lc3_streamer_stream_register should return index 1");
+
+	ret = lc3_streamer_stream_register(long_filename, &streamer_idx, false);
+	zassert_equal(0, ret, "lc3_streamer_stream_register should return success");
+	zassert_equal(2, streamer_idx, "lc3_streamer_stream_register should return index 2");
+
+	/* Close second slot */
+	ret = lc3_streamer_stream_close(1);
+	zassert_equal(0, ret, "lc3_streamer_stream_close should return success");
+
+	/* Open new slot */
+	ret = lc3_streamer_stream_register(short_filename, &streamer_idx, false);
+	zassert_equal(0, ret, "lc3_streamer_stream_register should return success");
+	zassert_equal(1, streamer_idx, "lc3_streamer_stream_register should return index 1");
+
+	zassert_mem_equal(short_filename, lc3_file_open_fake.arg1_val, sizeof(test_filename),
+			  "lc3_file_open called with wrong filename (%s)",
+			  lc3_file_open_fake.arg1_val);
+
+	ret = lc3_streamer_file_path_get(streamer_idx, result_filename, sizeof(result_filename));
+	zassert_equal(0, ret, "lc3_streamer_file_path_get should return success");
+	zassert_mem_equal(short_filename, result_filename, strlen(result_filename),
+			  "lc3_streamer_file_path_get should return the correct filename");
+}
+
 ZTEST(lc3_streamer, test_lc3_streamer_stream_register_invalid_nullptr)
 {
 	int ret;
@@ -110,12 +152,19 @@ ZTEST(lc3_streamer, test_lc3_streamer_stream_register_invalid_long_filename)
 {
 	int ret;
 	uint8_t streamer_idx;
-	char test_string[CONFIG_FS_FATFS_MAX_LFN + 2];
+	char test_string_valid[CONFIG_FS_FATFS_MAX_LFN];
+	char test_string_invalid[CONFIG_FS_FATFS_MAX_LFN + 1];
 
-	memset(test_string, 'a', CONFIG_FS_FATFS_MAX_LFN + 1);
-	test_string[CONFIG_FS_FATFS_MAX_LFN + 1] = '\0';
+	memset(test_string_valid, 'a', CONFIG_FS_FATFS_MAX_LFN);
+	test_string_valid[CONFIG_FS_FATFS_MAX_LFN - 1] = '\0';
 
-	ret = lc3_streamer_stream_register(test_string, &streamer_idx, false);
+	memset(test_string_invalid, 'a', CONFIG_FS_FATFS_MAX_LFN + 1);
+	test_string_invalid[CONFIG_FS_FATFS_MAX_LFN] = '\0';
+
+	ret = lc3_streamer_stream_register(test_string_valid, &streamer_idx, false);
+	zassert_equal(0, ret, "lc3_streamer_stream_register should return success");
+
+	ret = lc3_streamer_stream_register(test_string_invalid, &streamer_idx, false);
 	zassert_equal(-EINVAL, ret,
 		      "lc3_streamer_stream_register should return -EINVAL on too long filename");
 }
@@ -520,6 +569,92 @@ ZTEST(lc3_streamer, test_lc3_streamer_stream_close_invalid_index)
 
 	ret = lc3_streamer_stream_close(CONFIG_SD_CARD_LC3_STREAMER_MAX_NUM_STREAMS);
 	zassert_equal(-EINVAL, ret, "lc3_streamer_stream_close should return -EINVAL");
+}
+
+ZTEST(lc3_streamer, test_lc3_streamer_file_path_get_valid)
+{
+	int ret;
+	uint8_t streamer_idx;
+	char file_path[CONFIG_FS_FATFS_MAX_LFN];
+
+	char test_string_1[] = "test_string_1";
+
+	ret = lc3_streamer_stream_register(test_string_1, &streamer_idx, false);
+	zassert_equal(0, ret, "lc3_streamer_stream_register should return success");
+	zassert_equal(0, streamer_idx, "lc3_streamer_stream_register should return index 0");
+
+	ret = lc3_streamer_file_path_get(streamer_idx, file_path, sizeof(file_path));
+	zassert_equal(0, ret, "lc3_streamer_stream_register should return success");
+	zassert_mem_equal(test_string_1, file_path, sizeof(test_string_1),
+			  "Strings for file path doesn't match");
+
+	ret = lc3_streamer_stream_close(streamer_idx);
+	zassert_equal(0, ret, "lc3_streamer_close_stream should return success");
+
+	ret = lc3_streamer_file_path_get(streamer_idx, file_path, sizeof(file_path));
+	zassert_equal(0, ret, "lc3_streamer_stream_register should return success");
+	zassert_equal(0, strlen(file_path), "File path should be empty");
+}
+
+ZTEST(lc3_streamer, test_lc3_streamer_file_path_get_invalid)
+{
+	int ret;
+	uint8_t streamer_idx;
+	char file_path[CONFIG_FS_FATFS_MAX_LFN];
+
+	ret = lc3_streamer_file_path_get(CONFIG_SD_CARD_LC3_STREAMER_MAX_NUM_STREAMS, file_path,
+					 sizeof(file_path));
+	zassert_equal(-EINVAL, ret,
+		      "lc3_streamer_file_path_get should return -EINVAL on invalid index");
+
+	char test_string_1[] = "test_string_1";
+
+	ret = lc3_streamer_stream_register(test_string_1, &streamer_idx, false);
+	zassert_equal(0, ret, "lc3_streamer_stream_register should return success");
+	zassert_equal(0, streamer_idx, "lc3_streamer_stream_register should return index 0");
+
+	ret = lc3_streamer_file_path_get(streamer_idx, NULL, CONFIG_FS_FATFS_MAX_LFN);
+	zassert_equal(-EINVAL, ret, "lc3_streamer_file_path_get should return -EINVAL on nullptr");
+
+	size_t small_buf_size = 4;
+	uint8_t too_small_buffer[sizeof(test_string_1)];
+
+	ret = lc3_streamer_file_path_get(streamer_idx, too_small_buffer, small_buf_size);
+	zassert_equal(0, ret, "lc3_streamer_file_path_get should return success");
+	zassert_equal(small_buf_size, strlen(too_small_buffer),
+		      "File path should be truncated to buffer size");
+	zassert_mem_equal(test_string_1, too_small_buffer, small_buf_size,
+			  "Strings for file path doesn't match");
+}
+
+ZTEST(lc3_streamer, test_lc3_streamer_is_looping_valid)
+{
+	int ret;
+	bool is_looping;
+	uint8_t streamer_idx;
+
+	ret = lc3_streamer_stream_register("test", &streamer_idx, false);
+	zassert_equal(0, ret, "lc3_streamer_stream_register should return success");
+	zassert_equal(0, streamer_idx, "lc3_streamer_stream_register should return index 0");
+
+	is_looping = lc3_streamer_is_looping(streamer_idx);
+	zassert_equal(false, is_looping, "Stream should not be looping");
+
+	ret = lc3_streamer_stream_register("test", &streamer_idx, true);
+	zassert_equal(0, ret, "lc3_streamer_stream_register should return success");
+	zassert_equal(1, streamer_idx, "lc3_streamer_stream_register should return index 1");
+
+	is_looping = lc3_streamer_is_looping(streamer_idx);
+	zassert_equal(true, is_looping, "Stream should be looping");
+}
+
+ZTEST(lc3_streamer, test_lc3_streamer_is_looping_invalid)
+{
+	bool is_looping;
+
+	is_looping = lc3_streamer_is_looping(CONFIG_SD_CARD_LC3_STREAMER_MAX_NUM_STREAMS);
+	zassert_equal(false, is_looping,
+		      "lc3_streamer_is_looping should return false on an invalid index");
 }
 
 ZTEST_SUITE(lc3_streamer, NULL, suite_setup, test_setup, test_teardown, NULL);

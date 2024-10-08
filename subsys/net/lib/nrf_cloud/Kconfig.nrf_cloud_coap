@@ -12,6 +12,7 @@ menuconfig NRF_CLOUD_COAP
 	select COAP_CLIENT
 	select EXPERIMENTAL
 	select LTE_PROPRIETARY_PSM_REQ if (SOC_NRF9161_LACA || SOC_NRF9151_LACA || SOC_NRF9131_LACA)
+	depends on NET_IPV4 || NET_IPV6
 
 if NRF_CLOUD_COAP
 
@@ -56,6 +57,12 @@ config NRF_CLOUD_COAP_DOWNLOADS
 	  Use nRF Cloud CoAP's proxy download resource to download files for FOTA and P-GPS.
 	  When enabled, the Kconfig option COAP_EXTENDED_OPTIONS_LEN_VALUE must be increased
 	  from the default value. Safe values are 80 for P-GPS and 192 for FOTA.
+
+config NRF_CLOUD_COAP_DISCONNECT_ON_FAILED_REQUEST
+	bool "Disconnect on failed request"
+	help
+	  Enabling this option will ensure that the CoAP client is disconnected when a request
+	  fails to be sent. (Maximum retransmissions reached).
 
 module = NRF_CLOUD_COAP
 module-str = nRF Cloud COAP

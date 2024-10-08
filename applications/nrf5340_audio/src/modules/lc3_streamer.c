@@ -100,6 +100,7 @@ static int stream_close(struct lc3_stream *stream)
 	}
 
 	stream->state = STREAM_IDLE;
+	memset(stream->filename, 0, sizeof(stream->filename));
 
 	return 0;
 }
@@ -125,7 +126,10 @@ static int put_next_frame_to_fifo(struct lc3_stream *stream)
 	ret = lc3_file_frame_get(&stream->file, data_ptr,
 				 CONFIG_SD_CARD_LC3_STREAMER_MAX_FRAME_SIZE);
 	if (ret) {
-		LOG_ERR("Failed to get frame from file %d", ret);
+		if (ret != -ENODATA) {
+			LOG_ERR("Failed to get frame from file %d", ret);
+		}
+
 		data_fifo_block_free(&stream->fifo, (void *)data_ptr);
 		return ret;
 	}
@@ -244,7 +248,11 @@ int lc3_streamer_next_frame_get(const uint8_t streamer_idx, const uint8_t **cons
 	ret = data_fifo_pointer_last_filled_get(&stream->fifo, (void **)&data_ptr, &data_len,
 						K_NO_WAIT);
 	if (ret) {
-		LOG_ERR("Failed to get last filled block %d", ret);
+		if (ret == -ENOMSG) {
+			LOG_DBG("Next block is not ready %d", ret);
+		} else {
+			LOG_ERR("Failed to get last filled block %d", ret);
+		}
 		return ret;
 	}
 
@@ -258,6 +266,64 @@ int lc3_streamer_next_frame_get(const uint8_t streamer_idx, const uint8_t **cons
 	}
 
 	return 0;
+}
+
+bool lc3_streamer_file_compatible_check(const char *const filename,
+					const struct lc3_stream_cfg *const cfg)
+{
+	int ret;
+	bool result = true;
+
+	if (filename == NULL || cfg == NULL) {
+		LOG_ERR("NULL pointer received");
+		return false;
+	}
+
+	if (strlen(filename) > CONFIG_FS_FATFS_MAX_LFN - 1) {
+		LOG_ERR("Filename too long");
+		return false;
+	}
+
+	struct lc3_file_ctx file;
+
+	ret = lc3_file_open(&file, filename);
+	if (ret) {
+		LOG_ERR("Failed to open file %d", ret);
+		return false;
+	}
+
+	struct lc3_file_header header;
+
+	ret = lc3_header_get(&file, &header);
+	if (ret) {
+		LOG_WRN("Failed to get header %d", ret);
+		return false;
+	}
+
+	if ((header.sample_rate * 100) != cfg->sample_rate_hz) {
+		LOG_WRN("Sample rate mismatch %d Hz != %d Hz", (header.sample_rate * 100),
+			cfg->sample_rate_hz);
+		result = false;
+	}
+
+	if ((header.bit_rate * 100) != cfg->bit_rate_bps) {
+		LOG_WRN("Bit rate mismatch %d bps != %d bps", (header.bit_rate * 100),
+			cfg->bit_rate_bps);
+		result = false;
+	}
+
+	if ((header.frame_duration * 10) != cfg->frame_duration_us) {
+		LOG_WRN("Frame duration mismatch %d us != %d us", (header.frame_duration * 10),
+			cfg->frame_duration_us);
+		result = false;
+	}
+
+	ret = lc3_file_close(&file);
+	if (ret) {
+		LOG_ERR("Failed to close file %d", ret);
+	}
+
+	return result;
 }
 
 int lc3_streamer_stream_register(const char *const filename, uint8_t *const streamer_idx,
@@ -275,7 +341,8 @@ int lc3_streamer_stream_register(const char *const filename, uint8_t *const stre
 		return -EINVAL;
 	}
 
-	if (strlen(filename) > CONFIG_FS_FATFS_MAX_LFN) {
+	/* Check that there's room for the filename and a NULL terminating char */
+	if (strlen(filename) > CONFIG_FS_FATFS_MAX_LFN - 1) {
 		LOG_ERR("Filename too long");
 		return -EINVAL;
 	}
@@ -302,7 +369,8 @@ int lc3_streamer_stream_register(const char *const filename, uint8_t *const stre
 		return ret;
 	}
 
-	strncpy(streams[*streamer_idx].filename, filename, strlen(filename));
+	strncpy(streams[*streamer_idx].filename, filename,
+		ARRAY_SIZE(streams[*streamer_idx].filename));
 
 	ret = data_fifo_init(&streams[*streamer_idx].fifo);
 	if (ret) {
@@ -348,6 +416,37 @@ uint8_t lc3_streamer_num_active_streams(void)
 	}
 
 	return num_active;
+}
+
+int lc3_streamer_file_path_get(const uint8_t streamer_idx, char *const path, const size_t path_len)
+{
+	if (streamer_idx >= ARRAY_SIZE(streams)) {
+		LOG_ERR("Invalid streamer index %d", streamer_idx);
+		return -EINVAL;
+	}
+
+	if (path == NULL) {
+		LOG_ERR("Nullptr received for path");
+		return -EINVAL;
+	}
+
+	if (path_len < strlen(streams[streamer_idx].filename)) {
+		LOG_WRN("Path buffer too small");
+	}
+
+	strncpy(path, streams[streamer_idx].filename, path_len);
+
+	return 0;
+}
+
+bool lc3_streamer_is_looping(const uint8_t streamer_idx)
+{
+	if (streamer_idx >= ARRAY_SIZE(streams)) {
+		LOG_ERR("Invalid streamer index %d", streamer_idx);
+		return false;
+	}
+
+	return streams[streamer_idx].loop_stream;
 }
 
 int lc3_streamer_stream_close(const uint8_t streamer_idx)
@@ -431,7 +530,7 @@ int lc3_streamer_init(void)
 	k_work_queue_init(&lc3_streamer_work_q);
 	k_work_queue_start(&lc3_streamer_work_q, lc3_streamer_work_q_stack_area,
 			   K_THREAD_STACK_SIZEOF(lc3_streamer_work_q_stack_area),
-			   CONFIG_SD_CARD_LC3_STREAMER_THREAD_PRIORITY, NULL);
+			   CONFIG_SD_CARD_LC3_STREAMER_THREAD_PRIO, NULL);
 	k_thread_name_set(&lc3_streamer_work_q.thread, "lc3_streamer_work_q");
 
 	initialized = true;

@@ -6,20 +6,6 @@
 
 - scenarios:
     - libraries.hash_map.newlib.cxx_unordered_map.djb2
-  platforms:
-    - nrf52dk/nrf52832
-    - nrf9160dk/nrf9160/ns
-    - mps2_an521
-    - nrf5340dk/nrf5340/cpuapp/ns
-    - nrf52840dk/nrf52840
-    - nrf9160dk/nrf9160
-    - nrf5340dk/nrf5340/cpuapp
-    - nrf5340dk/nrf5340/cpunet
-    - nrf54h20dk/nrf54h20/cpuapp
-    - nrf54l15pdk/nrf54l15/cpuapp
-    - nrf54l15pdk/nrf54l15/cpuflpr
-    - nrf54h20dk/nrf54h20/cpuppr
-    - nrf54h20dk/nrf54h20/cpurad
   comment: "https://nordicsemi.atlassian.net/browse/NCSDK-21219"
 
 - scenarios:
@@ -44,6 +30,14 @@
   comment: "https://nordicsemi.atlassian.net/browse/NCSDK-24923"
 
 - scenarios:
+    - display.cfb.basic.mono01
+    - display.cfb.basic.mono01.lsbfirst
+    - display.cfb.basic.mono01.lsbfirst.msbfirst_font
+    - display.cfb.basic.mono01.msbfirst_font
+    - display.cfb.basic.mono10
+    - display.cfb.basic.mono10.lsbfirst
+    - display.cfb.basic.mono10.lsbfirst.msbfirst_font
+    - display.cfb.basic.mono10.msbfirst_font
     - drivers.display.default
     - drivers.display.read_write.sdl.argb8888
     - drivers.display.read_write.sdl.bgr565
@@ -53,6 +47,7 @@
     - drivers.display.read_write.sdl.mono10.lsbfirst
     - drivers.display.read_write.sdl.rgb565
     - drivers.display.read_write.sdl.rgb888
+    - sample.boards.nrf.nrf_led_matrix
     - sample.display.builtin
     - sample.display.lvgl.gui
     - sample.modules.lvgl.accelerometer_chart
@@ -60,8 +55,11 @@
     - sample.modules.lvgl.demo_benchmark
     - sample.modules.lvgl.demo_stress
     - sample.modules.lvgl.demo_widgets
+    - sample.smf.smf_calculator
   platforms:
     - native_posix
+    - native_sim
+    - native_sim/native/64
   comment: "https://nordicsemi.atlassian.net/browse/NCSDK-24924"
 
 - scenarios:
@@ -84,6 +82,7 @@
   platforms:
     - nrf5340dk/nrf5340/cpuapp/ns
     - nrf9160dk/nrf9160/ns
+    - nrf54l15dk/nrf54l15/cpuapp
     - nrf54l15pdk/nrf54l15/cpuapp
   comment: "https://nordicsemi.atlassian.net/browse/NCSDK-24928"
 
@@ -127,6 +126,7 @@
 - scenarios:
     - drivers.flash.common.default
   platforms:
+    - nrf54l15dk/nrf54l15/cpuapp
     - nrf54l15pdk/nrf54l15/cpuapp
   comment: "https://nordicsemi.atlassian.net/browse/NCSDK-27852"
 
@@ -134,6 +134,7 @@
     - arch.interrupt.gen_isr_table.riscv_no_direct
   platforms:
     - nrf54h20dk/nrf54h20/cpuppr
+    - nrf54l15dk/nrf54l15/cpuflpr
     - nrf54l15pdk/nrf54l15/cpuflpr
   comment: "https://nordicsemi.atlassian.net/browse/NCSDK-27981"
 
@@ -141,6 +142,7 @@
     - sample.net.sockets.big_http_download
     - sample.net.sockets.big_http_download.ci
   platforms:
+    - nrf54l15dk/nrf54l15/cpuapp
     - nrf54l15pdk/nrf54l15/cpuapp
   comment: "to be fixed in https://github.com/zephyrproject-rtos/zephyr/pull/73777"
 
@@ -150,6 +152,53 @@
     - nrf54h20dk/nrf54h20/cpurad
   comment: "to be fixed in https://github.com/zephyrproject-rtos/zephyr/pull/73777"
 
+- scenarios:
+    - sample.drivers.spi.flash
+    - sample.drivers.spi.flash_dpd
+  platforms:
+    - nrf54l15dk/nrf54l15/cpuapp
+  comment: "Test not aligned for nrf54l15 but selected due to jedec,spi-nor"
+
+- scenarios:
+    - llext.simple.*
+  platforms:
+    - nrf54h20dk/nrf54h20/cpurad
+    - nrf52dk/nrf52832
+    - nrf5340dk/nrf5340/cpunet
+    - nrf54h20dk/nrf54h20/cpuppr
+    - nrf54l15pdk/nrf54l15/cpuflpr
+    - qemu_cortex_m3
+  comment: "overflow, to report/fix in the upstream @permac and put ticket # here"
+
+- scenarios:
+    - sample.net.mqtt.nrf70.tls
+  comment: "To report @chaitanya and put ticket # here"
+
+- scenarios:
+    - storage.flash_map
+  platforms:
+    - nrf9160dk/nrf9160/ns
+  comment: "https://nordicsemi.atlassian.net/browse/NCSDK-29462"
+
+- scenarios:
+    - drivers.watchdog
+  platforms:
+    - nrf54l15pdk/nrf54l15/cpuapp
+    - nrf54l15pdk/nrf54l15/cpuflpr
+  comment: "Missing support for nrf54l15pdk"
+
+- scenarios:
+    - sample.filesystem.fat_fs.nrf54l15dk
+  platforms:
+    - nrf54l15dk/nrf54l15/cpuapp
+  comment: "Test not aligned for nrf54l15 - missing PM configuration"
+
+- scenarios:
+    - sample.bluetooth.hci_uart.nrf54l15.all
+  platforms:
+    - nrf54l15dk/nrf54l15/cpuapp
+  comment: "Test not aligned for nrf54l15 - missing snippet settings"
+
 # ---------------------------------   Won't fix section -----------------------------------
 
 - scenarios:
@@ -157,6 +206,7 @@
   platforms:
     - nrf5340dk/nrf5340/cpuapp/ns
     - nrf9160dk/nrf9160/ns
+    - nrf54l15dk/nrf54l15/cpuapp
     - nrf54l15pdk/nrf54l15/cpuapp
   comment: "Won't be fixed - https://nordicsemi.atlassian.net/browse/NCSDK-15508"
 
@@ -186,8 +236,6 @@
 
 - scenarios:
     - libraries.uoscore
-  platforms:
-    - nrf54l15pdk/nrf54l15/cpuapp
   comment: "Won't be fixes - We don't support uoscore since it doesn't use NRF security"
 
 - scenarios:
@@ -243,6 +291,7 @@
     - message_bus.zbus.general_unittests_without_priority_boost
     - message_bus.zbus.general_unittests
     - logging.thread
+    - logging.immediate.*
     - libraries.heap
     - libraries.libc.c11_threads.minimal
     - libraries.libc.c11_threads.picolibc.notls
@@ -257,6 +306,8 @@
     - libraries.libc.common.picolibc
     - libraries.libc.common.picolibc.module
     - libraries.libc.common.picolibc.notls
+    - libraries.encoding.json
+    - libraries.net_buf.buf
     - libraries.ring_buffer
     - libraries.hash_map.cxx.djb2
     - cpp.libcxx.glibcxx.picolibc
@@ -278,10 +329,8 @@
     - crypto.tinycrypt.hmac_prng
     - net.mqtt_sn.packet
     - net.http.server.common
-    - net.buf
     - net.coap.server.common
-    - sample.zbus.msg_subscriber_static
-    - sample.zbus.msg_subscriber_dynamic
+    - sample.zbus.msg_subscriber.*
     - sample.sensor.shell.pytest
     - sample.sensor.shell
     - benchmark.kernel.core
@@ -306,6 +355,7 @@
     - kernel.common
     - net.http.server.crime
     - drivers.gpio.build
+    - sample.perf
   platforms:
     - nrf54h20dk/nrf54h20/cpuppr
   comment: "region RAM/FLASH overflowed"
@@ -351,11 +401,15 @@
     - sample.net.sockets.dumb_http_server
     - sample.net.sockets.http_get
     - sample.net.sockets.socketpair
+    - sample.posix.eventfd
     - sample.posix.gettimeofday
     - sample.sensor.shell
     - sample.sensor.shell.pytest
     - sample.shell.shell_module
+    - sample.shell.shell_module.getopt
+    - sample.shell.shell_module.login
   platforms:
+    - nrf54l15dk/nrf54l15/cpuflpr
     - nrf54l15pdk/nrf54l15/cpuflpr
   comment: "region RAM/FLASH overflowed"
 
@@ -372,3 +426,15 @@
     - nrf54h20dk/nrf54h20/cpuapp
     - nrf54h20dk/nrf54h20/cpurad
   comment: "Won't be fixed, 'rodata will not fit in region FLASH' - no ticket"
+
+- scenarios:
+    - examples.nrfx_spim.blocking
+    - examples.nrfx_spim.non_blocking
+  comment: "Not fixable during upmerge, fix will be included in next upmerge"
+
+- scenarios:
+    - sample.filesystem.fat_fs.nrf54l15pdk
+  platforms:
+    - nrf54l15dk/nrf54l15/cpuapp
+    - nrf54l15pdk/nrf54l15/cpuapp
+  comment: "partition manager configuration need to be fixed/provided"

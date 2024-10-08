@@ -366,7 +366,7 @@ Depending on the development kit you use, you need to select the respective conf
 
       .. table-from-rows:: /includes/sample_board_rows.txt
          :header: heading
-         :rows: nrf52840dk_nrf52840, nrf52833dk_nrf52833, nrf52833dk_nrf52820, nrf5340dk_nrf5340_cpuapp, nrf54l15pdk_nrf54l15_cpuapp, nrf54h20dk_nrf54h20_cpuapp
+         :rows: nrf52840dk_nrf52840, nrf52833dk_nrf52833, nrf52833dk_nrf52820, nrf5340dk_nrf5340_cpuapp, nrf54l15dk_nrf54l15_cpuapp, nrf54h20dk_nrf54h20_cpuapp
 
       Depending on the configuration, a DK may act either as mouse, keyboard or dongle.
       For information about supported configurations for each board, see the :ref:`nrf_desktop_board_configuration_files` section.
@@ -1054,7 +1054,7 @@ See the following list of possible scenarios and best practices:
 
   * If you use the USB legacy stack, you can configure your preferred USB HID poll interval using the :kconfig:option:`CONFIG_USB_HID_POLL_INTERVAL_MS` Kconfig option.
     By default, the :kconfig:option:`CONFIG_USB_HID_POLL_INTERVAL_MS` Kconfig option is set to ``1`` to request the lowest possible poll interval.
-  * If you use the USB next stack, you can configure your preferred USB HID polling rate using the ``in-polling-rate`` property of a DTS node compatible with ``zephyr,hid-device``.
+  * If you use the USB next stack, you can configure your preferred USB HID polling rate using the ``in-polling-period-us`` property of a DTS node compatible with ``zephyr,hid-device``.
     The lowest polling rate that is supported by the USB High-Speed is 125 µs, which corresponds to 8 kHz report rate.
     The lowest polling rate supported by devices that do not support USB High-Speed is 1000 µs, which corresponds to 1 kHz report rate.
 

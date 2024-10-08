@@ -45,8 +45,7 @@ struct bt_cap_initiator_broadcast_create_param create_param[CONFIG_BT_ISO_MAX_BI
 /* Make sure we have statically allocated streams for all potential BISes */
 static struct bt_cap_stream cap_streams[CONFIG_BT_ISO_MAX_BIG]
 				       [CONFIG_BT_BAP_BROADCAST_SRC_SUBGROUP_COUNT]
-				       [CONFIG_BT_BAP_BROADCAST_SRC_STREAM_COUNT /
-					CONFIG_BT_BAP_BROADCAST_SRC_SUBGROUP_COUNT];
+				       [CONFIG_BT_BAP_BROADCAST_SRC_STREAM_COUNT];
 
 static struct bt_bap_lc3_preset lc3_preset = BT_BAP_LC3_BROADCAST_PRESET_NRF5340_AUDIO;
 
@@ -109,7 +108,9 @@ static void stream_sent_cb(struct bt_bap_stream *stream)
 		return;
 	}
 
-	le_audio_event_publish(LE_AUDIO_EVT_STREAM_SENT, &idx);
+	if (IS_ENABLED(CONFIG_BT_AUDIO_BROADCAST_ZBUS_EVT_STREAM_SENT)) {
+		le_audio_event_publish(LE_AUDIO_EVT_STREAM_SENT, &idx);
+	}
 
 	ERR_CHK(bt_le_audio_tx_stream_sent(idx));
 }
@@ -210,12 +211,11 @@ static void public_broadcast_features_set(uint8_t *features, uint8_t big_index)
 }
 #endif /* (CONFIG_AURACAST) */
 
-int broadcast_source_ext_adv_populate(uint8_t big_index,
+int broadcast_source_ext_adv_populate(uint8_t big_index, bool fixed_id, uint32_t broadcast_id,
 				      struct broadcast_source_ext_adv_data *ext_adv_data,
 				      struct bt_data *ext_adv_buf, size_t ext_adv_buf_vacant)
 {
 	int ret;
-	uint32_t broadcast_id = 0;
 	uint32_t ext_adv_buf_cnt = 0;
 
 	if (big_index >= CONFIG_BT_ISO_MAX_BIG) {
@@ -229,8 +229,6 @@ int broadcast_source_ext_adv_populate(uint8_t big_index,
 		return -EINVAL;
 	}
 
-	sys_put_le16(BT_UUID_BROADCAST_AUDIO_VAL, ext_adv_data->brdcst_id_buf);
-
 	size_t brdcast_name_size = strlen(ext_adv_data->brdcst_name_buf);
 
 	ret = bt_mgmt_adv_buffer_put(ext_adv_buf, &ext_adv_buf_cnt, ext_adv_buf_vacant,
@@ -240,17 +238,17 @@ int broadcast_source_ext_adv_populate(uint8_t big_index,
 		return ret;
 	}
 
-	/* Setup extended advertising data */
-	if (IS_ENABLED(CONFIG_BT_AUDIO_USE_BROADCAST_ID_RANDOM)) {
+	if (!fixed_id) {
+		/* Use a random broadcast ID */
 		ret = bt_cap_initiator_broadcast_get_id(broadcast_sources[big_index],
 							&broadcast_id);
 		if (ret) {
 			LOG_ERR("Unable to get broadcast ID: %d", ret);
 			return ret;
 		}
-	} else {
-		broadcast_id = CONFIG_BT_AUDIO_BROADCAST_ID_FIXED;
 	}
+
+	sys_put_le16(BT_UUID_BROADCAST_AUDIO_VAL, ext_adv_data->brdcst_id_buf);
 
 	sys_put_le24(broadcast_id, &ext_adv_data->brdcst_id_buf[BROADCAST_SOURCE_ADV_ID_START]);
 
@@ -554,7 +552,7 @@ static uint8_t audio_map_location_get(struct bt_bap_stream *bap_stream)
 	int ret;
 	enum bt_audio_location loc;
 
-	ret = bt_audio_codec_cfg_get_chan_allocation(bap_stream->codec_cfg, &loc);
+	ret = bt_audio_codec_cfg_get_chan_allocation(bap_stream->codec_cfg, &loc, false);
 	if (ret) {
 		LOG_WRN("Unable to find location, defaulting to left");
 		return AUDIO_CH_L;
@@ -572,6 +570,35 @@ static uint8_t audio_map_location_get(struct bt_bap_stream *bap_stream)
 	return AUDIO_CH_L;
 }
 #endif
+
+int broadcast_source_id_get(uint8_t big_index, uint32_t *broadcast_id)
+{
+	int ret;
+
+	if (big_index >= CONFIG_BT_ISO_MAX_BIG) {
+		LOG_ERR("Failed to get broadcast ID for BIG %d out of %d", big_index,
+			CONFIG_BT_ISO_MAX_BIG);
+		return -EINVAL;
+	}
+
+	if (broadcast_sources[big_index] == NULL) {
+		LOG_ERR("No broadcast source");
+		return -EINVAL;
+	}
+
+	if (broadcast_id == NULL) {
+		LOG_ERR("NULL pointer given for broadcast_id");
+		return -EINVAL;
+	}
+
+	ret = bt_cap_initiator_broadcast_get_id(broadcast_sources[big_index], broadcast_id);
+	if (ret) {
+		LOG_ERR("Unable to get broadcast ID: %d", ret);
+		return ret;
+	}
+
+	return 0;
+}
 
 int broadcast_source_send(uint8_t big_index, uint8_t subgroup_index,
 			  struct le_audio_encoded_audio enc_audio)
@@ -703,10 +730,7 @@ void broadcast_source_default_create(struct broadcast_source_big *broadcast_para
 			&subgroups.group_lc3_preset.codec_cfg);
 	}
 
-	uint8_t src[3] = "eng";
-
-	bt_audio_codec_cfg_meta_set_stream_lang(&subgroups.group_lc3_preset.codec_cfg,
-						(uint32_t)sys_get_le24(src));
+	bt_audio_codec_cfg_meta_set_lang(&subgroups.group_lc3_preset.codec_cfg, "eng");
 }
 
 int broadcast_source_enable(struct broadcast_source_big const *const broadcast_param,

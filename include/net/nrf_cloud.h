@@ -277,10 +277,14 @@ enum nrf_cloud_topic_type {
 	 *  nrf_cloud_codec.h - struct nrf_cloud_bin_hdr.  A unique format value
 	 *  should be included to distinguish this data from binary logging.
 	 */
-	NRF_CLOUD_TOPIC_BIN
+	NRF_CLOUD_TOPIC_BIN,
+#if defined(CONFIG_NRF_CLOUD_MQTT_SHADOW_TRANSFORMS)
+	/** Endpoint used to request device shadow data using a transform (JSONata expression). */
+	NRF_CLOUD_TOPIC_STATE_TF,
+#endif
 };
 
-/** @brief FOTA status reported to nRF Cloud. */
+/** @brief FOTA status reported to nRF Cloud and notified in @ref nrf_cloud_fota_poll_handler_t */
 enum nrf_cloud_fota_status {
 	NRF_CLOUD_FOTA_QUEUED = 0,
 	NRF_CLOUD_FOTA_IN_PROGRESS = 1,
@@ -310,6 +314,8 @@ enum nrf_cloud_fota_type {
 
 	/** Full modem update */
 	NRF_CLOUD_FOTA_MODEM_FULL = 5,
+	/** Auxiliary device updated using SMP */
+	NRF_CLOUD_FOTA_SMP = 6,
 
 	NRF_CLOUD_FOTA_TYPE__INVALID
 };
@@ -438,9 +444,11 @@ struct nrf_cloud_svc_info_fota {
 	uint8_t application:1;
 	/** Flag to indicate if full modem image updates are supported */
 	uint8_t modem_full:1;
+	/** Flag to indicate if smp updates are supported */
+	uint8_t smp:1;
 
 	/** Reserved for future use */
-	uint8_t _rsvd:4;
+	uint8_t _rsvd:3;
 };
 
 /** @brief DEPRECATED - No longer used by nRF Cloud */
@@ -664,6 +672,12 @@ struct nrf_cloud_init_param {
 	 * @kconfig{CONFIG_NRF_CLOUD_SEND_DEVICE_STATUS} is enabled.
 	 */
 	const char *application_version;
+
+	/** Callback of type @ref dfu_target_reset_cb_t for resetting the SMP device to enter
+	 * MCUboot recovery mode.
+	 * Used if @kconfig{CONFIG_NRF_CLOUD_FOTA_SMP} is enabled.
+	 */
+	void *smp_reset_cb;
 };
 
 /**
@@ -704,13 +718,25 @@ int nrf_cloud_uninit(void);
 /**
  * @brief Print details about cloud connection.
  *
- * if @kconfig{CONFIG_NRF_CLOUD_VERBOSE_DETAILS} is not enabled,
+ * If @kconfig{CONFIG_NRF_CLOUD_VERBOSE_DETAILS} is not enabled,
  * only print the device id. If enabled, also print the protocol,
- * sec tag, host name, stage, and team id.
+ * sec tag, and host name.
  *
  * @return A negative value indicates an error.
  */
 int nrf_cloud_print_details(void);
+
+/**
+ * @brief Print details about cloud connection after connected.
+ *
+ * Some information is only available after the device is connected.
+ * When using MQTT, the tenant will be printed.
+ *
+ * When using CoAP and REST, there is no further information to print.
+ *
+ * @return A negative value indicates an error.
+ */
+int nrf_cloud_print_cloud_details(void);
 
 /**
  * @brief Retrieve the IMEI.
@@ -844,6 +870,26 @@ int nrf_cloud_send(const struct nrf_cloud_tx_data *msg);
  * @return A negative value indicates an error.
  */
 int nrf_cloud_obj_shadow_update(struct nrf_cloud_obj *const shadow_obj);
+
+/**
+ * @brief Request shadow data over MQTT using a JSONata expression.
+ *        For example, to request the reported device info section, the transform would be:
+ *        "state.reported.device.deviceInfo".
+ *        The application will receive response data in an
+ *        @ref NRF_CLOUD_EVT_RX_DATA_SHADOW event.
+ *        The @ref nrf_cloud_obj_shadow_data will be of the type @ref NRF_CLOUD_OBJ_SHADOW_TYPE_TF.
+ *
+ * @param transform The JSONata expression.
+ * @param max_response_len The maximum allowable length of the cloud's response.
+ *                         Set to 0 to use the default length:
+ *                         @ref NRF_CLOUD_TRANSFORM_MAX_RESPONSE_LEN.
+ *
+ * @retval 0        Request was sent successfully.
+ * @retval -ENOTSUP Error; @kconfig{CONFIG_NRF_CLOUD_MQTT_SHADOW_TRANSFORMS} is not enabled.
+ * @retval -EINVAL  Error; invalid parameter.
+ * @return A negative value indicates an error.
+ */
+int nrf_cloud_shadow_transform_request(char const *const transform, const size_t max_response_len);
 
 /**
  * @brief Disconnect from the cloud.
@@ -1077,6 +1123,38 @@ bool nrf_cloud_fota_is_type_enabled(const enum nrf_cloud_fota_type type);
  * @return A negative value indicates an error starting the job.
  */
 int nrf_cloud_fota_job_start(void);
+
+/**
+ * @brief Install a downloaded SMP FOTA job.
+ *        Called automatically if @kconfig{CONFIG_NRF_CLOUD_FOTA} is enabled (MQTT FOTA).
+ *
+ * @retval 0        SMP update installed successfully.
+ * @retval -ENOTSUP Error; @kconfig{CONFIG_NRF_CLOUD_FOTA_SMP} is not enabled.
+ * @retval -EIO     Error; failed to schedule image installation.
+ * @retval -EPROTO  Error; failed to reset SMP device.
+ * @return A negative value indicates an error.
+ */
+int nrf_cloud_fota_smp_install(void);
+
+/**
+ * @brief Read the image info from the SMP device to obtain the current version.
+ *
+ * @retval 0        Success; call @ref nrf_cloud_fota_smp_version_get to get the version string.
+ * @retval -ENOBUFS Error; internal buffer is too small to hold version string.
+ * @return A negative value indicates an error.
+ */
+int nrf_cloud_fota_smp_version_read(void);
+
+/**
+ * @brief Get the current version string of the SMP device.
+ *        An empty string will be returned if @ref nrf_cloud_fota_smp_version_read has
+ *        not been successfully called.
+ *
+ * @retval 0        Success.
+ * @retval -ENOBUFS Error; internal buffer is too small to hold version string.
+ * @return A negative value indicates an error.
+ */
+int nrf_cloud_fota_smp_version_get(char **smp_ver_out);
 
 /**
  * @brief Check if credentials exist in the configured location.

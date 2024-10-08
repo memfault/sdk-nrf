@@ -300,10 +300,20 @@ static void on_modem_init(int ret, void *ctx)
 int pdn_default_ctx_cb_reg(pdn_event_handler_t cb)
 {
 	struct pdn *pdn;
+	struct pdn *tmp;
 
 	if (!cb) {
 		return -EFAULT;
 	}
+
+	k_mutex_lock(&list_mutex, K_FOREVER);
+	SYS_SLIST_FOR_EACH_CONTAINER_SAFE(&pdn_contexts, pdn, tmp, node) {
+		if (pdn->context_id == 0 && pdn->callback == cb) {
+			/* Already registered */
+			return 0;
+		}
+	}
+	k_mutex_unlock(&list_mutex);
 
 	pdn = pdn_ctx_new();
 	if (!pdn) {
@@ -316,6 +326,27 @@ int pdn_default_ctx_cb_reg(pdn_event_handler_t cb)
 	LOG_DBG("Default PDP ctx callback %p registered", cb);
 
 	return 0;
+}
+
+static bool pdn_ctx_free(struct pdn *pdn)
+{
+	bool removed;
+
+	if (!pdn) {
+		return false;
+	}
+
+	k_mutex_lock(&list_mutex, K_FOREVER);
+	removed = sys_slist_find_and_remove(&pdn_contexts, &pdn->node);
+	k_mutex_unlock(&list_mutex);
+
+	if (!removed) {
+		return false;
+	}
+
+	k_free(pdn);
+
+	return true;
 }
 
 int pdn_default_ctx_cb_dereg(pdn_event_handler_t cb)
@@ -332,7 +363,7 @@ int pdn_default_ctx_cb_dereg(pdn_event_handler_t cb)
 	k_mutex_lock(&list_mutex, K_FOREVER);
 	SYS_SLIST_FOR_EACH_CONTAINER_SAFE(&pdn_contexts, pdn, tmp, node) {
 		if (pdn->callback == cb) {
-			removed = sys_slist_find_and_remove(&pdn_contexts, &pdn->node);
+			removed = pdn_ctx_free(pdn);
 			break;
 		}
 	}
@@ -343,28 +374,8 @@ int pdn_default_ctx_cb_dereg(pdn_event_handler_t cb)
 	}
 
 	LOG_DBG("Default PDP ctx callback %p unregistered", pdn->callback);
-	k_free(pdn);
 
 	return 0;
-}
-
-static void pdn_ctx_free(struct pdn *pdn)
-{
-	bool removed;
-
-	if (!pdn) {
-		return;
-	}
-
-	k_mutex_lock(&list_mutex, K_FOREVER);
-	removed = sys_slist_find_and_remove(&pdn_contexts, &pdn->node);
-	k_mutex_unlock(&list_mutex);
-
-	if (!removed) {
-		return;
-	}
-
-	k_free(pdn);
 }
 
 int pdn_ctx_create(uint8_t *cid, pdn_event_handler_t cb)
@@ -384,17 +395,17 @@ int pdn_ctx_create(uint8_t *cid, pdn_event_handler_t cb)
 
 	err = nrf_modem_at_scanf("AT%XNEWCID?", "%%XNEWCID: %d", &ctx_id_tmp);
 	if (err < 0) {
-		pdn_ctx_free(pdn);
+		(void)pdn_ctx_free(pdn);
 		return err;
 	} else if (err == 0) {
 		/* no argument matched */
-		pdn_ctx_free(pdn);
+		(void)pdn_ctx_free(pdn);
 		return -EBADMSG;
 	}
 
 	if (ctx_id_tmp > SCHAR_MAX || ctx_id_tmp < SCHAR_MIN) {
 		LOG_ERR("Context ID (%d) out of bounds", ctx_id_tmp);
-		pdn_ctx_free(pdn);
+		(void)pdn_ctx_free(pdn);
 		return -EFAULT;
 	}
 
@@ -512,7 +523,7 @@ int pdn_ctx_destroy(uint8_t cid)
 		/* cleanup regardless */
 	}
 
-	pdn_ctx_free(pdn);
+	(void)pdn_ctx_free(pdn);
 
 	return err;
 }
@@ -655,7 +666,7 @@ int pdn_default_apn_get(char *buf, size_t len)
 
 	/* +CGDCONT: 0,"family","apn.name" */
 	err = nrf_modem_at_scanf("AT+CGDCONT?",
-		"+CGDCONT: 0,\"%*[^\"]\",\"%64[^\"]\"", apn);
+		"+CGDCONT: 0,\"%*[^\"]\",\"%63[^\"]\"", apn);
 	if (err < 0) {
 		LOG_ERR("Failed to read PDP contexts, err %d", err);
 		return err;
@@ -672,11 +683,17 @@ int pdn_default_apn_get(char *buf, size_t len)
 	return 0;
 }
 
-NRF_MODEM_LIB_ON_CFUN(pdn_cfun_hook, on_cfun, NULL);
+#if defined(CONFIG_UNITY)
+void pdn_on_modem_cfun(int mode, void *ctx)
+#else
+NRF_MODEM_LIB_ON_CFUN(pdn_cfun_hook, pdn_on_modem_cfun, NULL);
 
-static void on_cfun(int mode, void *ctx)
+static void pdn_on_modem_cfun(int mode, void *ctx)
+#endif
 {
 	int err;
+	struct pdn *pdn;
+	struct pdn *tmp;
 
 	if (mode == MODEM_CFUN_NORMAL ||
 	    mode == MODEM_CFUN_ACTIVATE_LTE) {
@@ -692,6 +709,21 @@ static void on_cfun(int mode, void *ctx)
 	}
 
 	if (mode == MODEM_CFUN_POWER_OFF) {
+		k_mutex_lock(&list_mutex, K_FOREVER);
+		SYS_SLIST_FOR_EACH_CONTAINER_SAFE(&pdn_contexts, pdn, tmp, node) {
+			if (pdn->context_id == 0) {
+				/* Default context is not destroyed */
+				continue;
+			}
+
+			if (pdn->callback) {
+				pdn->callback(pdn->context_id, PDN_EVENT_CTX_DESTROYED, 0);
+			}
+
+			(void)pdn_ctx_free(pdn);
+		}
+		k_mutex_unlock(&list_mutex);
+
 #if defined(CONFIG_PDN_DEFAULTS_OVERRIDE)
 		pdn_defaults_override();
 #endif

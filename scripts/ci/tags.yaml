@@ -920,6 +920,8 @@ ci_tests_subsys_audio_module:
   files:
     - nrf/subsys/audio_module/
     - nrf/tests/subsys/audio_module/
+    - nrf/subsys/audio/
+    - nrf/tests/subsys/audio/
 
 ci_tests_subsys_mpsl:
   files:
@@ -929,6 +931,7 @@ ci_tests_subsys_mpsl:
 ci_tests_subsys_nrf_compress:
   files:
     - nrf/subsys/nrf_compress/
+    - nrf/include/nrf_compress/
     - nrf/tests/subsys/nrf_compress/
 
 ci_tests_subsys_nfc:
@@ -1173,6 +1176,7 @@ ci_tests_unity:
 ci_tests_nrf5340_audio:
   files:
     - modules/lib/cmsis-dsp/
+    - nrf/applications/nrf5340_audio/
     - nrf/tests/nrf5340_audio/
     - nrfxlib/lc3/
 
@@ -1199,7 +1203,8 @@ ci_tests_benchmarks_multicore:
     - modules/hal/nordic/nrfx/
     - nrf/tests/benchmarks/multicore/
     - zephyr/boards/nordic/
-    - zephyr/boards/nordic/
+    - zephyr/dts/common/nordic/
+    - zephyr/soc/nordic/
 
 ci_tests_benchmarks_i2c_endless:
   files:
@@ -1207,11 +1212,49 @@ ci_tests_benchmarks_i2c_endless:
     - nrf/tests/benchmarks/i2c_endless/
     - zephyr/drivers/i2c/
 
+ci_tests_benchmarks_peripheral_load:
+  files:
+    - modules/hal/nordic/nrfx/
+    - nrf/tests/benchmarks/peripheral_load/
+    - zephyr/drivers/sensor/adi/adxl362
+    - zephyr/drivers/sensor/bosch/bme680
+    - zephyr/drivers/sensor/nordic/temp/
+    - zephyr/drivers/adc/
+    - zephyr/drivers/can/
+    - zephyr/drivers/counter/
+    - zephyr/drivers/flash/
+    - zephyr/drivers/gpio/
+    - zephyr/drivers/i2c/
+    - zephyr/drivers/i2s/
+    - zephyr/drivers/pwm/
+    - zephyr/drivers/spi/
+    - zephyr/drivers/watchdog/
+    - zephyr/soc/nordic/
+
 ci_tests_benchmarks_spi_endless:
   files:
     - modules/hal/nordic/nrfx/
     - nrf/tests/benchmarks/spi_endless/
     - zephyr/drivers/spi/
+
+ci_tests_benchmarks_current_consumption:
+  files:
+    - modules/hal/nordic/nrfx/
+    - nrf/include/nfc/
+    - nrf/subsys/nfc/
+    - nrf/tests/benchmarks/current_consumption/
+    - nrfxlib/nfc/
+    - zephyr/boards/nordic/
+    - zephyr/drivers/gpio/
+    - zephyr/drivers/serial/
+    - zephyr/dts/common/nordic/
+    - zephyr/drivers/adc/
+    - zephyr/drivers/gpio/
+    - zephyr/drivers/flash/
+    - zephyr/drivers/i2c/
+    - zephyr/drivers/spi/
+    - zephyr/drivers/counter/
+    - zephyr/soc/nordic/
 
 ci_tests_drivers_fprotect:
   files:

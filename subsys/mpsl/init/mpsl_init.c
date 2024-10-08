@@ -15,6 +15,9 @@
 #include <mpsl/mpsl_work.h>
 #include "multithreading_lock.h"
 #include <nrfx.h>
+#if IS_ENABLED(CONFIG_SOC_COMPATIBLE_NRF54LX)
+#include <nrfx_power.h>
+#endif
 #if defined(CONFIG_NRFX_DPPI)
 #include <nrfx_dppi.h>
 #endif
@@ -42,11 +45,11 @@ extern void rtc_pretick_rtc0_isr_hook(void);
 	#endif
 #endif
 
-#if !defined(CONFIG_SOC_SERIES_NRF54HX) && !defined(CONFIG_SOC_SERIES_NRF54LX)
+#if !defined(CONFIG_SOC_SERIES_NRF54HX) && !defined(CONFIG_SOC_COMPATIBLE_NRF54LX)
 #define MPSL_TIMER_IRQn TIMER0_IRQn
 #define MPSL_RTC_IRQn RTC0_IRQn
 #define MPSL_RADIO_IRQn RADIO_IRQn
-#elif defined(CONFIG_SOC_SERIES_NRF54LX)
+#elif defined(CONFIG_SOC_COMPATIBLE_NRF54LX)
 #define MPSL_TIMER_IRQn TIMER10_IRQn
 #define MPSL_RTC_IRQn GRTC_3_IRQn
 #define MPSL_RADIO_IRQn RADIO_0_IRQn
@@ -59,11 +62,11 @@ extern void rtc_pretick_rtc0_isr_hook(void);
 #if defined(CONFIG_SOC_SERIES_NRF54HX)
 /* Basic build time sanity checking */
 #define MPSL_RESERVED_GRTC_CHANNELS ((1U << 8) | (1U << 9) | (1U << 10) | (1U << 11) | (1U << 12))
-#elif defined(CONFIG_SOC_SERIES_NRF54LX)
+#elif defined(CONFIG_SOC_COMPATIBLE_NRF54LX)
 #define MPSL_RESERVED_GRTC_CHANNELS ((1U << 7) | (1U << 8) | (1U << 9) | (1U << 10) | (1U << 11))
 #endif
 
-#if defined(CONFIG_SOC_SERIES_NRF54HX) || defined(CONFIG_SOC_SERIES_NRF54LX)
+#if defined(CONFIG_SOC_SERIES_NRF54HX) || defined(CONFIG_SOC_COMPATIBLE_NRF54LX)
 
 BUILD_ASSERT(MPSL_RTC_IRQn != DT_IRQN(DT_NODELABEL(grtc)), "MPSL requires a dedicated GRTC IRQ");
 
@@ -393,7 +396,10 @@ static int32_t mpsl_lib_init_internal(void)
 		return err;
 	}
 
-	if (IS_ENABLED(CONFIG_SOC_NRF_FORCE_CONSTLAT)) {
+	mpsl_clock_hfclk_latency_set(CONFIG_MPSL_HFCLK_LATENCY);
+
+	if (IS_ENABLED(CONFIG_SOC_NRF_FORCE_CONSTLAT) &&
+		!IS_ENABLED(CONFIG_SOC_COMPATIBLE_NRF54LX)) {
 		mpsl_pan_rfu();
 	}
 
@@ -506,6 +512,26 @@ int32_t mpsl_lib_uninit(void)
 	return -NRF_EPERM;
 #endif /* IS_ENABLED(CONFIG_MPSL_DYNAMIC_INTERRUPTS) */
 }
+
+#if defined(CONFIG_SOC_COMPATIBLE_NRF54LX)
+void mpsl_constlat_request_callback(void)
+{
+#if defined(CONFIG_NRFX_POWER)
+	nrfx_power_constlat_mode_request();
+#else
+	nrf_power_task_trigger(NRF_POWER, NRF_POWER_TASK_CONSTLAT);
+#endif
+}
+
+void mpsl_lowpower_request_callback(void)
+{
+#if defined(CONFIG_NRFX_POWER)
+	nrfx_power_constlat_mode_free();
+#else
+	nrf_power_task_trigger(NRF_POWER, NRF_POWER_TASK_LOWPWR);
+#endif
+}
+#endif /* defined(CONFIG_SOC_COMPATIBLE_NRF54LX) */
 
 SYS_INIT(mpsl_lib_init_sys, PRE_KERNEL_1, CONFIG_KERNEL_INIT_PRIORITY_DEFAULT);
 SYS_INIT(mpsl_low_prio_init, POST_KERNEL,

@@ -64,6 +64,10 @@ function(include_packaging)
   include(${ZEPHYR_NRF_MODULE_DIR}/subsys/bootloader/cmake/packaging.cmake)
 endfunction()
 
+function(include_sdp)
+  include(${ZEPHYR_NRF_MODULE_DIR}/cmake/sysbuild/sdp.cmake)
+endfunction()
+
 function(${SYSBUILD_CURRENT_MODULE_NAME}_pre_cmake)
   cmake_parse_arguments(PRE_CMAKE "" "" "IMAGES" ${ARGN})
   restore_ncs_vars()
@@ -268,6 +272,13 @@ function(${SYSBUILD_CURRENT_MODULE_NAME}_pre_cmake)
         set_config_bool(${DEFAULT_IMAGE} CONFIG_HAVE_CUSTOM_LINKER_SCRIPT y)
         set_config_bool(${DEFAULT_IMAGE} CONFIG_BUILD_NO_GAP_FILL y)
 
+        # Set required options if MCUmgr img mgmt is used
+        if(SB_CONFIG_MCUBOOT_MODE_DIRECT_XIP)
+          set_config_bool(${DEFAULT_IMAGE} CONFIG_MCUMGR_GRP_IMG_QSPI_XIP_SPLIT_IMAGE y)
+        else()
+          set_config_bool(${DEFAULT_IMAGE} CONFIG_MCUMGR_GRP_IMG_QSPI_XIP_SPLIT_IMAGE n)
+        endif()
+
         if(NOT DEFINED SB_CONFIG_PM_OVERRIDE_EXTERNAL_DRIVER_CHECK)
           # If external driver check Kconfig is enabled then users will need to select their own
           # Kconfigs (to allow for forked/derivative QSPI NOR drivers), otherwise force enable the
@@ -289,6 +300,8 @@ function(${SYSBUILD_CURRENT_MODULE_NAME}_pre_cmake)
             IMAGE_CONF_SCRIPT ${ZEPHYR_NRF_MODULE_DIR}/sysbuild/image_configurations/firmware_loader_image_default.cmake
           )
         endif()
+
+        set_config_bool(${DEFAULT_IMAGE} CONFIG_MCUMGR_GRP_IMG_QSPI_XIP_SPLIT_IMAGE n)
       endif()
 
       if(SB_CONFIG_PM_OVERRIDE_EXTERNAL_DRIVER_CHECK)
@@ -408,8 +421,8 @@ function(${SYSBUILD_CURRENT_MODULE_NAME}_pre_cmake)
     set_config_bool(${DEFAULT_IMAGE} CONFIG_BT_FAST_PAIR n)
   endif()
 
-  if(SB_CONFIG_WIFI_NRF700X)
-    set_config_bool(${DEFAULT_IMAGE} CONFIG_WIFI_NRF700X y)
+  if(SB_CONFIG_WIFI_NRF70)
+    set_config_bool(${DEFAULT_IMAGE} CONFIG_WIFI_NRF70 y)
 
     foreach(config WIFI_PATCHES_EXT_FLASH_DISABLED WIFI_PATCHES_EXT_FLASH_XIP
             WIFI_PATCHES_EXT_FLASH_STORE)
@@ -431,7 +444,7 @@ function(${SYSBUILD_CURRENT_MODULE_NAME}_pre_cmake)
       set_config_bool(${DEFAULT_IMAGE} CONFIG_NRF_WIFI_FW_PATCH_DFU ${SB_CONFIG_DFU_MULTI_IMAGE_PACKAGE_WIFI_FW_PATCH})
     endif()
   else()
-    set_config_bool(${DEFAULT_IMAGE} CONFIG_WIFI_NRF700X n)
+    set_config_bool(${DEFAULT_IMAGE} CONFIG_WIFI_NRF70 n)
   endif()
 
   if(SB_CONFIG_ZEPHYR_CONNECTEDHOMEIP_MODULE)
@@ -454,7 +467,27 @@ function(${SYSBUILD_CURRENT_MODULE_NAME}_pre_cmake)
     set_config_bool(${DEFAULT_IMAGE} CONFIG_SUIT_MPI_APP_RECOVERY y)
     set_config_bool(${DEFAULT_IMAGE} CONFIG_SUIT_MPI_RAD_RECOVERY y)
   endif()
+
+  if(SB_CONFIG_SDP)
+    include_sdp()
+  endif()
 endfunction(${SYSBUILD_CURRENT_MODULE_NAME}_pre_cmake)
+
+function(${SYSBUILD_CURRENT_MODULE_NAME}_pre_image_cmake)
+  cmake_parse_arguments(PRE_IMAGE_CMAKE "" "IMAGE" "" ${ARGN})
+
+  get_property(variant_app TARGET ${PRE_IMAGE_CMAKE_IMAGE} PROPERTY NCS_VARIANT_APPLICATION)
+  if(NOT "${variant_app}" STREQUAL "")
+    set(variant_image ${PRE_IMAGE_CMAKE_IMAGE})
+
+    get_cmake_property(sysbuild_cache CACHE_VARIABLES)
+    foreach(var_name ${sysbuild_cache})
+      if("${var_name}" MATCHES "^${variant_app}_(.*)$")
+        set(${variant_image}_${CMAKE_MATCH_1} "${${var_name}}" CACHE UNINITIALIZED "" FORCE)
+      endif()
+    endforeach()
+  endif()
+endfunction(${SYSBUILD_CURRENT_MODULE_NAME}_pre_image_cmake)
 
 # Sysbuild function hooks used by nRF Connect SDK
 function(${SYSBUILD_CURRENT_MODULE_NAME}_post_cmake)
@@ -599,5 +632,6 @@ include(${CMAKE_CURRENT_LIST_DIR}/netcore.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/secureboot.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/mcuboot.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/suit.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/sdp.cmake)
 
 store_ncs_vars()

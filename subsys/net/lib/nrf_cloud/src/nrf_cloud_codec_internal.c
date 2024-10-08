@@ -377,8 +377,9 @@ static int enabled_info_sections_get(struct nrf_cloud_device_status *const ds)
 	if (fota && IS_ENABLED(CONFIG_NRF_CLOUD_SEND_SERVICE_INFO_FOTA)) {
 		fota->bootloader =  IS_ENABLED(CONFIG_NRF_CLOUD_FOTA_TYPE_BOOT_SUPPORTED);
 		fota->application = IS_ENABLED(CONFIG_NRF_CLOUD_FOTA_TYPE_APP_SUPPORTED);
-		fota->modem =	    IS_ENABLED(CONFIG_NRF_CLOUD_FOTA_TYPE_MODEM_DELTA_SUPPORTED);
+		fota->modem =       IS_ENABLED(CONFIG_NRF_CLOUD_FOTA_TYPE_MODEM_DELTA_SUPPORTED);
 		fota->modem_full =  IS_ENABLED(CONFIG_NRF_CLOUD_FOTA_TYPE_MODEM_FULL_SUPPORTED);
+		fota->smp =	    IS_ENABLED(CONFIG_NRF_CLOUD_FOTA_TYPE_SMP_SUPPORTED);
 	}
 
 	return 0;
@@ -740,6 +741,10 @@ int nrf_cloud_shadow_data_state_decode(const struct nrf_cloud_obj_shadow_data *c
 	__ASSERT_NO_MSG(requested_state != NULL);
 	__ASSERT_NO_MSG(input != NULL);
 
+	if (input->type == NRF_CLOUD_OBJ_SHADOW_TYPE_TF) {
+		return -ENOMSG;
+	}
+
 	cJSON *desired_obj = NULL;
 	cJSON *pairing_obj = NULL;
 	cJSON *pairing_state_obj = NULL;
@@ -1043,8 +1048,7 @@ static int nrf_cloud_encode_service_info_fota(const struct nrf_cloud_svc_info_fo
 
 	/* Add the FOTA array to the serviceInfo object */
 	int item_cnt = 0;
-	cJSON *array = cJSON_AddArrayToObjectCS(svc_inf_obj,
-						NRF_CLOUD_JSON_KEY_SRVC_INFO_FOTA);
+	cJSON *array = cJSON_AddArrayToObjectCS(svc_inf_obj, NRF_CLOUD_JSON_KEY_SRVC_INFO_FOTA);
 
 	if (!array) {
 		return -ENOMEM;
@@ -1054,8 +1058,7 @@ static int nrf_cloud_encode_service_info_fota(const struct nrf_cloud_svc_info_fo
 		++item_cnt;
 	}
 	if (fota->modem) {
-		cJSON_AddItemToArray(array,
-					cJSON_CreateString(NRF_CLOUD_FOTA_TYPE_MODEM_DELTA));
+		cJSON_AddItemToArray(array, cJSON_CreateString(NRF_CLOUD_FOTA_TYPE_MODEM_DELTA));
 		++item_cnt;
 	}
 	if (fota->application) {
@@ -1063,8 +1066,11 @@ static int nrf_cloud_encode_service_info_fota(const struct nrf_cloud_svc_info_fo
 		++item_cnt;
 	}
 	if (fota->modem_full) {
-		cJSON_AddItemToArray(array,
-					cJSON_CreateString(NRF_CLOUD_FOTA_TYPE_MODEM_FULL));
+		cJSON_AddItemToArray(array, cJSON_CreateString(NRF_CLOUD_FOTA_TYPE_MODEM_FULL));
+		++item_cnt;
+	}
+	if (fota->smp) {
+		cJSON_AddItemToArray(array, cJSON_CreateString(NRF_CLOUD_FOTA_TYPE_SMP));
 		++item_cnt;
 	}
 
@@ -1458,6 +1464,19 @@ static int encode_modem_info_json_object(struct modem_param_info *modem, cJSON *
 		if (app_ver) {
 			ret = json_add_str_cs(device_obj, NRF_CLOUD_JSON_KEY_APP_VER, app_ver);
 		}
+
+#if defined(CONFIG_NRF_CLOUD_FOTA_SMP)
+		if (!ret) {
+			char *smp_ver = NULL;
+
+			(void)nrf_cloud_fota_smp_version_get(&smp_ver);
+
+			if (smp_ver) {
+				ret = json_add_str_cs(device_obj, NRF_CLOUD_JSON_KEY_SMP_APP_VER,
+						      smp_ver);
+			}
+		}
+#endif /* CONFIG_NRF_CLOUD_FOTA_SMP */
 
 		if (ret) {
 			cJSON_Delete(device_obj);
@@ -1915,7 +1934,7 @@ int nrf_cloud_fota_job_decode(struct nrf_cloud_fota_job_info *const job_info,
 		goto cleanup;
 	}
 
-	if (IS_ENABLED(CONFIG_NRF_CLOUD_LOG_LEVEL_DGB)) {
+	if (IS_ENABLED(CONFIG_NRF_CLOUD_LOG_LEVEL_DBG)) {
 		char *temp = cJSON_PrintUnformatted(array);
 
 		if (temp) {
@@ -3808,8 +3827,9 @@ bool nrf_cloud_shadow_app_send_check(struct nrf_cloud_obj_shadow_data *const inp
 {
 	__ASSERT_NO_MSG(input != NULL);
 
-	if (input->type == NRF_CLOUD_OBJ_SHADOW_TYPE_ACCEPTED) {
-		/* Always send accepted shadow */
+	if ((input->type == NRF_CLOUD_OBJ_SHADOW_TYPE_ACCEPTED) ||
+	    (input->type == NRF_CLOUD_OBJ_SHADOW_TYPE_TF)) {
+		/* Always send accepted shadow and transform results */
 		return true;
 	} else if (input->type == NRF_CLOUD_OBJ_SHADOW_TYPE_DELTA) {
 		/* Check delta: if anything is in state, send to app */
@@ -3832,6 +3852,17 @@ void nrf_cloud_obj_shadow_delta_free(struct nrf_cloud_obj_shadow_delta *const de
 {
 	if (delta) {
 		(void)nrf_cloud_obj_free(&delta->state);
+	}
+}
+
+void nrf_cloud_obj_shadow_transform_free(struct nrf_cloud_obj_shadow_transform *const tf)
+{
+	if (tf) {
+		if (tf->is_err) {
+			(void)nrf_cloud_obj_free(&tf->error.err_obj);
+		} else {
+			(void)nrf_cloud_obj_free(&tf->result.obj);
+		}
 	}
 }
 
@@ -3900,6 +3931,57 @@ int nrf_cloud_obj_shadow_delta_decode(struct nrf_cloud_obj *const shadow_obj,
 	/* Success, set delta info */
 	delta->ver = (int)ver;
 	delta->ts = (int64_t)ts;
+
+	return 0;
+}
+
+int nrf_cloud_obj_shadow_transform_decode(struct nrf_cloud_obj *const shadow_obj,
+					  struct nrf_cloud_obj_shadow_transform *const tf)
+{
+	if (!tf || !shadow_obj || !shadow_obj->json ||
+	    (shadow_obj->type != NRF_CLOUD_OBJ_TYPE_JSON)) {
+		return -EINVAL;
+	}
+
+	int err;
+	double num;
+
+	memset(tf, 0, sizeof(*tf));
+
+	/* Check for an error */
+	err = nrf_cloud_obj_num_get(shadow_obj, NRF_CLOUD_TRANSFORM_RSP_ERR_KEY, &num);
+	if (err == 0) {
+		tf->is_err = true;
+		tf->error.code = (int)num;
+
+		/* Parse the additional error information.
+		 * Get the position value.
+		 */
+		err = nrf_cloud_obj_num_get(shadow_obj, NRF_CLOUD_TRANSFORM_RSP_POS_KEY,
+					    &num);
+		if (err) {
+			LOG_ERR("Failed to get transform response error position");
+			return -ENODATA;
+		}
+
+		tf->error.pos = (int)num;
+
+		/* Get the error message */
+		err = nrf_cloud_obj_str_get(shadow_obj, NRF_CLOUD_TRANSFORM_RSP_MSG_KEY,
+					    &tf->error.msg);
+		if (err) {
+			LOG_ERR("Failed to get transform response error message");
+			return -ENOMSG;
+		}
+
+		/* Attach the error object since it contains the string data */
+		tf->error.err_obj = *shadow_obj;
+	} else {
+		/* Attach the result object */
+		tf->result.obj = *shadow_obj;
+	}
+
+	nrf_cloud_obj_reset(shadow_obj);
 
 	return 0;
 }

@@ -135,10 +135,7 @@ K_WORK_DEFINE(lte_lc_psm_get_work, lte_lc_psm_get_work_fn);
 static void lte_lc_edrx_ptw_send_work_fn(struct k_work *work_item);
 K_WORK_DEFINE(lte_lc_edrx_ptw_send_work, lte_lc_edrx_ptw_send_work_fn);
 
-static void lte_lc_edrx_req_work_fn(struct k_work *work_item);
-K_WORK_DEFINE(lte_lc_edrx_req_work, lte_lc_edrx_req_work_fn);
-
-K_THREAD_STACK_DEFINE(lte_lc_work_q_stack, 1024);
+K_THREAD_STACK_DEFINE(lte_lc_work_q_stack, CONFIG_LTE_LC_WORKQUEUE_STACK_SIZE);
 
 static struct k_work_q lte_lc_work_q;
 
@@ -245,6 +242,7 @@ AT_MONITOR(ltelc_atmon_xt3412, "%XT3412", at_handler_xt3412);
 AT_MONITOR(ltelc_atmon_ncellmeas, "%NCELLMEAS", at_handler_ncellmeas);
 AT_MONITOR(ltelc_atmon_xmodemsleep, "%XMODEMSLEEP", at_handler_xmodemsleep);
 AT_MONITOR(ltelc_atmon_mdmev, "%MDMEV", at_handler_mdmev);
+AT_MONITOR(ltelc_atmon_rai, "%RAI", at_handler_rai);
 
 static void at_handler_cereg(const char *response)
 {
@@ -618,6 +616,26 @@ static void at_handler_mdmev(const char *response)
 	}
 
 	evt.type = LTE_LC_EVT_MODEM_EVENT;
+
+	event_handler_list_dispatch(&evt);
+}
+
+static void at_handler_rai(const char *response)
+{
+	int err;
+	struct lte_lc_evt evt = {0};
+
+	__ASSERT_NO_MSG(response != NULL);
+
+	LOG_DBG("%%RAI notification");
+
+	err = parse_rai(response, &evt.rai_cfg);
+	if (err) {
+		LOG_ERR("Can't parse RAI notification, error: %d", err);
+		return;
+	}
+
+	evt.type = LTE_LC_EVT_RAI_UPDATE;
 
 	event_handler_list_dispatch(&evt);
 }
@@ -1107,11 +1125,6 @@ int lte_lc_edrx_get(struct lte_lc_edrx_cfg *edrx_cfg)
 	return 0;
 }
 
-static void lte_lc_edrx_req_work_fn(struct k_work *work_item)
-{
-	lte_lc_edrx_req(requested_edrx_enable);
-}
-
 #if defined(CONFIG_UNITY)
 void lte_lc_edrx_on_modem_cfun(int mode, void *ctx)
 #else
@@ -1128,7 +1141,11 @@ static void lte_lc_edrx_on_modem_cfun(int mode, void *ctx)
 	 */
 	if (mode == LTE_LC_FUNC_MODE_POWER_OFF && requested_edrx_enable) {
 		lte_lc_edrx_current_values_clear();
-		k_work_submit_to_queue(&lte_lc_work_q, &lte_lc_edrx_req_work);
+		/* We want to avoid sending AT commands in the callback. However,
+		 * when modem is powered off, we are not expecting AT notifications
+		 * that could cause an assertion or missing notification.
+		 */
+		lte_lc_edrx_req(requested_edrx_enable);
 	}
 }
 

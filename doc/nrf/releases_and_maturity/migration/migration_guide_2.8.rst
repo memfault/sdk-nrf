@@ -82,6 +82,42 @@ SUIT DFU for nRF54H20
 
     For the list of all variables, set through the :file:`VERSION`, refer to the :ref:`ug_nrf54h20_suit_customize_dfu`.
 
+Nordic Secure Immutable Bootloader (NSIB, B0, or B0n)
+-----------------------------------------------------
+
+.. toggle::
+
+   Custom printing has been dropped in favor of using the logging subsystem, with output printed out to the default logging device.
+   The ``CONFIG_SECURE_BOOT_DEBUG`` Kconfig option has been removed.
+   To disable logging in B0 or B0n, set the :kconfig:option:`CONFIG_LOG` option to ``n``.
+   To send logs over RTT instead of UART, apply the following settings:
+
+       * Enable the :kconfig:option:`CONFIG_USE_SEGGER_RTT` and :kconfig:option:`CONFIG_RTT_CONSOLE` Kconfig options.
+       * Disable the :kconfig:option:`CONFIG_UART_CONSOLE` and :kconfig:option:`CONFIG_SERIAL` Kconfig options.
+
+nRF70 Series
+------------
+
+.. toggle::
+
+   * The nRF70 Series support is now part of Zephyr upstream and it requires the following changes:
+
+    * The nRF70 Series driver namespace has been renamed from ``NRF700X`` to ``NRF70``.
+      For example, ``CONFIG_NRF700X_RAW_DATA_RX`` to ``CONIFG_NRF70_RAW_DATA_RX``.
+      Update your application configurations to use the new namespace.
+    * The nRF70 Series driver now uses per-module kernel heap with a higher default.
+      If a sample or an application uses the kernel heap but uses less than the default size, a build warning is displayed.
+      Use the :kconfig:option:`CONFIG_HEAP_MEM_POOL_IGNORE_MIN` Kconfig option and enable it to suppress the warning.
+
+   * The WPA supplicant is also now part of Zephy upstream and it requires the following changes:
+
+    * The WPA supplicant namespace has been renamed from ``WPA_SUPP`` to ``WIFI_NM_WPA_SUPPLICANT``.
+      For example, ``CONFIG_WPA_SUPP=y`` to ``CONFIG_WIFI_NM_WPA_SUPPLICANT=y``.
+      Update your application configurations to use the new namespace.
+
+   * The SR co-existence feature should now be explicitly enabled using the :kconfig:option:`CONFIG_NRF70_SR_COEX` Kconfig option.
+     The RF switch feature should be enabled using the :kconfig:option:`CONFIG_NRF70_SR_COEX_RF_SWITCH` Kconfig option.
+
 Libraries
 =========
 
@@ -109,7 +145,22 @@ AT command parser
 
   * The :c:func:`at_parser_cmd_type_get` has been renamed to :c:func:`at_parser_at_cmd_type_get`.
 
+nRF Security
+------------
+
+.. toggle::
+
+   * The ``CONFIG_CRACEN_LOAD_KMU_SEED`` Kconfig option was renamed to :kconfig:option:`CONFIG_CRACEN_IKG_SEED_LOAD`.
+
 .. _migration_2.8_recommended:
+
+nRF Security
+------------
+
+.. toggle::
+
+  * The ``CONFIG_MBEDTLS_CIPHER_MODE_CFB`` and ``CONFIG_MBEDTLS_CIPHER_MODE_OFB`` Kconfig options have been removed.
+    Use other cipher modes instead.
 
 Recommended changes
 *******************
@@ -339,3 +390,15 @@ This section describes the changes related to snippets.
    * ``nrf70-driver-verbose-logs`` - To enable the nRF70 driver, firmware interface, and BUS interface debug logs.
 
    * ``wpa-supplicant-debug`` - To enable supplicant logs.
+
+Protocols
+=========
+
+This section provides detailed lists of changes by :ref:`protocol <protocols>`.
+
+Bluetooth® LE
+-------------
+
+.. toggle::
+
+   *  To use the Zephyr Bluetooth LE Controller, use the :ref:`bt-ll-sw-split <zephyr:snippet-bt-ll-sw-split>` snippet (see :ref:`app_build_snippets`).

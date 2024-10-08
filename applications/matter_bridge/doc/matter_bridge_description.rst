@@ -24,7 +24,7 @@ To test the Matter bridge application with the :ref:`Bluetooth LE bridged device
 * An additional development kit compatible with one of the following Bluetooth LE samples:
 
   * :ref:`peripheral_lbs`
-  * :ref:`peripheral_esp`
+  * :zephyr:code-sample:`ble_peripheral_esp`
 
 * A micro-USB cable for every development kit to connect it to the PC.
 
@@ -119,7 +119,7 @@ The application supports two bridged device configurations that are mutually exc
 
   * Nordic Semiconductor's :ref:`LED Button Service <lbs_readme>` - represented by the Matter On/Off Light and Generic Switch device types.
     The service can be configured to use the On/Off Light Switch instead of the Generic Switch device type.
-  * Zephyr's :ref:`Environmental Sensing Service <peripheral_esp>` - represented by the Matter Temperature Sensor and Humidity Sensor device types.
+  * Zephyr's :zephyr:code-sample:`ble_peripheral_esp` - represented by the Matter Temperature Sensor and Humidity Sensor device types.
 
 If the Bluetooth LE service required by your use case is not supported, you can extend the application.
 For information about how to add a new Bluetooth LE service support to the application, see the :ref:`matter_bridge_app_extending_ble_service` section.
@@ -552,7 +552,7 @@ The current maximum number of Bluetooth LE connections that can be selected usin
             .. parsed-literal::
                :class: highlight
 
-               west build -b nrf5340dk/nrf5340/cpuapp -p -- -Dmatter_bridge_SHIELD=nrf7002ek -DSB_CONFIG_WIFI_PATCHES_EXT_FLASH_STORE=y -DSB_CONFIG_DFU_MULTI_IMAGE_PACKAGE_WIFI_FW_PATCH=y -DSB_CONFIG_WIFI_NRF700X=y -Dmcuboot_CONFIG_UPDATEABLE_IMAGE_NUMBER=3 -DCONFIG_BRIDGED_DEVICE_BT=y -DEXTRA_CONF_FILE="overlay-bt_max_connections_app.conf" -Dipc_radio_EXTRA_CONF_FILE="overlay-bt_max_connections_net.conf" -DFILE_SUFFIX=nrf70ek
+               west build -b nrf5340dk/nrf5340/cpuapp -p -- -Dmatter_bridge_SHIELD=nrf7002ek -DSB_CONFIG_WIFI_PATCHES_EXT_FLASH_STORE=y -DSB_CONFIG_DFU_MULTI_IMAGE_PACKAGE_WIFI_FW_PATCH=y -DSB_CONFIG_WIFI_NRF70=y -Dmcuboot_CONFIG_UPDATEABLE_IMAGE_NUMBER=3 -DCONFIG_BRIDGED_DEVICE_BT=y -DEXTRA_CONF_FILE="overlay-bt_max_connections_app.conf" -Dipc_radio_EXTRA_CONF_FILE="overlay-bt_max_connections_net.conf" -DFILE_SUFFIX=nrf70ek
 
          .. group-tab:: Matter bridge over Thread
 
@@ -576,7 +576,7 @@ The current maximum number of Bluetooth LE connections that can be selected usin
              .. parsed-literal::
                :class: highlight
 
-               west build -b nrf54h20dk/nrf54h20/cpuapp -p -- -DSB_CONFIG_WIFI_NRF700X=y -DCONFIG_CHIP_WIFI=y -Dmatter_bridge_SHIELD=nrf700x_nrf54h20dk -DCONFIG_BRIDGED_DEVICE_BT=y -DEXTRA_CONF_FILE="overlay-bt_max_connections_app.conf" -Dipc_radio_EXTRA_CONF_FILE="overlay-bt_max_connections_net.conf"
+               west build -b nrf54h20dk/nrf54h20/cpuapp -p -- -DSB_CONFIG_WIFI_NRF70=y -DCONFIG_CHIP_WIFI=y -Dmatter_bridge_SHIELD=nrf700x_nrf54h20dk -DCONFIG_BRIDGED_DEVICE_BT=y -DEXTRA_CONF_FILE="overlay-bt_max_connections_app.conf" -Dipc_radio_EXTRA_CONF_FILE="overlay-bt_max_connections_net.conf"
 
          .. group-tab:: Matter bridge over Thread
 
@@ -605,6 +605,23 @@ The current maximum number of Bluetooth LE connections that can be selected usin
                :class: highlight
 
                west build -b nrf7002dk/nrf5340/cpuapp -- -DCONFIG_BRIDGED_DEVICE_BT=y -DEXTRA_CONF_FILE="overlay-bt_max_connections_app.conf" -Dipc_radio_EXTRA_CONF_FILE="overlay-bt_max_connections_net.conf"
+
+Configuring Bluetooth LE connection and scan parameters
+-------------------------------------------------------
+
+You can set your own Bluetooth LE connection parameters instead of accepting the default ones requested by the peripheral device.
+You can disable configuring the parameters by setting the :kconfig:option:`CONFIG_BRIDGE_FORCE_BT_CONNECTION_PARAMS` Kconfig option to ``n``.
+
+Use the following Kconfig options to set the desired parameters:
+
+- :kconfig:option:`CONFIG_BRIDGE_BT_SCAN_WINDOW` - The duration a central actively scans for devices within the scan interval.
+- :kconfig:option:`CONFIG_BRIDGE_BT_SCAN_INTERVAL` - Time between consecutive Bluetooth LE scan windows.
+- :kconfig:option:`CONFIG_BRIDGE_BT_CONNECTION_INTERVAL_MIN` - The minimum time requested by the central (the bridge) after which the peripheral device should wake up to communicate.
+- :kconfig:option:`CONFIG_BRIDGE_BT_CONNECTION_INTERVAL_MAX` - The maximum time requested by the central (the bridge) after which the peripheral device should wake up to communicate.
+- :kconfig:option:`CONFIG_BRIDGE_BT_CONNECTION_TIMEOUT` - The time since the last packet was successfully received until the devices consider the connection lost.
+- :kconfig:option:`CONFIG_BRIDGE_BT_CONNECTION_LATENCY` - Allows the peripheral to skip waking up for a certain number of connection events if it does not have any data to send.
+
+The parameters in this application have been selected based on the :ref:`multiprotocol_bt_thread` information in the :ref:`ug_multiprotocol_support` section.
 
 .. _matter_bridge_app_bt_security:
 
@@ -673,7 +690,7 @@ The application supports the following configurations:
 
        Enables only the necessary application functionalities to optimize its performance.
    * - Matter bridge over Wi-Fi with nRF5340 DK and nRF7002 EK
-     - :file:`---`
+     - ---
      - ``nrf70ek``
      - nRF5340 DK with the nRF7002 EK shield attached
      - Debug version of the application with Matter over Wi-Fi enabled.
@@ -695,15 +712,14 @@ For example:
 
    .. code-block:: console
 
-      west build -b nrf5340dk/nrf5340/cpuapp -p -- -Dmatter_bridge_SHIELD=nrf7002ek -DSB_CONFIG_WIFI_PATCHES_EXT_FLASH_STORE=y -DSB_CONFIG_DFU_MULTI_IMAGE_PACKAGE_WIFI_FW_PATCH=y -DSB_CONFIG_WIFI_NRF700X=y -Dmcuboot_CONFIG_UPDATEABLE_IMAGE_NUMBER=3 -DFILE_SUFFIX=nrf70ek
-
+      west build -b nrf5340dk/nrf5340/cpuapp -p -- -Dmatter_bridge_SHIELD=nrf7002ek -DSB_CONFIG_WIFI_PATCHES_EXT_FLASH_STORE=y -DSB_CONFIG_DFU_MULTI_IMAGE_PACKAGE_WIFI_FW_PATCH=y -DSB_CONFIG_WIFI_NRF70=y -Dmcuboot_CONFIG_UPDATEABLE_IMAGE_NUMBER=3 -DFILE_SUFFIX=nrf70ek
 
 To use the nRF54H20 DK with the ``nrf7002ek`` shield (2.4 GHz or 5 GHz), follow the :ref:`ug_nrf7002eb_nrf54h20dk_gs` user guide to connect all required pins.
 Once connected, run the following command to build the sample:
 
    .. code-block:: console
 
-      west build -b nrf54h20dk/nrf54h20/cpuapp -p -- -DSB_CONFIG_WIFI_NRF700X=y -DCONFIG_CHIP_WIFI=y -Dmatter_bridge_SHIELD=nrf700x_nrf54h20dk
+      west build -b nrf54h20dk/nrf54h20/cpuapp -p -- -DSB_CONFIG_WIFI_NRF70=y -DCONFIG_CHIP_WIFI=y -Dmatter_bridge_SHIELD=nrf700x_nrf54h20dk
 
 Selecting a configuration
 =========================
@@ -716,15 +732,16 @@ See :ref:`app_build_file_suffixes` and :ref:`cmake_options` for more information
 Configure the functionality of the Matter-Bridge device
 -------------------------------------------------------
 
-To enable the Matter smart plug functionality, run the following command:
+To enable the Matter smart plugin functionality, run the following command with *board_target* replaced with the board target name:
 
-.. tabs::
+.. parsed-literal::
+   :class: highlight
 
    .. group-tab:: nRF54 DKs
 
       .. code-block:: console
 
-         west build -b nrf54h20dk/nrf54h20/cpuapp -p -- -DSB_CONFIG_WIFI_NRF700X=y -DCONFIG_CHIP_WIFI=y -Dmatter_bridge_SHIELD=nrf700x_nrf54h20dk -DCONFIG_BRIDGED_DEVICE_BT=y -Dmatter_bridge_SNIPPET=onoff_plug
+         west build -b nrf54h20dk/nrf54h20/cpuapp -p -- -DSB_CONFIG_WIFI_NRF70=y -DCONFIG_CHIP_WIFI=y -Dmatter_bridge_SHIELD=nrf700x_nrf54h20dk -DCONFIG_BRIDGED_DEVICE_BT=y -Dmatter_bridge_SNIPPET=onoff_plug
 
    .. group-tab:: nRF70 DKs
 
