@@ -652,7 +652,10 @@ enum lte_lc_ce_level {
 	LTE_LC_CE_LEVEL_UNKNOWN	= UINT8_MAX,
 };
 
-/** Reduced mobility mode. */
+/** Reduced mobility mode.
+ *
+ *  @deprecated since v2.8.0.
+ */
 enum lte_lc_reduced_mobility_mode {
 	/** Functionality according to the 3GPP relaxed monitoring feature. */
 	LTE_LC_REDUCED_MOBILITY_DEFAULT = 0,
@@ -742,7 +745,11 @@ enum lte_lc_modem_evt {
 	LTE_LC_MODEM_EVT_CE_LEVEL_3,
 };
 
-/** Type of factory reset to perform. */
+/**
+ * Type of factory reset to perform.
+ *
+ * @deprecated since v2.8.0.
+ */
 enum lte_lc_factory_reset_type {
 	/** Reset all modem data to factory settings. */
 	LTE_LC_FACTORY_RESET_ALL = 0,
@@ -1186,6 +1193,8 @@ struct lte_lc_cfun_cb {
  * @param name Callback name.
  * @param _callback Callback function.
  * @param _context User-defined context.
+ *
+ * @deprecated since v2.8.0, use @ref NRF_MODEM_LIB_ON_CFUN instead.
  */
 #define LTE_LC_ON_CFUN(name, _callback, _context)                                                  \
 	static void _callback(enum lte_lc_func_mode, void *ctx);                                   \
@@ -1763,6 +1772,8 @@ int lte_lc_periodic_search_request(void);
  * @retval 0 if a mode was found and written to the provided pointer.
  * @retval -EINVAL if input parameter was @c NULL.
  * @retval -EFAULT if an AT command failed.
+ *
+ * @deprecated since v2.8.0.
  */
 int lte_lc_reduced_mobility_get(enum lte_lc_reduced_mobility_mode *mode);
 
@@ -1775,6 +1786,8 @@ int lte_lc_reduced_mobility_get(enum lte_lc_reduced_mobility_mode *mode);
  *
  * @retval 0 if the new reduced mobility mode was accepted by the modem.
  * @retval -EFAULT if an AT command failed.
+ *
+ * @deprecated since v2.8.0.
  */
 int lte_lc_reduced_mobility_set(enum lte_lc_reduced_mobility_mode mode);
 
@@ -1789,6 +1802,8 @@ int lte_lc_reduced_mobility_set(enum lte_lc_reduced_mobility_mode mode);
  *
  * @retval 0 if factory reset was performed successfully.
  * @retval -EFAULT if an AT command failed.
+ *
+ * @deprecated since v2.8.0.
  */
 int lte_lc_factory_reset(enum lte_lc_factory_reset_type type);
 

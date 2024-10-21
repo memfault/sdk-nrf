@@ -138,6 +138,11 @@ static uint16_t channel_to_frequency(nrf_radio_mode_t mode, uint8_t channel)
 static nrf_radio_txpower_t dbm_to_nrf_radio_txpower(int8_t tx_power)
 {
 	switch (tx_power) {
+#if defined(RADIO_TXPOWER_TXPOWER_Neg100dBm)
+	case -100:
+		return RADIO_TXPOWER_TXPOWER_Neg100dBm;
+#endif /* defined(RADIO_TXPOWER_TXPOWER_Neg100dBm) */
+
 #if defined(RADIO_TXPOWER_TXPOWER_Neg70dBm)
 	case -70:
 		return RADIO_TXPOWER_TXPOWER_Neg70dBm;
@@ -156,13 +161,23 @@ static nrf_radio_txpower_t dbm_to_nrf_radio_txpower(int8_t tx_power)
 		return RADIO_TXPOWER_TXPOWER_Neg30dBm;
 #endif /* defined(RADIO_TXPOWER_TXPOWER_Neg30dBm) */
 
-#if defined(RADIO_TXPOWER_TXPOWER_Neg26dBm)
-	case -26:
-		return RADIO_TXPOWER_TXPOWER_Neg26dBm;
-#endif /* defined(RADIO_TXPOWER_TXPOWER_Neg26dBm) */
+#if defined(RADIO_TXPOWER_TXPOWER_Neg28dBm)
+	case -28:
+		return RADIO_TXPOWER_TXPOWER_Neg28dBm;
+#endif /* defined(RADIO_TXPOWER_TXPOWER_Neg28dBm) */
+
+#if defined(RADIO_TXPOWER_TXPOWER_Neg22dBm)
+	case -22:
+		return RADIO_TXPOWER_TXPOWER_Neg22dBm;
+#endif /* defined(RADIO_TXPOWER_TXPOWER_Neg22dBm) */
 
 	case -20:
 		return RADIO_TXPOWER_TXPOWER_Neg20dBm;
+
+#if defined(RADIO_TXPOWER_TXPOWER_Neg18dBm)
+	case -18:
+		return RADIO_TXPOWER_TXPOWER_Neg18dBm;
+#endif /* defined(RADIO_TXPOWER_TXPOWER_Neg18dBm) */
 
 	case -16:
 		return RADIO_TXPOWER_TXPOWER_Neg16dBm;
@@ -563,6 +578,61 @@ static void radio_config(nrf_radio_mode_t mode, enum transmit_pattern pattern)
 		/* preamble, address (BALEN + PREFIX), lflen and payload */
 		total_payload_size = 2 + (packet_conf.balen + 1) + 1 + packet_conf.maxlen;
 		break;
+#if defined(RADIO_MODE_MODE_Nrf_4Mbit0_5)
+	case NRF_RADIO_MODE_NRF_4MBIT_H_0_5:
+		/* Packet configuration:
+		 * S1 size = 0 bits,
+		 * S0 size = 0 bytes,
+		 * 16-bit preamble.
+		 */
+		packet_conf.plen = NRF_RADIO_PREAMBLE_LENGTH_16BIT;
+
+		/* preamble, address (BALEN + PREFIX), lflen and payload */
+		total_payload_size = 2 + (packet_conf.balen + 1) + 1 + packet_conf.maxlen;
+		break;
+#endif /* defined(RADIO_MODE_MODE_Nrf_4Mbit0_5) */
+
+#if defined(RADIO_MODE_MODE_Nrf_4Mbit0_25)
+	case NRF_RADIO_MODE_NRF_4MBIT_H_0_25:
+		/* Packet configuration:
+		 * S1 size = 0 bits,
+		 * S0 size = 0 bytes,
+		 * 16-bit preamble.
+		 */
+		packet_conf.plen = NRF_RADIO_PREAMBLE_LENGTH_16BIT;
+
+		/* preamble, address (BALEN + PREFIX), lflen and payload */
+		total_payload_size = 2 + (packet_conf.balen + 1) + 1 + packet_conf.maxlen;
+		break;
+#endif /* defined(RADIO_MODE_MODE_Nrf_4Mbit0_25) */
+
+#if defined(RADIO_MODE_MODE_Nrf_4Mbit_0BT6)
+	case NRF_RADIO_MODE_NRF_4MBIT_BT_0_6:
+		/* Packet configuration:
+		 * S1 size = 0 bits,
+		 * S0 size = 0 bytes,
+		 * 16-bit preamble.
+		 */
+		packet_conf.plen = NRF_RADIO_PREAMBLE_LENGTH_16BIT;
+
+		/* preamble, address (BALEN + PREFIX), lflen and payload */
+		total_payload_size = 2 + (packet_conf.balen + 1) + 1 + packet_conf.maxlen;
+		break;
+#endif /* defined(RADIO_MODE_MODE_Nrf_4Mbit_0BT6) */
+
+#if defined(RADIO_MODE_MODE_Nrf_4Mbit_0BT4)
+	case NRF_RADIO_MODE_NRF_4MBIT_BT_0_4:
+		/* Packet configuration:
+		 * S1 size = 0 bits,
+		 * S0 size = 0 bytes,
+		 * 16-bit preamble.
+		 */
+		packet_conf.plen = NRF_RADIO_PREAMBLE_LENGTH_16BIT;
+
+		/* preamble, address (BALEN + PREFIX), lflen and payload */
+		total_payload_size = 2 + (packet_conf.balen + 1) + 1 + packet_conf.maxlen;
+		break;
+#endif /* defined(RADIO_MODE_MODE_Nrf_4Mbit_0BT4) */
 
 	default:
 		/* Packet configuration:
@@ -637,6 +707,17 @@ static void radio_disable(void)
 #endif /* CONFIG_FEM */
 }
 
+static void mltpan_6(nrf_radio_mode_t mode)
+{
+#if defined(NRF54L_SERIES)
+	if (mode == NRF_RADIO_MODE_IEEE802154_250KBIT) {
+		*((volatile uint32_t *)0x5008A810) = 2;
+	}
+#else
+	ARG_UNUSED(mode);
+#endif /* defined(NRF54L_SERIES) */
+}
+
 #if NRF53_ERRATA_117_PRESENT
 static void errata_117(nrf_radio_mode_t mode)
 {
@@ -663,6 +744,7 @@ static void radio_mode_set(NRF_RADIO_Type *reg, nrf_radio_mode_t mode)
 {
 	errata_117(mode);
 	nrf_radio_mode_set(reg, mode);
+	mltpan_6(mode);
 }
 
 static void radio_unmodulated_tx_carrier(uint8_t mode, int8_t txpower, uint8_t channel)
@@ -718,6 +800,12 @@ static void radio_modulated_tx_carrier(uint8_t mode, int8_t txpower, uint8_t cha
 #if defined(RADIO_MODE_MODE_Nrf_4Mbit0_25)
 	case NRF_RADIO_MODE_NRF_4MBIT_H_0_25:
 #endif /* defined(RADIO_MODE_MODE_Nrf_4Mbit0_25) */
+#if defined(RADIO_MODE_MODE_Nrf_4Mbit_0BT6)
+	case NRF_RADIO_MODE_NRF_4MBIT_BT_0_6:
+#endif /* defined(RADIO_MODE_MODE_Nrf_4Mbit_0BT6) */
+#if defined(RADIO_MODE_MODE_Nrf_4Mbit_0BT4)
+	case NRF_RADIO_MODE_NRF_4MBIT_BT_0_4:
+#endif /* defined(RADIO_MODE_MODE_Nrf_4Mbit_0BT4) */
 		nrf_radio_shorts_enable(NRF_RADIO,
 					NRF_RADIO_SHORT_READY_START_MASK |
 					RADIO_TEST_SHORT_END_START_MASK);

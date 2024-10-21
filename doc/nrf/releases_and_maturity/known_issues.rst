@@ -144,7 +144,14 @@ KRKNWK-14299: NRPA MAC address cannot be set in Zephyr
 Bluetooth LE
 ============
 
-The issues in this section are related to :ref:`ug_ble_controller`.
+.. rst-class:: v2-7-0 v2-6-2 v2-6-1 v2-6-0 v2-5-3 v2-5-2 v2-4-4 v2-4-3
+
+DRGN-23231: The Bluetooth subsystem may sometimes deadlock when a Bluetooth link is lost during data transfer
+  When this happens, the disconnected event is never delivered to the application.
+  The issue occurs when the :kconfig:option:`CONFIG_BT_HCI_ACL_FLOW_CONTROL` Kconfig option is enabled.
+  This option is enabled by default on the nRF5340 DK.
+
+  **Affected platforms:** nRF5340
 
 .. rst-class:: v2-7-0
 
@@ -268,6 +275,13 @@ DRGN-21390: The `disconnected` callback might not get called on nRF5340
 
   **Workaround:** Either disable host flow control (:kconfig:option:`CONFIG_BT_HCI_ACL_FLOW_CONTROL`) or cherry-pick commits from the upstream: `Zephyr PR #65272 <https://github.com/zephyrproject-rtos/zephyr/pull/65272>`_.
 
+.. rst-class:: v2-7-0 v2-6-2 v2-6-1 v2-6-0 v2-5-3 v2-5-2 v2-5-1 v2-5-0 v2-4-4 v2-4-3 v2-4-2 v2-4-1 v2-4-0 v2-3-0 v2-2-0 v2-1-4 v2-1-3 v2-1-2 v2-1-1 v2-1-0 v2-0-2 v2-0-1 v2-0-0 v1-9-1 v1-9-0 v1-8-0 v1-7-1
+
+DRGN-23518: ACL reassembly may deadlock
+  This can happen if  the value of :kconfig:option:`CONFIG_BT_BUF_ACL_RX_COUNT` Kconfig option is less than or equal to the value of :kconfig:option:`CONFIG_BT_MAX_CONN`.
+
+  **Workaround:** Ensure that the value of :kconfig:option:`CONFIG_BT_BUF_ACL_RX_COUNT` is greater than the value of :kconfig:option:`CONFIG_BT_MAX_CONN`.
+
 Bluetooth Mesh
 ==============
 
@@ -379,6 +393,15 @@ Matter
 ======
 
 The issues in this section are related to the :ref:`ug_matter` protocol.
+
+.. rst-class:: v2-7-0 v2-6-2 v2-6-1 v2-6-0 v2-5-3 v2-5-2 v2-5-1 v2-5-0 v2-4-4 v2-4-3 v2-4-2 v2-4-1 v2-4-0
+
+KRKNWK-19524: Reliability issues with multicast message delivery for certain Access Points.
+  Certain Access Points require Wi-Fi devices to send Multicast Listener Discovery version 2 (MLDv2) Report messages for multicast packets to be properly delivered to a given address.
+  Matter over Wi-Fi devices only subscribed to multicast addresses within the internal IPv6 stack, without notifying the Access Points, leading to reliability issues with multicast message delivery.
+
+  **Workaround:** To ensure reliable multicast communication, use the :c:func:`net_ipv6_mld_join` and :c:func:`net_ipv6_mld_leave` functions to explicitly subscribe or unsubscribe to multicast addresses.
+  For reference, see the commit with the fix in the ``sdk-connectedhomeip`` repository (commit hash: ``TBD``).
 
 .. rst-class:: v2-7-0
 
@@ -1051,6 +1074,13 @@ Zigbee
 ======
 
 The issues in this section are related to the :ref:`ug_zigbee` protocol.
+
+.. rst-class:: v2-7-0
+
+KRKNWK-19263: FOTA DFU on the nRF5340 DK fails due to an invalid update image
+  Performing FOTA DFU throws an error during an attempt to install the new image.
+
+  **Workaround:** Manually cherry-pick and apply the commit with the fix from ``main`` (commit hash: ``cc5ae95668566b47b9f6bfccb99b3796de8cb076``).
 
 .. rst-class:: v2-6-2 v2-6-1 v2-6-0 v2-5-3 v2-5-2 v2-5-1 v2-5-0 v2-4-4 v2-4-3 v2-4-2 v2-4-1 v2-4-0 v2-3-0 v2-2-0 v2-1-4 v2-1-3 v2-1-2 v2-1-1 v2-1-0 v2-0-2 v2-0-1 v2-0-0 v1-9-2 v1-9-1 v1-9-0
 

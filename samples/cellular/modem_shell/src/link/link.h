@@ -18,8 +18,37 @@ enum link_ncellmeas_modes {
 
 #define LINK_FUNMODE_NONE 99
 #define LINK_SYSMODE_NONE 99
-#define LINK_REDMOB_NONE 99
-#define LTE_LC_FACTORY_RESET_INVALID 99
+
+/** Type of factory reset to perform. */
+enum link_factory_reset_type {
+	/** Reset all modem data to factory settings. */
+	LINK_FACTORY_RESET_ALL = 0,
+
+	/** Reset user-configurable data to factory settings. */
+	LINK_FACTORY_RESET_USER = 1,
+
+	/** Invalid type. */
+	LINK_FACTORY_RESET_INVALID = 99
+};
+
+/** Reduced mobility mode. */
+enum link_reduced_mobility_mode {
+	/** Functionality according to the 3GPP relaxed monitoring feature. */
+	LINK_REDUCED_MOBILITY_DEFAULT = 0,
+
+	/** Enable Nordic-proprietary reduced mobility feature. */
+	LINK_REDUCED_MOBILITY_NORDIC = 1,
+
+	/**
+	 * Full measurements for best possible mobility.
+	 *
+	 * Disable the 3GPP relaxed monitoring and Nordic-proprietary reduced mobility features.
+	 */
+	LINK_REDUCED_MOBILITY_DISABLED = 2,
+
+	/** Invalid type. */
+	LINK_REDUCED_MOBILITY_NONE = 99
+};
 
 void link_init(void);
 void link_ind_handler(const struct lte_lc_evt *const evt);

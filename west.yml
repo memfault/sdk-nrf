@@ -71,7 +71,7 @@ manifest:
     # https://developer.nordicsemi.com/nRF_Connect_SDK/doc/latest/zephyr/guides/modules.html
     - name: zephyr
       repo-path: sdk-zephyr
-      revision: ea7e265dadf63ab2def0813378f20f2da793877e
+      revision: ed414beb4617361fbf55f9a15fdf5f489aff6be2
       import:
         # In addition to the zephyr repository itself, NCS also
         # imports the contents of zephyr/west.yml at the above
@@ -131,7 +131,7 @@ manifest:
           compare-by-default: true
     - name: mcuboot
       repo-path: sdk-mcuboot
-      revision: 22adc04fc4b35a6ee477675c8a33e038a98258de
+      revision: 53a749016a67eedc3070708871a7377e197c38db
       path: bootloader/mcuboot
     - name: qcbor
       url: https://github.com/laurencelundblade/QCBOR
@@ -148,19 +148,19 @@ manifest:
     - name: nrfxlib
       repo-path: sdk-nrfxlib
       path: nrfxlib
-      revision: 35863321fb3684292ddce606a1c72d3cf2b62222
+      revision: ea7d680ce61310fa6198a23c7daf09369e5215aa
     - name: trusted-firmware-m
       repo-path: sdk-trusted-firmware-m
       path: modules/tee/tf-m/trusted-firmware-m
-      revision: 9573717cc8c078326fceb2869fe029e98615723b
+      revision: d76200476c9b6c137a6e5fc400264134ae589708
     - name: psa-arch-tests
       repo-path: sdk-psa-arch-tests
       path: modules/tee/tf-m/psa-arch-tests
-      revision: 94a349db22cd0e44136c281724ffc71b6e7391c3
+      revision: 3da9313e64806d352c519e3205e81cf959067588
     - name: matter
       repo-path: sdk-connectedhomeip
       path: modules/lib/matter
-      revision: 5a55d6099f6fdbdebdac9c0d7ea41fcfb751e7f2
+      revision: 171a1d323bf91ac7a655f93c70c18ebb6c1a2253
       west-commands: scripts/west/west-commands.yml
       submodules:
         - name: nlio
@@ -181,7 +181,7 @@ manifest:
     - name: nrf-802154
       repo-path: sdk-nrf-802154
       path: nrf-802154
-      revision: 18a2e83559df139e0b5ca05823a55d637a76c7e6
+      revision: 46675c05e69fd6bd8b5e820e470d9b7ed3322bb2
       groups:
         - nrf-802154
     - name: soc-hwmv1
@@ -194,7 +194,7 @@ manifest:
       # Only for internal Nordic development
       repo-path: dragoon.git
       remote: dragoon
-      revision: c77bddac04df4afa606834bbeace5e94b3fe79b9
+      revision: 4940e2c06be50db3baa6485e49a6953d6535b67c
       submodules: true
       groups:
         - dragoon
@@ -209,12 +209,12 @@ manifest:
           compare-by-default: false
     - name: sidewalk
       repo-path: sdk-sidewalk
-      revision: 4d57fc962da6cf35b97c2fcea05ccac70ab5819a
+      revision: 029f0cff6f5d2aff4697dae76aaab9f96a980c8c
       groups:
         - sidewalk
     - name: find-my
       repo-path: sdk-find-my
-      revision: c716e9692e80d21291706c204221b939c15fc77f
+      revision: 69729cd861eb905324c32670a41941064e566501
       groups:
         - find-my
     - name: azure-sdk-for-c
@@ -245,10 +245,10 @@ manifest:
           upstream-sha: c6eaeda5a1c1c5dbb24dce7e027340cb8893a77b
           compare-by-default: false
     - name: suit-generator
-      revision: 11ac20ff63e256aa3a0facccdf001be2463bfc2a
+      revision: 6d31d4f4c761b8fb7c6dc5c8a3c09bd354943957
       path: modules/lib/suit-generator
     - name: suit-processor
-      revision: ee58d543994256d545c692e14badf3efa9830237
+      revision: 4e03623523cefb125c77b12f3d876f14e83f2603
       path: modules/lib/suit-processor
     - name: doc-internal
       repo-path: doc-internal

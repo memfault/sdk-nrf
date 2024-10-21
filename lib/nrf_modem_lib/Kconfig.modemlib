@@ -10,6 +10,12 @@ config HEAP_MEM_POOL_SIZE
 	int
 	default 512
 
+# Redefine this symbol as Zephyr defines this as y by
+# default, but the offloading layer does not support it.
+config COAP_CLIENT_TRUNCATE_MSGS
+	bool
+	default n if NRF_MODEM_LIB
+
 menu "Memory configuration"
 
 config NRF_MODEM_LIB_HEAP_SIZE
@@ -27,6 +33,8 @@ config NRF_MODEM_LIB_SHMEM_CTRL_SIZE
 	  Size of the shared memory area used for control structures.
 	  This is a constant for a given library build, and is exported
 	  by the library via NRF_MODEM_SHMEM_CTRL_SIZE.
+
+if SOC_SERIES_NRF91X || UNITY
 
 config NRF_MODEM_LIB_SHMEM_TX_SIZE
 	int "TX region size"
@@ -60,6 +68,20 @@ config NRF_MODEM_LIB_SHMEM_TRACE_SIZE
 	default 0
 	help
 	  Size of the shared memory region used to receive modem traces.
+
+endif # SOC_SERIES_NRF91X || UNITY
+
+if SOC_SERIES_NRF92X
+
+config NRF_MODEM_LIB_TRANSPORT_MBOX
+	bool
+	default y
+	select MBOX
+	select IPC_SERVICE
+	select IPC_SERVICE_ICMSG
+	select IPC_SERVICE_ICMSG_SHMEM_ACCESS_SYNC
+
+endif # SOC_SERIES_NRF92X
 
 config NRF_MODEM_LIB_SENDMSG_BUF_SIZE
 	int "Size of the sendmsg intermediate buffer"
@@ -102,6 +124,7 @@ endmenu # Memory config
 
 menuconfig NRF_MODEM_LIB_TRACE
 	bool "Tracing"
+	depends on SOC_SERIES_NRF91X || UNITY
 	help
 	  When enabled, a portion of RAM (called Trace region) will be shared with the modem to receive modem's trace data.
 	  The size of the Trace region is defined by the NRF_MODEM_LIB_SHMEM_TRACE_SIZE option.

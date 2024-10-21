@@ -134,6 +134,7 @@ LTE link control library
      * Replace the use of the :c:func:`lte_lc_deinit` function with the :c:func:`lte_lc_power_off` function.
      * Replace the use of the :c:func:`lte_lc_init_and_connect` function with the :c:func:`lte_lc_connect` function.
      * Replace the use of the :c:func:`lte_lc_init_and_connect_async` function with the :c:func:`lte_lc_connect_async` function.
+     * Replace the use of the :c:macro:`LTE_LC_ON_CFUN` macro with the :c:macro:`NRF_MODEM_LIB_ON_CFUN` macro.
      * Remove the use of the ``CONFIG_LTE_NETWORK_USE_FALLBACK`` Kconfig option.
        Use the :kconfig:option:`CONFIG_LTE_NETWORK_MODE_LTE_M_NBIOT` or :kconfig:option:`CONFIG_LTE_NETWORK_MODE_LTE_M_NBIOT_GPS` Kconfig option instead.
        In addition, you can control the priority between LTE-M and NB-IoT using the :kconfig:option:`CONFIG_LTE_MODE_PREFERENCE` Kconfig option.
@@ -145,22 +146,24 @@ AT command parser
 
   * The :c:func:`at_parser_cmd_type_get` has been renamed to :c:func:`at_parser_at_cmd_type_get`.
 
+nRF Cloud
+---------
+
+.. toggle::
+
+   * The :kconfig:option:`CONFIG_NRF_CLOUD_COAP_DOWNLOADS` Kconfig option has been enabled by default for nRF Cloud CoAP projects using the :kconfig:option:`CONFIG_NRF_CLOUD_FOTA_POLL` or :kconfig:option:`CONFIG_NRF_CLOUD_PGPS` Kconfig option.
+     Set the :kconfig:option:`CONFIG_COAP_EXTENDED_OPTIONS_LEN_VALUE` Kconfig option to at least ``80`` for P-GPS and ``192`` for FOTA.
+
 nRF Security
 ------------
 
 .. toggle::
 
    * The ``CONFIG_CRACEN_LOAD_KMU_SEED`` Kconfig option was renamed to :kconfig:option:`CONFIG_CRACEN_IKG_SEED_LOAD`.
+   * The ``CONFIG_MBEDTLS_CIPHER_MODE_CFB`` and ``CONFIG_MBEDTLS_CIPHER_MODE_OFB`` Kconfig options have been removed.
+     Use other cipher modes instead.
 
 .. _migration_2.8_recommended:
-
-nRF Security
-------------
-
-.. toggle::
-
-  * The ``CONFIG_MBEDTLS_CIPHER_MODE_CFB`` and ``CONFIG_MBEDTLS_CIPHER_MODE_OFB`` Kconfig options have been removed.
-    Use other cipher modes instead.
 
 Recommended changes
 *******************
@@ -375,6 +378,72 @@ AT command parser
            * `&type` pointer to the returned command type.
            */
           at_parser_cmd_type_get(&at_parser, &type);
+
+LTE link control library
+------------------------
+
+.. toggle::
+
+   * For applications using :ref:`lte_lc_readme`:
+
+     * Replace the use of the :c:func:`lte_lc_factory_reset` function with the following:
+
+      * If the :c:enumerator:`LTE_LC_FACTORY_RESET_ALL` value is used with the :c:func:`lte_lc_factory_reset` function:
+
+         .. code-block:: C
+
+            #include <nrf_modem_at.h>
+
+            err = nrf_modem_at_printf("AT%%XFACTORYRESET=0");
+
+      * If the :c:enumerator:`LTE_LC_FACTORY_RESET_USER` value is used with the :c:func:`lte_lc_factory_reset` function:
+
+         .. code-block:: C
+
+            #include <nrf_modem_at.h>
+
+            err = nrf_modem_at_printf("AT%%XFACTORYRESET=1");
+
+     * Replace the use of the :c:func:`lte_lc_reduced_mobility_get` function with the following:
+
+      .. code-block:: C
+
+         #include <nrf_modem_at.h>
+
+         uint16_t mode;
+
+         ret = nrf_modem_at_scanf("AT%REDMOB?", "%%REDMOB: %hu", &mode);
+         if (ret != 1) {
+            /* Handle failure. */
+         } else {
+            /* Handle success. */
+         }
+
+     * Replace the use of the :c:func:`lte_lc_reduced_mobility_set` function with the following:
+
+      * If the :c:enumerator:`LTE_LC_REDUCED_MOBILITY_DEFAULT` value is used with the :c:func:`lte_lc_reduced_mobility_set` function:
+
+         .. code-block:: C
+
+            #include <nrf_modem_at.h>
+
+            err = nrf_modem_at_printf("AT%%REDMOB=0");
+
+      * If the :c:enumerator:`LTE_LC_REDUCED_MOBILITY_NORDIC` value is used with the :c:func:`lte_lc_reduced_mobility_set` function:
+
+         .. code-block:: C
+
+            #include <nrf_modem_at.h>
+
+            err = nrf_modem_at_printf("AT%%REDMOB=1");
+
+      * If the :c:enumerator:`LTE_LC_REDUCED_MOBILITY_DISABLED` value is used with the :c:func:`lte_lc_reduced_mobility_set` function:
+
+         .. code-block:: C
+
+            #include <nrf_modem_at.h>
+
+            err = nrf_modem_at_printf("AT%%REDMOB=2");
 
 Snippets
 ========

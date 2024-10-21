@@ -83,9 +83,14 @@ function(suit_generate_dfu_zip)
     GLOBAL PROPERTY
     SUIT_DFU_ARTIFACTS
   )
+  get_property(
+    additional_script_params
+    GLOBAL PROPERTY
+    SUIT_DFU_ZIP_ADDITIONAL_SCRIPT_PARAMS
+  )
 
   set(root_name "${SB_CONFIG_SUIT_ENVELOPE_ROOT_ARTIFACT_NAME}.suit")
-  set(script_params "${root_name}type=suit-envelope")
+  set(script_params "${root_name}type=suit-envelope;${additional_script_params}")
 
   include(${ZEPHYR_NRF_MODULE_DIR}/cmake/fw_zip.cmake)
 
@@ -105,9 +110,14 @@ function(suit_generate_recovery_dfu_zip)
     GLOBAL PROPERTY
     SUIT_RECOVERY_DFU_ARTIFACTS
   )
+  get_property(
+    additional_script_params
+    GLOBAL PROPERTY
+    SUIT_RECOVERY_DFU_ZIP_ADDITIONAL_SCRIPT_PARAMS
+  )
 
   set(root_name "${SB_CONFIG_SUIT_ENVELOPE_APP_RECOVERY_ARTIFACT_NAME}.suit")
-  set(script_params "${root_name}type=suit-envelope")
+  set(script_params "${root_name}type=suit-envelope;${additional_script_params}")
 
   include(${ZEPHYR_NRF_MODULE_DIR}/cmake/fw_zip.cmake)
 
@@ -316,17 +326,30 @@ function(suit_create_package)
     )
   endforeach()
 
-  # First parse which images should be extracted to which cache partition
+  # First parse which images should be extracted to which cache partitions
   set(DFU_CACHE_PARTITIONS_USED "")
+  set(RECOVERY_DFU_CACHE_PARTITIONS_USED "")
+
   foreach(image ${IMAGES})
     sysbuild_get(EXTRACT_TO_CACHE IMAGE ${image} VAR CONFIG_SUIT_DFU_CACHE_EXTRACT_IMAGE KCONFIG)
     if(EXTRACT_TO_CACHE)
       sysbuild_get(CACHE_PARTITION_NUM IMAGE ${image} VAR CONFIG_SUIT_DFU_CACHE_EXTRACT_IMAGE_PARTITION KCONFIG)
-      list(APPEND DFU_CACHE_PARTITIONS_USED ${CACHE_PARTITION_NUM})
-      list(APPEND SUIT_CACHE_PARTITION_${CACHE_PARTITION_NUM} ${image})
+
+      unset(CONFIG_SUIT_RECOVERY)
+      sysbuild_get(CONFIG_SUIT_RECOVERY IMAGE ${image} VAR CONFIG_SUIT_RECOVERY KCONFIG)
+
+      if(CONFIG_SUIT_RECOVERY)
+        list(APPEND RECOVERY_DFU_CACHE_PARTITIONS_USED ${CACHE_PARTITION_NUM})
+        list(APPEND SUIT_RECOVERY_CACHE_PARTITION_${CACHE_PARTITION_NUM} ${image})
+      else()
+        list(APPEND DFU_CACHE_PARTITIONS_USED ${CACHE_PARTITION_NUM})
+        list(APPEND SUIT_CACHE_PARTITION_${CACHE_PARTITION_NUM} ${image})
+      endif()
     endif()
   endforeach()
+
   list(REMOVE_DUPLICATES DFU_CACHE_PARTITIONS_USED)
+  list(REMOVE_DUPLICATES RECOVERY_DFU_CACHE_PARTITIONS_USED)
 
   # Then create the cache partitions
   foreach(CACHE_PARTITION_NUM ${DFU_CACHE_PARTITIONS_USED})
@@ -339,16 +362,45 @@ function(suit_create_package)
         "--input" "\"${IMAGE_CACHE_URI},${BINARY_DIR}/zephyr/${BINARY_FILE}.bin\""
       )
     endforeach()
-    list(APPEND CACHE_CREATE_ARGS "--output-file" "${SUIT_ROOT_DIRECTORY}dfu_cache_partition_${CACHE_PARTITION_NUM}.bin")
 
     if(SUIT_DFU_CACHE_PARTITION_${CACHE_PARTITION_NUM}_EB_SIZE)
       list(APPEND CACHE_CREATE_ARGS "--eb-size" "${SUIT_DFU_CACHE_PARTITION_${CACHE_PARTITION_NUM}_EB_SIZE}")
     endif()
 
-    suit_create_cache_partition("${CACHE_CREATE_ARGS}")
+    suit_create_cache_partition(
+      "${CACHE_CREATE_ARGS}"
+      "${SUIT_ROOT_DIRECTORY}dfu_cache_partition_${CACHE_PARTITION_NUM}.bin"
+      ${CACHE_PARTITION_NUM}
+      FALSE
+    )
   endforeach()
 
   if(SB_CONFIG_SUIT_BUILD_RECOVERY)
+
+    # Create cache partitions for the recovery images
+    foreach(CACHE_PARTITION_NUM ${RECOVERY_DFU_CACHE_PARTITIONS_USED})
+      set(CACHE_CREATE_ARGS "")
+      foreach(image ${SUIT_RECOVERY_CACHE_PARTITION_${CACHE_PARTITION_NUM}})
+        sysbuild_get(BINARY_DIR IMAGE ${image} VAR APPLICATION_BINARY_DIR CACHE)
+        sysbuild_get(BINARY_FILE IMAGE ${image} VAR CONFIG_KERNEL_BIN_NAME KCONFIG)
+        sysbuild_get(IMAGE_CACHE_URI IMAGE ${image} VAR CONFIG_SUIT_DFU_CACHE_EXTRACT_IMAGE_URI KCONFIG)
+        list(APPEND CACHE_CREATE_ARGS
+          "--input" "\"${IMAGE_CACHE_URI},${BINARY_DIR}/zephyr/${BINARY_FILE}.bin\""
+        )
+      endforeach()
+
+      if(SUIT_DFU_CACHE_PARTITION_${CACHE_PARTITION_NUM}_EB_SIZE)
+        list(APPEND CACHE_CREATE_ARGS "--eb-size" "${SUIT_DFU_CACHE_PARTITION_${CACHE_PARTITION_NUM}_EB_SIZE}")
+      endif()
+
+      suit_create_cache_partition(
+        "${CACHE_CREATE_ARGS}"
+        "${SUIT_ROOT_DIRECTORY}dfu_cache_partition_recovery_${CACHE_PARTITION_NUM}.bin"
+        ${CACHE_PARTITION_NUM}
+        TRUE
+      )
+    endforeach()
+
     suit_get_manifest(${SB_CONFIG_SUIT_ENVELOPE_APP_RECOVERY_TEMPLATE_FILENAME} INPUT_APP_RECOVERY_ENVELOPE_JINJA_FILE)
 
     # create app recovery envelope if defined
@@ -367,6 +419,34 @@ function(suit_create_package)
       set_property(GLOBAL APPEND PROPERTY SUIT_RECOVERY_DFU_ARTIFACTS ${APP_RECOVERY_ENVELOPE_SUIT_FILE})
     endif()
   endif()
+
+  if(SB_CONFIG_SUIT_MULTI_IMAGE_PACKAGE_BUILD)
+    include(${ZEPHYR_NRF_MODULE_DIR}/cmake/fw_zip.cmake)
+    include(${ZEPHYR_NRF_MODULE_DIR}/cmake/dfu_multi_image.cmake)
+
+    set(suit_multi_image_ids)
+    set(suit_multi_image_paths)
+    set(suit_multi_image_targets)
+
+    list(APPEND suit_multi_image_ids 0)
+    # Include the suit Envelope to the multi image package to store it in dfu_partition
+    list(APPEND suit_multi_image_paths "${SUIT_ROOT_DIRECTORY}root.suit")
+    list(APPEND suit_multi_image_targets "${SUIT_ROOT_DIRECTORY}root.suit")
+    # Include cache partition to the multi image package to store it in cache_partition
+    foreach(cache_partition_num ${DFU_CACHE_PARTITIONS_USED})
+      math(EXPR dfu_image_id "${cache_partition_num} + 1")
+      list(APPEND suit_multi_image_ids ${dfu_image_id})
+      list(APPEND suit_multi_image_paths "${SUIT_ROOT_DIRECTORY}dfu_cache_partition_${cache_partition_num}.bin")
+    endforeach()
+
+    dfu_multi_image_package(
+      dfu_multi_image_pkg
+      IMAGE_IDS ${suit_multi_image_ids}
+      IMAGE_PATHS ${suit_multi_image_paths}
+      OUTPUT ${CMAKE_BINARY_DIR}/dfu_multi_image.bin
+      DEPENDS ${suit_multi_image_targets}
+    )
+  endif() # SB_CONFIG_SUIT_MULTI_IMAGE_PACKAGE_BUILD
 
   suit_get_manifest(${SB_CONFIG_SUIT_ENVELOPE_ROOT_TEMPLATE_FILENAME} INPUT_ROOT_ENVELOPE_JINJA_FILE)
   message(STATUS "Found root manifest template: ${INPUT_ROOT_ENVELOPE_JINJA_FILE}")

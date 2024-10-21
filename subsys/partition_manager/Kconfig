@@ -72,7 +72,7 @@ rsource "Kconfig.template.partition_region"
 endif
 
 
-if SETTINGS_FCB || SETTINGS_NVS
+if SETTINGS_FCB || SETTINGS_NVS || SETTINGS_ZMS
 partition=SETTINGS_STORAGE
 partition-size=0x2000
 rsource "Kconfig.template.partition_config"
@@ -89,6 +89,13 @@ endif
 
 if NVS && !SETTINGS_NVS
 partition=NVS_STORAGE
+partition-size=0x6000
+rsource "Kconfig.template.partition_config"
+rsource "Kconfig.template.partition_region"
+endif
+
+if ZMS && !SETTINGS_ZMS
+partition=ZMS_STORAGE
 partition-size=0x6000
 rsource "Kconfig.template.partition_config"
 rsource "Kconfig.template.partition_region"
@@ -244,5 +251,11 @@ config PM_SRAM_SIZE
 	default 0x40000 if SOC_NRF54L15_ENGA_CPUFLPR  # Because the cpuapp_rram DT node is deleted in nrf54l15_cpuflpr.dtsi
 	default 0x40000 if SOC_NRF54L15_CPUFLPR  # Because the cpuapp_rram DT node is deleted in nrf54l15_cpuflpr.dtsi
 	default $(dt_node_reg_size_hex,/soc/memory@20000000)
+
+config PM_USE_CONFIG_SRAM_SIZE
+	bool
+	help
+	  Hidden option that, if set, will use the Kconfig value of PM_SRAM_SIZE for the SRAM size
+	  value instead of the partition-manager project generated output value
 
 endmenu # Partition Manager

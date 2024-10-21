@@ -375,6 +375,7 @@ Sidewalk:
     - nrf/subsys/nrf_security/
     - nrf/subsys/partition_manager/
     - nrf/subsys/pcd/
+    - nrf/subsys/trusted_storage/
     - nrfxlib/crypto/
     - sidewalk/
     - zephyr/include/dfu/
@@ -1150,6 +1151,11 @@ ci_tests_lib_sample_rate_converter:
     - nrf/lib/sample_rate_converter/
     - nrf/tests/lib/sample_rate_converter/
 
+ci_tests_lib_uicc_lwm2m:
+  files:
+    - nrf/lib/uicc_lwm2m/
+    - nrf/tests/lib/uicc_lwm2m/
+
 ci_tests_drivers_lpuart:
   files:
     - modules/hal/nordic/nrfx/
@@ -1255,6 +1261,15 @@ ci_tests_benchmarks_current_consumption:
     - zephyr/drivers/spi/
     - zephyr/drivers/counter/
     - zephyr/soc/nordic/
+
+ci_tests_drivers_egpio:
+  files:
+    - nrf/applications/sdp/gpio/
+    - nrf/drivers/gpio/
+    - nrf/snippets/emulated-gpio/
+    - nrf/tests/drivers/gpio/egpio_basic_api/
+    - zephyr/drivers/mbox/
+    - zephyr/subsys/ipc/ipc_service/
 
 ci_tests_drivers_fprotect:
   files:

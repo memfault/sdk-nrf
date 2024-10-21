@@ -265,6 +265,7 @@ int nrf_cloud_fota_fmfu_apply(void)
 	err = fmfu_fdev_load(fmfu_buf, sizeof(fmfu_buf), fmfu_dev.dev, fmfu_dev.offset);
 	if (err != 0) {
 		LOG_ERR("Failed to apply full modem update, error: %d", err);
+		(void)nrf_modem_lib_shutdown();
 		(void)nrf_modem_lib_init();
 		return err;
 	}
@@ -580,4 +581,21 @@ int nrf_cloud_fota_smp_version_get(char **smp_ver_out)
 	return 0;
 #endif
 	return -ENOTSUP;
+}
+
+int nrf_cloud_fota_smp_client_init(const void *smp_reset_cb)
+{
+	int ret = -ENOTSUP;
+
+#if defined(CONFIG_NRF_CLOUD_FOTA_SMP)
+	ret = mcumgr_smp_client_init((dfu_target_reset_cb_t)smp_reset_cb);
+	if (ret != 0) {
+		LOG_ERR("Failed to init SMP client, error: %d", ret);
+		return ret;
+	}
+
+	(void)nrf_cloud_fota_smp_version_read();
+#endif /* CONFIG_NRF_CLOUD_FOTA_SMP */
+
+	return ret;
 }

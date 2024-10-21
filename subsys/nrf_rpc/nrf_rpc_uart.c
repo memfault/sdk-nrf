@@ -22,6 +22,17 @@ enum {
 	HDLC_CHAR_DELIMITER = 0x7e,
 };
 
+enum flip_state {
+	FLIP_ZERO,
+	FLIP_ONE,
+	FLIP_ANY
+};
+
+struct trx_flips {
+	uint8_t tx_flip : 2;
+	uint8_t rx_flip : 2;
+};
+
 typedef enum {
 	HDLC_STATE_UNSYNC,
 	HDLC_STATE_FRAME_START,
@@ -50,13 +61,102 @@ struct nrf_rpc_uart {
 	uint8_t rx_packet[CONFIG_NRF_RPC_UART_MAX_PACKET_SIZE];
 	size_t rx_packet_len;
 
+	/* Ack waiting semaphore */
+	struct k_sem ack_sem;
+	uint16_t ack_payload;
+	struct k_mutex ack_tx_lock;
+	struct trx_flips flips;
+
 	/* TX lock */
 	struct k_mutex tx_lock;
 };
 
 #define CRC_SIZE sizeof(uint16_t)
 
-static int hdlc_decode_byte(struct nrf_rpc_uart *uart_tr, uint8_t byte)
+static void send_byte(const struct device *dev, uint8_t byte);
+
+static void ack_rx(struct nrf_rpc_uart *uart_tr)
+{
+	if (!IS_ENABLED(CONFIG_NRF_RPC_UART_RELIABLE)) {
+		return;
+	}
+
+	if (uart_tr->rx_packet_len == CRC_SIZE) {
+		uart_tr->ack_payload = sys_get_le16(uart_tr->rx_packet);
+		k_sem_give(&uart_tr->ack_sem);
+		k_yield();
+	}
+}
+
+static void ack_tx(struct nrf_rpc_uart *uart_tr, uint16_t ack_pld)
+{
+	uint8_t ack[2];
+
+	if (!IS_ENABLED(CONFIG_NRF_RPC_UART_RELIABLE)) {
+		return;
+	}
+
+	sys_put_le16(ack_pld, ack);
+	k_mutex_lock(&uart_tr->ack_tx_lock, K_FOREVER);
+	LOG_HEXDUMP_DBG(ack, sizeof(ack), "Tx ack");
+
+	uart_poll_out(uart_tr->uart, HDLC_CHAR_DELIMITER);
+
+	send_byte(uart_tr->uart, ack[0]);
+	send_byte(uart_tr->uart, ack[1]);
+
+	uart_poll_out(uart_tr->uart, HDLC_CHAR_DELIMITER);
+
+	k_mutex_unlock(&uart_tr->ack_tx_lock);
+}
+
+static uint16_t tx_flip(struct nrf_rpc_uart *uart_tr, uint16_t crc_val)
+{
+	if (!IS_ENABLED(CONFIG_NRF_RPC_UART_RELIABLE)) {
+		return crc_val;
+	}
+
+	if (uart_tr->flips.tx_flip == FLIP_ZERO) {
+		crc_val &= 0x7fffu;
+		uart_tr->flips.tx_flip = FLIP_ONE;
+	} else {
+		crc_val |= 0x8000u;
+		uart_tr->flips.tx_flip = FLIP_ZERO;
+	}
+
+	return crc_val;
+}
+
+static bool rx_flip_check(struct nrf_rpc_uart *uart_tr, uint16_t crc_val)
+{
+	if (!IS_ENABLED(CONFIG_NRF_RPC_UART_RELIABLE)) {
+		return false;
+	}
+
+	if (uart_tr->flips.rx_flip == FLIP_ZERO && (crc_val & 0x8000u) == 0) {
+		uart_tr->flips.rx_flip = FLIP_ONE;
+		return false;
+	} else if (uart_tr->flips.rx_flip == FLIP_ONE && (crc_val & 0x8000u) == 0x8000u) {
+		uart_tr->flips.rx_flip = FLIP_ZERO;
+		return false;
+	} else if (uart_tr->flips.rx_flip == FLIP_ANY) {
+		uart_tr->flips.rx_flip = crc_val & 0x8000u ? FLIP_ZERO : FLIP_ONE;
+		return false;
+	}
+
+	return true;
+}
+
+static bool crc_compare(uint16_t rx_crc, uint16_t calc_crc)
+{
+	if (IS_ENABLED(CONFIG_NRF_RPC_UART_RELIABLE)) {
+		return (rx_crc & 0x7fffu) == (calc_crc & 0x7fffu);
+	}
+
+	return rx_crc == calc_crc;
+}
+
+static void hdlc_decode_byte(struct nrf_rpc_uart *uart_tr, uint8_t byte)
 {
 	/* TODO: handle frame buffer overflow */
 
@@ -79,12 +179,11 @@ static int hdlc_decode_byte(struct nrf_rpc_uart *uart_tr, uint8_t byte)
 		if (uart_tr->rx_packet_len > CRC_SIZE) {
 			uart_tr->rx_packet_len -= CRC_SIZE;
 		} else {
+			ack_rx(uart_tr);
 			uart_tr->rx_packet_len = 0;
 			uart_tr->hdlc_state = HDLC_STATE_UNSYNC;
 		}
 	}
-
-	return 0;
 }
 
 static void work_handler(struct k_work *work)
@@ -101,9 +200,7 @@ static void work_handler(struct k_work *work)
 		len = ring_buf_get_claim(&uart_tr->rx_ringbuf, &data,
 					 CONFIG_NRF_RPC_UART_MAX_PACKET_SIZE);
 		for (size_t i = 0; i < len; i++) {
-			if (hdlc_decode_byte(uart_tr, data[i]) != 0) {
-				continue;
-			}
+			hdlc_decode_byte(uart_tr, data[i]);
 
 			if (uart_tr->hdlc_state != HDLC_STATE_FRAME_FOUND) {
 				continue;
@@ -112,16 +209,24 @@ static void work_handler(struct k_work *work)
 			crc_received = sys_get_le16(uart_tr->rx_packet + uart_tr->rx_packet_len);
 			crc_calculated =
 				crc16_ccitt(0xffff, uart_tr->rx_packet, uart_tr->rx_packet_len);
-			if (crc_calculated != crc_received) {
-				LOG_ERR("Invalid CRC, calculated %x received %x", crc_calculated,
+			if (!crc_compare(crc_received, crc_calculated)) {
+				LOG_ERR("Invalid CRC, calculated %4x received %4x", crc_calculated,
 					crc_received);
 				uart_tr->rx_packet_len = 0;
 				uart_tr->hdlc_state = HDLC_STATE_UNSYNC;
 				return;
 			}
 
-			uart_tr->receive_callback(transport, uart_tr->rx_packet,
-						  uart_tr->rx_packet_len, uart_tr->receive_ctx);
+			ack_tx(uart_tr, crc_received);
+
+			if (rx_flip_check(uart_tr, crc_received)) {
+				LOG_WRN("Duplicated frame was filtered (crc:%#4x)", crc_received);
+			} else {
+				uart_tr->receive_callback(transport, uart_tr->rx_packet,
+							  uart_tr->rx_packet_len,
+							  uart_tr->receive_ctx);
+			}
+
 			uart_tr->rx_packet_len = 0;
 			uart_tr->hdlc_state = HDLC_STATE_UNSYNC;
 		}
@@ -210,6 +315,13 @@ static int init(const struct nrf_rpc_tr *transport, nrf_rpc_tr_receive_handler_t
 
 	k_mutex_init(&uart_tr->tx_lock);
 
+	if (IS_ENABLED(CONFIG_NRF_RPC_UART_RELIABLE)) {
+		k_mutex_init(&uart_tr->ack_tx_lock);
+		k_sem_init(&uart_tr->ack_sem, 0, 1);
+		uart_tr->flips.tx_flip = FLIP_ZERO;
+		uart_tr->flips.rx_flip = FLIP_ANY;
+	}
+
 	k_work_queue_init(&uart_tr->rx_workq);
 	k_work_queue_start(&uart_tr->rx_workq, uart_tr->rx_workq_stack,
 			   K_THREAD_STACK_SIZEOF(uart_tr->rx_workq_stack), K_PRIO_PREEMPT(0), NULL);
@@ -237,29 +349,62 @@ static void send_byte(const struct device *dev, uint8_t byte)
 static int send(const struct nrf_rpc_tr *transport, const uint8_t *data, size_t length)
 {
 	uint8_t crc[2];
+	uint16_t crc_val;
+	bool acked = true;
 	struct nrf_rpc_uart *uart_tr = transport->ctx;
-
-	LOG_HEXDUMP_DBG(data, length, "Sending frame");
 
 	k_mutex_lock(&uart_tr->tx_lock, K_FOREVER);
 
-	uart_poll_out(uart_tr->uart, HDLC_CHAR_DELIMITER);
+	LOG_HEXDUMP_DBG(data, length, "Sending frame");
 
-	for (size_t i = 0; i < length; i++) {
-		send_byte(uart_tr->uart, data[i]);
-	}
+#if CONFIG_NRF_RPC_UART_RELIABLE
+	int attempts = 0;
 
-	sys_put_le16(crc16_ccitt(0xffff, data, length), crc);
-	send_byte(uart_tr->uart, crc[0]);
-	send_byte(uart_tr->uart, crc[1]);
+	acked = false;
 
-	uart_poll_out(uart_tr->uart, HDLC_CHAR_DELIMITER);
+	do {
+		attempts++;
+		k_mutex_lock(&uart_tr->ack_tx_lock, K_FOREVER);
+		k_sem_reset(&uart_tr->ack_sem);
+#endif /* CONFIG_NRF_RPC_UART_RELIABLE */
+
+		uart_poll_out(uart_tr->uart, HDLC_CHAR_DELIMITER);
+
+		for (size_t i = 0; i < length; i++) {
+			send_byte(uart_tr->uart, data[i]);
+		}
+
+		crc_val = crc16_ccitt(0xffff, data, length);
+		crc_val = tx_flip(uart_tr, crc_val);
+		sys_put_le16(crc_val, crc);
+		send_byte(uart_tr->uart, crc[0]);
+		send_byte(uart_tr->uart, crc[1]);
+
+		uart_poll_out(uart_tr->uart, HDLC_CHAR_DELIMITER);
+
+#if CONFIG_NRF_RPC_UART_RELIABLE
+		k_mutex_unlock(&uart_tr->ack_tx_lock);
+		if (k_sem_take(&uart_tr->ack_sem, K_MSEC(CONFIG_NRF_RPC_UART_ACK_WAITING_TIME)) ==
+		    0) {
+			acked = uart_tr->ack_payload == crc_val;
+			if (!acked) {
+				LOG_WRN("Wrong ack. Expected: %#4x. Received: %#4x.", crc_val,
+					uart_tr->ack_payload);
+			} else {
+				LOG_DBG("Acked successfully.");
+			}
+		} else {
+			LOG_WRN("Ack timeout expired.");
+		}
+
+	} while (!acked && attempts < CONFIG_NRF_RPC_UART_TX_ATTEMPTS);
+#endif /* CONFIG_NRF_RPC_UART_RELIABLE */
 
 	k_free((void *)data);
 
 	k_mutex_unlock(&uart_tr->tx_lock);
 
-	return 0;
+	return acked ? 0 : -EPROTO;
 }
 
 static void *tx_buf_alloc(const struct nrf_rpc_tr *transport, size_t *size)

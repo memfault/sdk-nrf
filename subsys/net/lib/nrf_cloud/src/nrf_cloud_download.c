@@ -72,7 +72,7 @@ static int coap_dl_connect_and_auth(void)
 
 static int fota_dl_evt_send(const struct download_client_evt *evt)
 {
-#if defined(CONFIG_FOTA_DOWNLOAD)
+#if defined(CONFIG_FOTA_DOWNLOAD_EXTERNAL_DL)
 	return fota_download_external_evt_handle(evt);
 #endif
 	return -ENOTSUP;
@@ -293,12 +293,16 @@ static int coap_dl(struct nrf_cloud_download_data *const dl)
 	}
 
 	if (dl->type == NRF_CLOUD_DL_TYPE_FOTA) {
+#if defined(CONFIG_FOTA_DOWNLOAD_EXTERNAL_DL)
 		ret = fota_download_external_start(dl->host, file_path, dl->fota.expected_type,
 						  (size_t)dl->fota.img_sz);
 		if (ret) {
 			LOG_ERR("Failed to start FOTA download, error: %d", ret);
 			return ret;
 		}
+#else
+		return -ENOTSUP;
+#endif
 	}
 
 	return coap_dl_start(dl, 0);
@@ -388,11 +392,6 @@ static int fota_start(struct nrf_cloud_download_data *const dl)
 {
 #if defined(CONFIG_FOTA_DOWNLOAD)
 
-	/* Download using CoAP if enabled */
-#if defined(CONFIG_NRF_CLOUD_COAP_DOWNLOADS)
-	return coap_dl(dl);
-#endif /* CONFIG_NRF_CLOUD_COAP_DOWNLOADS */
-
 	if (dl->fota.expected_type == DFU_TARGET_IMAGE_TYPE_SMP) {
 		/* This needs to be called to set the SMP flag in fota_download */
 		smp_fota_dl_util_init(&dl->fota);
@@ -400,6 +399,11 @@ static int fota_start(struct nrf_cloud_download_data *const dl)
 		/* This needs to be called to clear the SMP flag */
 		(void)fota_download_init(dl->fota.cb);
 	}
+
+	/* Download using CoAP if enabled */
+#if defined(CONFIG_NRF_CLOUD_COAP_DOWNLOADS)
+	return coap_dl(dl);
+#endif /* CONFIG_NRF_CLOUD_COAP_DOWNLOADS */
 
 	return fota_download_start_with_image_type(dl->host, dl->path,
 		dl->dl_cfg.sec_tag_count ? dl->dl_cfg.sec_tag_list[0] : -1,

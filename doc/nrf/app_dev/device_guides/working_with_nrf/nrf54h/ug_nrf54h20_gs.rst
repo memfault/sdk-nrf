@@ -34,7 +34,7 @@ On your computer, one of the following operating systems:
     :start-after: os_table_start
     :end-before: os_table_end
 
-See :ref:`supported_OS` for more information about the tier definitions.
+See :ref:`supported_OS` for more information.
 
 |supported OS|
 
@@ -59,11 +59,11 @@ You also need the following:
 
          * From the Command Prompt::
 
-            JLink_Windows_V794e_x86_64.exe -InstUSBDriver=1
+            JLink_Windows_V794i_x86_64.exe -InstUSBDriver=1
 
          * From PowerShell::
 
-            .\JLink_Windows_V794e_x86_64.exe -InstUSBDriver=1
+            .\JLink_Windows_V794i_x86_64.exe -InstUSBDriver=1
 
       #. In the :guilabel:`Choose optional components` window, select :guilabel:`update existing installation`.
       #. Add the J-Link executable to the system path on Linux and MacOS, or to the environment variables on Windows, to run it from anywhere on the system.

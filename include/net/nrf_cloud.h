@@ -451,7 +451,12 @@ struct nrf_cloud_svc_info_fota {
 	uint8_t _rsvd:3;
 };
 
-/** @brief DEPRECATED - No longer used by nRF Cloud */
+/** @brief DEPRECATED - No longer used by nRF Cloud
+ * The device data cards on the nRF Cloud portal automatically appear when the device
+ * sends messages with the proper schema:
+ * https://github.com/nRFCloud/application-protocols/tree/v1/schemas/deviceToCloud
+ * Custom cards are generated for appIds that are not present in the schema.
+ */
 struct nrf_cloud_svc_info_ui {
 	/* Items with UI support on nRF Cloud */
 	/** Temperature */
@@ -517,7 +522,9 @@ struct nrf_cloud_svc_info {
 	/** Specify FOTA components to enable, set to NULL to remove the FOTA entry */
 	struct nrf_cloud_svc_info_fota *fota;
 
-	/** DEPRECATED - nRF Cloud no longer requires the device to set UI values in the shadow */
+	/** DEPRECATED - nRF Cloud no longer requires the device to set UI values in the shadow.
+	 * See @ref nrf_cloud_svc_info_ui for more information.
+	 */
 	struct nrf_cloud_svc_info_ui *ui;
 };
 
@@ -575,9 +582,12 @@ struct nrf_cloud_gnss_pvt {
 struct nrf_cloud_credentials_status {
 	/* Configured sec_tag for nRF Cloud */
 	uint32_t sec_tag;
+	size_t ca_size;
 
 	/* Flags to indicate if the specified credentials exist */
 	uint8_t ca:1;
+	uint8_t ca_coap:1;
+	uint8_t ca_aws:1;
 	uint8_t client_cert:1;
 	uint8_t prv_key:1;
 };
@@ -632,10 +642,11 @@ struct nrf_cloud_ctrl_data {
 	 *  If false, alerts will be suppressed.
 	 */
 	bool alerts_enabled;
-	/** If 0, the nrf_cloud library logging backend will be disabled.
-	 *  If values from 1 to 4, this level and any lower levels will
-	 *  be sent to the cloud. Level 1 is most urgent (LOG_ERR),
-	 *  level 4 least (LOG_DBG).
+	/** If 0: None - the nrf_cloud library logging backend is disabled.
+	 *     4: LOG_DBG (least urgent) and all levels below are sent to the cloud.
+	 *     3: LOG_INF and all levels below are sent to the cloud.
+	 *     2: LOG_WRN and all levels below are sent to the cloud.
+	 *     1: only LOG_ERR (most urgent) is sent to the cloud.
 	 */
 	int log_level;
 };
@@ -1125,6 +1136,20 @@ bool nrf_cloud_fota_is_type_enabled(const enum nrf_cloud_fota_type type);
 int nrf_cloud_fota_job_start(void);
 
 /**
+ * @brief Initialize the SMP client.
+ *        Called automatically if @kconfig{CONFIG_NRF_CLOUD_FOTA} or
+ *        @kconfig{CONFIG_NRF_CLOUD_FOTA_POLL} is enabled.
+ *
+ * @param smp_reset_cb Callback of type @ref dfu_target_reset_cb_t for resetting the SMP device to
+ *                     enter MCUboot recovery mode.
+ *
+ * @retval 0        SMP client successfully initialized.
+ * @retval -ENOTSUP Error; @kconfig{CONFIG_NRF_CLOUD_FOTA_SMP} is not enabled.
+ * @return A negative value indicates an error.
+ */
+int nrf_cloud_fota_smp_client_init(const void *smp_reset_cb);
+
+/**
  * @brief Install a downloaded SMP FOTA job.
  *        Called automatically if @kconfig{CONFIG_NRF_CLOUD_FOTA} is enabled (MQTT FOTA).
  *
@@ -1171,11 +1196,14 @@ int nrf_cloud_credentials_check(struct nrf_cloud_credentials_status *const cs);
 /**
  * @brief Check if the credentials required for connecting to nRF Cloud exist.
  *        The application's configuration is used to determine which credentials
- *        are required.
+ *        are required. Check the size of the root CA certificates installed
+ *        and return an error code if the size of the root CA certificate(s) is not
+ *        appropriate for the configured transport type.
  *
  * @retval 0 Required credentials exist.
  * @retval -EIO Error checking if credentials exists.
  * @retval -ENOTSUP Required credentials do not exist.
+ * @retval -ENOPROTOOPT Size of root CA is not appropriate for the configured transport type.
  * @return A negative value indicates an error.
  */
 int nrf_cloud_credentials_configured_check(void);
@@ -1188,6 +1216,10 @@ int nrf_cloud_credentials_configured_check(void);
  * @note This API only needs to be called if the default configured sec tag value is no
  *       longer applicable. This function does not perform any management of the
  *       device's connection to nRF Cloud.
+ *       For CoAP, changing this value will change the sec tag used for the DTLS connection only.
+ *       Use @ref nrf_cloud_sec_tag_coap_jwt_set to set the sec tag used for JWT signing.
+ *       For normal operation, the DTLS and JWT sec tags should be the same. They should only
+ *       differ for debugging purposes (network traffic decryption).
  *
  * @param sec_tag The sec tag.
  *
@@ -1200,6 +1232,31 @@ void nrf_cloud_sec_tag_set(const sec_tag_t sec_tag);
  * @return The sec tag.
  */
 sec_tag_t nrf_cloud_sec_tag_get(void);
+
+/**
+ * @brief Set the sec tag containing the private key used to sign CoAP JWTs for nRF Cloud
+ *        authentication.
+ *        The default sec tag value is @kconfig{CONFIG_NRF_CLOUD_COAP_JWT_SEC_TAG}.
+ *
+ * @note This API requires @kconfig{CONFIG_NRF_CLOUD_COAP} to be enabled.
+ *       This API only needs to be called if the default configured sec tag value is no
+ *       longer applicable. This function does not perform any management of the
+ *       device's authentication status with nRF Cloud.
+ *
+ * @param sec_tag The sec tag.
+ *
+ */
+void nrf_cloud_sec_tag_coap_jwt_set(const sec_tag_t sec_tag);
+
+/**
+ * @brief Get the sec tag containing the private key used to sign CoAP JWTs for nRF Cloud
+ *        authentication.
+ *
+ * @note This API requires @kconfig{CONFIG_NRF_CLOUD_COAP} to be enabled.
+ *
+ * @return The sec tag.
+ */
+sec_tag_t nrf_cloud_sec_tag_coap_jwt_get(void);
 
 /** @} */
 
