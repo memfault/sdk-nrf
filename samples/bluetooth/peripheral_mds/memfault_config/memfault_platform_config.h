@@ -9,4 +9,3 @@
  * "<NCS folder>/modules/lib/memfault-firmware-sdk/components/include/memfault/default_config.h"
  */
 
- /* #define MEMFAULT_METRICS_HEARTBEAT_INTERVAL_SECS 1800 */
