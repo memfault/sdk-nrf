@@ -23,7 +23,7 @@ The application supports the following development kits:
 
 .. table-from-sample-yaml::
 
-To commission the weather station device and control it remotely through a Thread or Wi-Fi network, you also need a Matter controller device :ref:`configured on PC or smartphone <ug_matter_configuring>`.
+To commission the weather station device and control it remotely through a Thread or Wi-Fi® network, you also need a Matter controller device :ref:`configured on PC or smartphone <ug_matter_configuring>`.
 This requires additional hardware depending on your setup.
 The recommended way of getting measurement values is using the mobile Matter controller application that comes with a graphical interface, performs measurements automatically and visualizes the data.
 
@@ -223,7 +223,7 @@ To build this application to work with the nRF7002 Wi-Fi expansion board:
 Generating factory data
 =======================
 
-To enable factory data support, you need to select the ``overlay-factory_data`` configuration overlay from the available application :ref:`build configuration overlays <matter_weather_station_app_build_configuration_overlays>`, set the ``SB_CONFIG_MATTER_FACTORY_DATA_GENERATE`` kconfig option to ``y``, and use the ``factory_data`` file suffix.
+To enable factory data support, you need to select the ``overlay-factory_data`` configuration overlay from the available application :ref:`build configuration overlays <matter_weather_station_app_build_configuration_overlays>`, set the ``SB_CONFIG_MATTER_FACTORY_DATA_GENERATE`` Kconfig option to ``y``, and use the ``factory_data`` file suffix.
 You can generate new factory data set when building for the given board target by invoking the following command:
 
 .. code-block:: console

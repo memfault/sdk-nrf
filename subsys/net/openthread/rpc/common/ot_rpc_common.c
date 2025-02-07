@@ -6,6 +6,7 @@
 
 #include <openthread/ip6.h>
 #include <openthread/netdata.h>
+
 #include "ot_rpc_common.h"
 #include "zcbor_common.h"
 #include "zcbor_encode.h"
@@ -172,371 +173,207 @@ void ot_rpc_encode_message_settings(struct nrf_rpc_cbor_ctx *ctx, const otMessag
 	nrf_rpc_encode_uint(ctx, settings->mPriority);
 }
 
-void ot_rpc_report_decoding_error(uint8_t cmd_evt_id)
+void ot_rpc_report_cmd_decoding_error(uint8_t cmd_evt_id)
 {
 	nrf_rpc_err(-EBADMSG, NRF_RPC_ERR_SRC_RECV, &ot_group, cmd_evt_id, NRF_RPC_PACKET_TYPE_CMD);
 }
 
-bool ot_rpc_encode_message_info(struct nrf_rpc_cbor_ctx *ctx, const otMessageInfo *aMessageInfo)
+void ot_rpc_report_rsp_decoding_error(uint8_t cmd_evt_id)
 {
-	uint8_t tmp;
-
-	if (!zcbor_bstr_encode_ptr(ctx->zs, (const char *)&aMessageInfo->mSockAddr.mFields.m8,
-				   sizeof(aMessageInfo->mSockAddr))) {
-		return false;
-	}
-
-	if (!zcbor_bstr_encode_ptr(ctx->zs, (const char *)&aMessageInfo->mPeerAddr.mFields.m8,
-				   sizeof(aMessageInfo->mPeerAddr))) {
-		return false;
-	}
-
-	if (!zcbor_uint_encode(ctx->zs, &aMessageInfo->mSockPort,
-			       sizeof(aMessageInfo->mSockPort))) {
-		return false;
-	}
-
-	if (!zcbor_uint_encode(ctx->zs, &aMessageInfo->mPeerPort,
-			       sizeof(aMessageInfo->mPeerPort))) {
-		return false;
-	}
-
-	if (!zcbor_uint_encode(ctx->zs, &aMessageInfo->mHopLimit,
-			       sizeof(aMessageInfo->mHopLimit))) {
-		return false;
-	}
-
-	tmp = aMessageInfo->mEcn;
-	if (!zcbor_uint_encode(ctx->zs, &tmp, sizeof(tmp))) {
-		return false;
-	}
-
-	if (!zcbor_bool_put(ctx->zs, aMessageInfo->mIsHostInterface)) {
-		return false;
-	}
-
-	if (!zcbor_bool_put(ctx->zs, aMessageInfo->mAllowZeroHopLimit)) {
-		return false;
-	}
-
-	if (!zcbor_bool_put(ctx->zs, aMessageInfo->mMulticastLoop)) {
-		return false;
-	}
-
-	return true;
+	nrf_rpc_err(-EBADMSG, NRF_RPC_ERR_SRC_RECV, &ot_group, cmd_evt_id, NRF_RPC_PACKET_TYPE_RSP);
 }
 
-bool ot_rpc_decode_message_info(struct nrf_rpc_cbor_ctx *ctx, otMessageInfo *aMessageInfo)
+void ot_rpc_encode_message_info(struct nrf_rpc_cbor_ctx *ctx, const otMessageInfo *aMessageInfo)
 {
-	struct zcbor_string zst;
-	uint8_t tmp_uint;
-	bool tmp_bool;
-
-	if (!zcbor_bstr_decode(ctx->zs, &zst)) {
-		return false;
-	}
-
-	memcpy(&aMessageInfo->mSockAddr.mFields.m8, zst.value, zst.len);
-
-	if (!zcbor_bstr_decode(ctx->zs, &zst)) {
-		return false;
-	}
-
-	memcpy(&aMessageInfo->mPeerAddr.mFields.m8, zst.value, zst.len);
-
-	if (!zcbor_uint_decode(ctx->zs, &aMessageInfo->mSockPort,
-			       sizeof(aMessageInfo->mSockPort))) {
-		return false;
-	}
-
-	if (!zcbor_uint_decode(ctx->zs, &aMessageInfo->mPeerPort,
-			       sizeof(aMessageInfo->mPeerPort))) {
-		return false;
-	}
-
-	if (!zcbor_uint_decode(ctx->zs, &aMessageInfo->mHopLimit,
-			       sizeof(aMessageInfo->mHopLimit))) {
-		return false;
-	}
-
-	if (!zcbor_uint_decode(ctx->zs, &tmp_uint, sizeof(tmp_uint))) {
-		return false;
-	}
-
-	aMessageInfo->mEcn = tmp_uint;
-
-	if (!zcbor_bool_decode(ctx->zs, &tmp_bool)) {
-		return false;
-	}
-
-	aMessageInfo->mIsHostInterface = tmp_bool;
-
-	if (!zcbor_bool_decode(ctx->zs, &tmp_bool)) {
-		return false;
-	}
-
-	aMessageInfo->mAllowZeroHopLimit = tmp_bool;
-
-	if (!zcbor_bool_decode(ctx->zs, &tmp_bool)) {
-		return false;
-	}
-
-	aMessageInfo->mMulticastLoop = tmp_bool;
-
-	return true;
+	nrf_rpc_encode_buffer(ctx, aMessageInfo->mSockAddr.mFields.m8,
+			      sizeof(aMessageInfo->mSockAddr));
+	nrf_rpc_encode_buffer(ctx, aMessageInfo->mPeerAddr.mFields.m8,
+			      sizeof(aMessageInfo->mPeerAddr));
+	nrf_rpc_encode_uint(ctx, aMessageInfo->mSockPort);
+	nrf_rpc_encode_uint(ctx, aMessageInfo->mPeerPort);
+	nrf_rpc_encode_uint(ctx, aMessageInfo->mHopLimit);
+	nrf_rpc_encode_uint(ctx, aMessageInfo->mEcn);
+	nrf_rpc_encode_bool(ctx, aMessageInfo->mIsHostInterface);
+	nrf_rpc_encode_bool(ctx, aMessageInfo->mAllowZeroHopLimit);
+	nrf_rpc_encode_bool(ctx, aMessageInfo->mMulticastLoop);
 }
 
-bool ot_rpc_encode_service_config(struct nrf_rpc_cbor_ctx *ctx, const otServiceConfig *config)
+void ot_rpc_decode_message_info(struct nrf_rpc_cbor_ctx *ctx, otMessageInfo *aMessageInfo)
+{
+	size_t size = 0;
+	const void *buf = NULL;
+
+	buf = nrf_rpc_decode_buffer_ptr_and_size(ctx, &size);
+	if (buf && size) {
+		size = MIN(size, sizeof(aMessageInfo->mSockAddr.mFields.m8));
+		memcpy(aMessageInfo->mSockAddr.mFields.m8, buf, size);
+	}
+
+	buf = nrf_rpc_decode_buffer_ptr_and_size(ctx, &size);
+	if (buf && size) {
+		size = MIN(size, sizeof(aMessageInfo->mPeerAddr.mFields.m8));
+		memcpy(aMessageInfo->mPeerAddr.mFields.m8, buf, size);
+	}
+
+	aMessageInfo->mSockPort = nrf_rpc_decode_uint(ctx);
+	aMessageInfo->mPeerPort = nrf_rpc_decode_uint(ctx);
+	aMessageInfo->mHopLimit = nrf_rpc_decode_uint(ctx);
+	aMessageInfo->mEcn = nrf_rpc_decode_uint(ctx);
+	aMessageInfo->mIsHostInterface = nrf_rpc_decode_bool(ctx);
+	aMessageInfo->mAllowZeroHopLimit = nrf_rpc_decode_bool(ctx);
+	aMessageInfo->mMulticastLoop = nrf_rpc_decode_bool(ctx);
+}
+
+void ot_rpc_encode_service_config(struct nrf_rpc_cbor_ctx *ctx, const otServiceConfig *config)
 {
 
 	if (config == NULL) {
-		return zcbor_nil_put(ctx->zs, NULL);
+		nrf_rpc_encode_null(ctx);
+		return;
 	}
 
-	if (!zcbor_uint_encode(ctx->zs, &config->mServiceId, sizeof(config->mServiceId))) {
-		return false;
-	}
-
-	if (!zcbor_uint_encode(ctx->zs, &config->mEnterpriseNumber,
-			       sizeof(config->mEnterpriseNumber))) {
-		return false;
-	}
-
-	if (!zcbor_bstr_encode_ptr(ctx->zs, (const char *)&config->mServiceData,
-				   config->mServiceDataLength)) {
-		return false;
-	}
-
-	if (!zcbor_bool_put(ctx->zs, config->mServerConfig.mStable)) {
-		return false;
-	}
-
-	if (!zcbor_bstr_encode_ptr(ctx->zs, (const char *)&config->mServerConfig.mServerData,
-				   config->mServerConfig.mServerDataLength)) {
-		return false;
-	}
-
-	if (!zcbor_uint_encode(ctx->zs, &config->mServerConfig.mRloc16,
-			       sizeof(config->mServerConfig.mRloc16))) {
-		return false;
-	}
-
-	return true;
+	nrf_rpc_encode_uint(ctx, config->mServiceId);
+	nrf_rpc_encode_uint(ctx, config->mEnterpriseNumber);
+	nrf_rpc_encode_buffer(ctx, config->mServiceData, config->mServiceDataLength);
+	nrf_rpc_encode_bool(ctx, config->mServerConfig.mStable);
+	nrf_rpc_encode_buffer(ctx, config->mServerConfig.mServerData,
+			      config->mServerConfig.mServerDataLength);
+	nrf_rpc_encode_uint(ctx, config->mServerConfig.mRloc16);
 }
 
-bool ot_rpc_decode_service_config(struct nrf_rpc_cbor_ctx *ctx, otServiceConfig *config)
+void ot_rpc_decode_service_config(struct nrf_rpc_cbor_ctx *ctx, otServiceConfig *config)
 {
+	size_t size = 0;
+	const void *buf = NULL;
 
-	struct zcbor_string zst;
-	bool tmp;
-
-	if (zcbor_nil_expect(ctx->zs, NULL)) {
+	if (nrf_rpc_decode_is_null(ctx)) {
 		memset(config, 0, sizeof(otServerConfig));
-		return true;
+		return;
 	}
 
-	if (ctx->zs->constant_state->error != ZCBOR_ERR_WRONG_TYPE) {
-		return false;
+	config->mServiceId = nrf_rpc_decode_uint(ctx);
+	config->mEnterpriseNumber = nrf_rpc_decode_uint(ctx);
+
+	buf = nrf_rpc_decode_buffer_ptr_and_size(ctx, &size);
+	if (buf && size) {
+		size = MIN(size, sizeof(config->mServiceData));
+		memcpy(config->mServiceData, buf, size);
+		config->mServiceDataLength = size;
 	}
 
-	zcbor_pop_error(ctx->zs);
+	config->mServerConfig.mStable = nrf_rpc_decode_bool(ctx);
 
-	if (!zcbor_uint_decode(ctx->zs, &config->mServiceId, sizeof(config->mServiceId))) {
-		return false;
+	buf = nrf_rpc_decode_buffer_ptr_and_size(ctx, &size);
+	if (buf && size) {
+		size = MIN(size, sizeof(config->mServerConfig.mServerData));
+		memcpy(config->mServerConfig.mServerData, buf, size);
+		config->mServerConfig.mServerDataLength = size;
 	}
 
-	if (!zcbor_uint_decode(ctx->zs, &config->mEnterpriseNumber,
-			       sizeof(config->mEnterpriseNumber))) {
-		return false;
-	}
-
-	if (!zcbor_bstr_decode(ctx->zs, &zst)) {
-		return false;
-	}
-
-	config->mServiceDataLength = zst.len;
-	memcpy(config->mServiceData, zst.value, zst.len);
-
-	if (!zcbor_bool_decode(ctx->zs, &tmp)) {
-		return false;
-	}
-
-	config->mServerConfig.mStable = tmp;
-
-	if (!zcbor_bstr_decode(ctx->zs, &zst)) {
-		return false;
-	}
-
-	config->mServerConfig.mServerDataLength = zst.len;
-	memcpy(config->mServerConfig.mServerData, zst.value, zst.len);
-
-	if (!zcbor_uint_decode(ctx->zs, &config->mServerConfig.mRloc16,
-			       sizeof(config->mServerConfig.mRloc16))) {
-		return false;
-	}
-
-	return true;
+	config->mServerConfig.mRloc16 = nrf_rpc_decode_uint(ctx);
 }
 
-bool ot_rpc_encode_border_router_config(struct nrf_rpc_cbor_ctx *ctx,
+void ot_rpc_encode_border_router_config(struct nrf_rpc_cbor_ctx *ctx,
 					const otBorderRouterConfig *config)
 {
-	signed int tmp;
-
 	if (config == NULL) {
-		return zcbor_nil_put(ctx->zs, NULL);
+		nrf_rpc_encode_null(ctx);
+		return;
 	}
 
-	if (!zcbor_bstr_encode_ptr(ctx->zs, (const char *)config->mPrefix.mPrefix.mFields.m8,
-				   OT_IP6_ADDRESS_SIZE)) {
-		return false;
-	}
-
-	if (!zcbor_uint_encode(ctx->zs, &config->mPrefix.mLength,
-			       sizeof(config->mPrefix.mLength))) {
-		return false;
-	}
-
-	tmp = config->mPreference;
-
-	if (!zcbor_uint_encode(ctx->zs, &tmp, sizeof(tmp))) {
-		return false;
-	}
-
-	if (!zcbor_bool_put(ctx->zs, config->mPreferred)) {
-		return false;
-	}
-
-	if (!zcbor_bool_put(ctx->zs, config->mSlaac)) {
-		return false;
-	}
-
-	if (!zcbor_bool_put(ctx->zs, config->mDhcp)) {
-		return false;
-	}
-
-	if (!zcbor_bool_put(ctx->zs, config->mConfigure)) {
-		return false;
-	}
-
-	if (!zcbor_bool_put(ctx->zs, config->mDefaultRoute)) {
-		return false;
-	}
-
-	if (!zcbor_bool_put(ctx->zs, config->mOnMesh)) {
-		return false;
-	}
-
-	if (!zcbor_bool_put(ctx->zs, config->mStable)) {
-		return false;
-	}
-
-	if (!zcbor_bool_put(ctx->zs, config->mNdDns)) {
-		return false;
-	}
-
-	if (!zcbor_bool_put(ctx->zs, config->mDp)) {
-		return false;
-	}
-
-	if (!zcbor_uint_encode(ctx->zs, &config->mRloc16, sizeof(config->mRloc16))) {
-		return false;
-	}
-
-	return true;
+	nrf_rpc_encode_buffer(ctx, config->mPrefix.mPrefix.mFields.m8,
+			      OT_IP6_ADDRESS_SIZE);
+	nrf_rpc_encode_uint(ctx, config->mPrefix.mLength);
+	nrf_rpc_encode_int(ctx, config->mPreference);
+	nrf_rpc_encode_bool(ctx, config->mPreferred);
+	nrf_rpc_encode_bool(ctx, config->mSlaac);
+	nrf_rpc_encode_bool(ctx, config->mDhcp);
+	nrf_rpc_encode_bool(ctx, config->mConfigure);
+	nrf_rpc_encode_bool(ctx, config->mDefaultRoute);
+	nrf_rpc_encode_bool(ctx, config->mOnMesh);
+	nrf_rpc_encode_bool(ctx, config->mStable);
+	nrf_rpc_encode_bool(ctx, config->mNdDns);
+	nrf_rpc_encode_bool(ctx, config->mDp);
+	nrf_rpc_encode_uint(ctx, config->mRloc16);
 }
 
-bool ot_rpc_decode_border_router_config(struct nrf_rpc_cbor_ctx *ctx, otBorderRouterConfig *config)
+void ot_rpc_decode_border_router_config(struct nrf_rpc_cbor_ctx *ctx, otBorderRouterConfig *config)
 {
-	struct zcbor_string zst;
-	bool tmp_bool;
-	signed int tmp_signed;
+	size_t size = 0;
+	const void *buf = NULL;
 
-	if (zcbor_nil_expect(ctx->zs, NULL)) {
+	if (nrf_rpc_decode_is_null(ctx)) {
 		memset(config, 0, sizeof(otBorderRouterConfig));
-		return true;
+		return;
 	}
 
-	if (ctx->zs->constant_state->error != ZCBOR_ERR_WRONG_TYPE) {
+	buf = nrf_rpc_decode_buffer_ptr_and_size(ctx, &size);
+	if (buf && size) {
+		size = MIN(size, sizeof(config->mPrefix.mPrefix.mFields.m8));
+		memcpy(config->mPrefix.mPrefix.mFields.m8, buf, size);
+	}
+
+	config->mPrefix.mLength = nrf_rpc_decode_uint(ctx);
+	config->mPreference = nrf_rpc_decode_int(ctx);
+	config->mPreferred = nrf_rpc_decode_bool(ctx);
+	config->mSlaac = nrf_rpc_decode_bool(ctx);
+	config->mDhcp = nrf_rpc_decode_bool(ctx);
+	config->mConfigure = nrf_rpc_decode_bool(ctx);
+	config->mDefaultRoute = nrf_rpc_decode_bool(ctx);
+	config->mOnMesh = nrf_rpc_decode_bool(ctx);
+	config->mStable = nrf_rpc_decode_bool(ctx);
+	config->mNdDns = nrf_rpc_decode_bool(ctx);
+	config->mDp = nrf_rpc_decode_bool(ctx);
+	config->mRloc16 = nrf_rpc_decode_uint(ctx);
+}
+
+void ot_rpc_encode_sockaddr(struct nrf_rpc_cbor_ctx *ctx, const otSockAddr *sockaddr)
+{
+	nrf_rpc_encode_buffer(ctx, sockaddr->mAddress.mFields.m8, OT_IP6_ADDRESS_SIZE);
+	nrf_rpc_encode_uint(ctx, sockaddr->mPort);
+}
+
+void ot_rpc_decode_sockaddr(struct nrf_rpc_cbor_ctx *ctx, otSockAddr *sockaddr)
+{
+	nrf_rpc_decode_buffer(ctx, sockaddr->mAddress.mFields.m8, OT_IP6_ADDRESS_SIZE);
+	sockaddr->mPort = nrf_rpc_decode_uint(ctx);
+}
+
+void ot_rpc_encode_dns_query_config(struct nrf_rpc_cbor_ctx *ctx,
+				    const struct otDnsQueryConfig *config)
+{
+	if (config == NULL) {
+		nrf_rpc_encode_null(ctx);
+		return;
+	}
+
+	nrf_rpc_encode_buffer(ctx, config->mServerSockAddr.mAddress.mFields.m8,
+			      OT_IP6_ADDRESS_SIZE);
+	nrf_rpc_encode_uint(ctx, config->mServerSockAddr.mPort);
+	nrf_rpc_encode_uint(ctx, config->mResponseTimeout);
+	nrf_rpc_encode_uint(ctx, config->mMaxTxAttempts);
+	nrf_rpc_encode_uint(ctx, config->mRecursionFlag);
+	nrf_rpc_encode_uint(ctx, config->mNat64Mode);
+	nrf_rpc_encode_uint(ctx, config->mServiceMode);
+	nrf_rpc_encode_uint(ctx, config->mTransportProto);
+}
+
+bool ot_rpc_decode_dns_query_config(struct nrf_rpc_cbor_ctx *ctx, struct otDnsQueryConfig *config)
+{
+	if (nrf_rpc_decode_is_null(ctx)) {
 		return false;
 	}
 
-	zcbor_pop_error(ctx->zs);
+	nrf_rpc_decode_buffer(ctx, config->mServerSockAddr.mAddress.mFields.m8,
+			      OT_IP6_ADDRESS_SIZE);
 
-	if (!zcbor_bstr_decode(ctx->zs, &zst)) {
-		return false;
-	}
-
-	memcpy(config->mPrefix.mPrefix.mFields.m8, zst.value, zst.len);
-
-	if (!zcbor_uint_decode(ctx->zs, &config->mPrefix.mLength,
-			       sizeof(config->mPrefix.mLength))) {
-		return false;
-	}
-
-	if (!zcbor_uint_decode(ctx->zs, &tmp_signed, sizeof(tmp_signed))) {
-		return false;
-	}
-
-	config->mPreference = tmp_signed;
-
-	if (!zcbor_bool_decode(ctx->zs, &tmp_bool)) {
-		return false;
-	}
-
-	config->mPreferred = tmp_bool;
-
-	if (!zcbor_bool_decode(ctx->zs, &tmp_bool)) {
-		return false;
-	}
-
-	config->mSlaac = tmp_bool;
-
-	if (!zcbor_bool_decode(ctx->zs, &tmp_bool)) {
-		return false;
-	}
-
-	config->mDhcp = tmp_bool;
-
-	if (!zcbor_bool_decode(ctx->zs, &tmp_bool)) {
-		return false;
-	}
-
-	config->mConfigure = tmp_bool;
-
-	if (!zcbor_bool_decode(ctx->zs, &tmp_bool)) {
-		return false;
-	}
-
-	config->mDefaultRoute = tmp_bool;
-
-	if (!zcbor_bool_decode(ctx->zs, &tmp_bool)) {
-		return false;
-	}
-
-	config->mOnMesh = tmp_bool;
-
-	if (!zcbor_bool_decode(ctx->zs, (bool *)&tmp_bool)) {
-		return false;
-	}
-
-	config->mStable = tmp_bool;
-
-	if (!zcbor_bool_decode(ctx->zs, (bool *)&tmp_bool)) {
-		return false;
-	}
-
-	config->mNdDns = tmp_bool;
-
-	if (!zcbor_bool_decode(ctx->zs, (bool *)&tmp_bool)) {
-		return false;
-	}
-
-	config->mDp = tmp_bool;
-
-	if (!zcbor_uint_decode(ctx->zs, &config->mRloc16, sizeof(config->mRloc16))) {
-		return false;
-	}
+	config->mServerSockAddr.mPort = nrf_rpc_decode_uint(ctx);
+	config->mResponseTimeout = nrf_rpc_decode_uint(ctx);
+	config->mMaxTxAttempts = nrf_rpc_decode_uint(ctx);
+	config->mRecursionFlag = nrf_rpc_decode_uint(ctx);
+	config->mNat64Mode = nrf_rpc_decode_uint(ctx);
+	config->mServiceMode = nrf_rpc_decode_uint(ctx);
+	config->mTransportProto = nrf_rpc_decode_uint(ctx);
 
 	return true;
 }

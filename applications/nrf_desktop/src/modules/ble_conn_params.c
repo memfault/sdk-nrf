@@ -37,11 +37,12 @@ LOG_MODULE_REGISTER(MODULE, CONFIG_DESKTOP_BLE_CONN_PARAMS_LOG_LEVEL);
 
 #define CONN_INTERVAL_MS_TO_REG(_x)    (((_x) * USEC_PER_MSEC) / 1250U) /* REG = MS / 1,25 ms */
 #define CONN_INTERVAL_USB_SUSPEND CONN_INTERVAL_MS_TO_REG(CONFIG_DESKTOP_BLE_USB_MANAGED_CI_VALUE)
+#define CONN_LATENCY_USB_SUSPEND CONFIG_DESKTOP_BLE_USB_MANAGED_LATENCY_VALUE
 
 struct connected_peer {
 	struct bt_conn *conn;
 	bool discovered;
-	bool llpm_support;
+	bool use_llpm;
 	uint16_t requested_latency;
 	bool conn_param_update_pending;
 };
@@ -66,8 +67,6 @@ static struct connected_peer *find_connected_peer(const struct bt_conn *conn)
 
 static int set_le_conn_param(struct bt_conn *conn, uint16_t interval, uint16_t latency)
 {
-	int err;
-
 	struct bt_le_conn_param param = {
 		.interval_min = interval,
 		.interval_max = interval,
@@ -75,14 +74,7 @@ static int set_le_conn_param(struct bt_conn *conn, uint16_t interval, uint16_t l
 		.timeout = CONN_SUPERVISION_TIMEOUT,
 	};
 
-	err = bt_conn_le_param_update(conn, &param);
-
-	if (err == -EALREADY) {
-		/* Connection parameters are already set. */
-		err = 0;
-	}
-
-	return err;
+	return bt_conn_le_param_update(conn, &param);
 }
 
 static int interval_reg_to_us(uint16_t reg)
@@ -124,8 +116,11 @@ static int set_conn_params(struct connected_peer *peer)
 	__ASSERT_NO_MSG(peer->conn);
 
 	if (IS_ENABLED(CONFIG_DESKTOP_BLE_USB_MANAGED_CI) && usb_suspended) {
-		err = set_le_conn_param(peer->conn, CONN_INTERVAL_USB_SUSPEND, 0);
-	} else if (IS_ENABLED(CONFIG_CAF_BLE_USE_LLPM) && peer->llpm_support) {
+		err = set_le_conn_param(peer->conn, CONN_INTERVAL_USB_SUSPEND,
+					CONN_LATENCY_USB_SUSPEND);
+	} else if (peer->use_llpm) {
+		__ASSERT_NO_MSG(IS_ENABLED(CONFIG_CAF_BLE_USE_LLPM));
+
 		struct bt_conn_info info;
 
 		err = bt_conn_get_info(peer->conn, &info);
@@ -136,14 +131,17 @@ static int set_conn_params(struct connected_peer *peer)
 		uint32_t curr_ci_us = interval_reg_to_us(info.le.interval);
 
 		if (curr_ci_us > CONN_INTERVAL_PRE_LLPM_MAX_US) {
-			err =  set_le_conn_param(peer->conn, CONN_INTERVAL_BLE_REG,
-						 peer->requested_latency);
-			peer->conn_param_update_pending = true;
+			err = set_le_conn_param(peer->conn, CONN_INTERVAL_BLE_REG,
+						peer->requested_latency);
 		} else {
 			err = set_llpm_conn_param(peer->conn, peer->requested_latency);
 		}
 	} else {
 		err = set_le_conn_param(peer->conn, CONN_INTERVAL_BLE_REG, peer->requested_latency);
+	}
+
+	if (!err) {
+		peer->conn_param_update_pending = true;
 	}
 
 	return err;
@@ -168,10 +166,13 @@ static void update_peer_conn_params(struct connected_peer *peer)
 		/* Retry to update the connection parameters after an error. */
 		k_work_reschedule(&conn_params_update, CONN_PARAMS_ERROR_TIMEOUT);
 	} else {
-		LOG_INF("Conn params for peer: %p set: %s, latency: %"PRIu16,
+		LOG_INF("Update conn params for peer: %p (%s, requested latency: %" PRIu16
+			", USB suspended: %s)",
 			(void *)peer->conn,
-			(IS_ENABLED(CONFIG_CAF_BLE_USE_LLPM) && peer->llpm_support) ?
-			"LLPM" : "BLE", peer->requested_latency);
+			peer->use_llpm ? "LLPM" : "BLE",
+			peer->requested_latency,
+			IS_ENABLED(CONFIG_DESKTOP_BLE_USB_MANAGED_CI) && usb_suspended ?
+				"true" : "false");
 	}
 }
 
@@ -192,11 +193,12 @@ static bool conn_params_update_required(struct connected_peer *peer)
 	__ASSERT_NO_MSG(info.role == BT_CONN_ROLE_CENTRAL);
 
 	if (IS_ENABLED(CONFIG_DESKTOP_BLE_USB_MANAGED_CI) && usb_suspended) {
-		if (info.le.interval != CONN_INTERVAL_USB_SUSPEND) {
+		if ((info.le.interval != CONN_INTERVAL_USB_SUSPEND) ||
+		    (info.le.latency != CONN_LATENCY_USB_SUSPEND)) {
 			return true;
 		}
-	} else if ((peer->llpm_support && (info.le.interval != CONN_INTERVAL_LLPM_REG)) ||
-		   (!peer->llpm_support && (info.le.interval != CONN_INTERVAL_BLE_REG)) ||
+	} else if ((peer->use_llpm && (info.le.interval != CONN_INTERVAL_LLPM_REG)) ||
+		   (!peer->use_llpm && (info.le.interval != CONN_INTERVAL_BLE_REG)) ||
 		   (info.le.latency != peer->requested_latency)) {
 		return true;
 	}
@@ -240,6 +242,7 @@ static void usb_state_event_handler(enum usb_state new_state)
 		usb_suspended = true;
 		break;
 
+	case USB_STATE_DISCONNECTED:
 	case USB_STATE_ACTIVE:
 		usb_suspended = false;
 		break;
@@ -273,7 +276,7 @@ static void peer_disconnected(struct bt_conn *conn)
 
 	if (peer) {
 		peer->conn = NULL;
-		peer->llpm_support = false;
+		peer->use_llpm = false;
 		peer->discovered = false;
 		peer->requested_latency = 0;
 		peer->conn_param_update_pending = false;
@@ -285,9 +288,9 @@ static void peer_discovered(struct bt_conn *conn, bool peer_llpm_support)
 	struct connected_peer *peer = find_connected_peer(conn);
 
 	if (peer) {
-		peer->llpm_support = peer_llpm_support;
+		peer->use_llpm = IS_ENABLED(CONFIG_CAF_BLE_USE_LLPM) && peer_llpm_support;
 		peer->discovered = true;
-		update_peer_conn_params(peer);
+		k_work_reschedule(&conn_params_update, K_NO_WAIT);
 	}
 }
 
@@ -313,8 +316,7 @@ static bool app_event_handler(const struct app_event_header *aeh)
 		const struct ble_discovery_complete_event *event =
 			cast_ble_discovery_complete_event(aeh);
 
-		peer_discovered(bt_gatt_dm_conn_get(event->dm),
-				event->peer_llpm_support);
+		peer_discovered(bt_gatt_dm_conn_get(event->dm), event->peer_llpm_support);
 
 		return false;
 	}

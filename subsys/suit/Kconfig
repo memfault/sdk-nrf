@@ -4,8 +4,6 @@
 # SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
 #
 
-rsource "provisioning/Kconfig"
-
 menuconfig SUIT
 	bool "Enable SUIT modules"
 
@@ -48,7 +46,6 @@ config SUIT_DFU_CANDIDATE_PROCESSING_MINIMAL
 	imply SUIT_UTILS
 	imply SUIT_METADATA
 	imply SSF_SUIT_SERVICE_ENABLED
-	imply SUIT_MPI_GENERATE
 
 config SUIT_DFU_CANDIDATE_PROCESSING_FULL
 	bool "Application defaults for support of full SUIT envelope processing by the local domain"
@@ -83,7 +80,8 @@ config SUIT_DFU_CANDIDATE_PROCESSING_FULL
 	imply SUIT_MEMPTR_STORAGE
 	imply SUIT_PLATFORM
 	imply SUIT_PROCESSOR
-	imply SUIT_MPI_GENERATE
+	imply SUIT_IPUC
+	imply SUIT_MANIFEST_VARIABLES
 	imply SUIT_SINK_SELECTOR
 
 config SUIT_DFU_CANDIDATE_PROCESSING_PUSH_TO_CACHE
@@ -94,7 +92,6 @@ config SUIT_DFU_CANDIDATE_PROCESSING_PUSH_TO_CACHE
 	imply SUIT_UTILS
 	imply SUIT_METADATA
 	imply SSF_SUIT_SERVICE_ENABLED
-	imply SUIT_MPI_GENERATE
 	imply SUIT_CACHE
 	imply SUIT_CACHE_RW
 	imply SUIT_MEMPTR_STORAGE
@@ -112,7 +109,6 @@ config SUIT_DFU_CANDIDATE_PROCESSING_NONE
 		used by the Secure Domain to fetch additional data with the use of the application
 		core.
 	imply SUIT_ORCHESTRATOR_APP
-	imply SUIT_MPI_GENERATE
 
 endchoice # SUIT_APP_ENVELOPE_PROCESSING_LEVEL
 
@@ -148,6 +144,7 @@ config SUIT_ENABLE_DEFAULTS_SDFW
 	imply SUIT_DIGEST
 	imply SUIT_DIGEST_CACHE
 	imply SUIT_IPUC
+	imply SUIT_MANIFEST_VARIABLES
 	imply SUIT_CHECK_IMAGE_MATCH
 	imply SUIT_MCI
 	imply SUIT_METADATA
@@ -174,6 +171,7 @@ config SUIT_ENABLE_DEFAULTS_SDFW
 	imply SUIT_UPDATE_REBOOT_ENABLED
 	imply SUIT_BOOT_RECOVERY_REBOOT_ENABLED
 	imply SUIT_VALIDATOR
+	imply SUIT_EVENTS
 
 config SUIT_ENABLE_DEFAULTS_SDFW_EXTMEM
 	bool "SDFW SUIT defaults with external flash support"
@@ -196,6 +194,10 @@ rsource "envelope_info/Kconfig"
 rsource "execution_mode/Kconfig"
 rsource "memory_layout/Kconfig"
 rsource "validator/Kconfig"
+rsource "events/Kconfig"
+rsource "app_tools/Kconfig"
+rsource "manifest_variables/Kconfig"
+rsource "ipuc/Kconfig"
 
 # Configure SUIT_LOG_LEVEL
 module = SUIT

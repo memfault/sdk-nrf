@@ -9,6 +9,9 @@
 #include <suit_plat_mem_util.h>
 #include <string.h>
 
+#define SUIT_INVOKE_SYNCHRONOUS_KEY 1
+#define SUIT_INVOKE_TIMEOUT_KEY	    2
+
 suit_plat_err_t suit_plat_decode_component_id(struct zcbor_string *component_id, uint8_t *cpu_id,
 					      intptr_t *run_address, size_t *size)
 {
@@ -81,6 +84,9 @@ suit_plat_err_t suit_plat_decode_component_type(struct zcbor_string *component_i
 	} else if ((tmp.len == strlen("CACHE_POOL")) &&
 		   (memcmp(tmp.value, "CACHE_POOL", tmp.len) == 0)) {
 		*type = SUIT_COMPONENT_TYPE_CACHE_POOL;
+	} else if ((tmp.len == strlen("MFST_VAR")) &&
+		   (memcmp(tmp.value, "MFST_VAR", tmp.len) == 0)) {
+		*type = SUIT_COMPONENT_TYPE_MFST_VAR;
 	} else {
 		*type = SUIT_COMPONENT_TYPE_UNSUPPORTED;
 		return SUIT_PLAT_ERR_CBOR_DECODING;
@@ -150,20 +156,35 @@ suit_plat_err_t suit_plat_decode_component_number(struct zcbor_string *component
 	return SUIT_PLAT_ERR_CBOR_DECODING;
 }
 
-suit_plat_err_t suit_plat_decode_key_id(struct zcbor_string *key_id, uint32_t *integer_key_id)
+static suit_plat_err_t suit_plat_decode_uint32(struct zcbor_string *bstr, uint32_t *value)
 {
-	if ((key_id == NULL) || (key_id->value == NULL) || (key_id->len == 0) ||
-	    (integer_key_id == NULL)) {
-		return SUIT_PLAT_SUCCESS;
+	if ((bstr == NULL) || (bstr->value == NULL) || (bstr->len == 0) || (value == NULL)) {
+		return SUIT_PLAT_ERR_INVAL;
 	}
 
-	ZCBOR_STATE_D(state, 2, key_id->value, key_id->len, 1, 0);
+	ZCBOR_STATE_D(state, 2, bstr->value, bstr->len, 1, 0);
 
-	if (zcbor_uint32_decode(state, integer_key_id)) {
+	if (zcbor_uint32_decode(state, value)) {
 		return SUIT_PLAT_SUCCESS;
 	}
 
 	return SUIT_PLAT_ERR_CBOR_DECODING;
+}
+
+suit_plat_err_t suit_plat_decode_content_uint32(struct zcbor_string *content, uint32_t *value)
+{
+	return suit_plat_decode_uint32(content, value);
+}
+
+suit_plat_err_t suit_plat_decode_key_id(struct zcbor_string *key_id, uint32_t *integer_key_id)
+{
+	suit_plat_err_t ret = suit_plat_decode_uint32(key_id, integer_key_id);
+
+	if (ret == SUIT_PLAT_ERR_INVAL) {
+		return SUIT_PLAT_SUCCESS;
+	}
+
+	return ret;
 }
 
 #ifdef CONFIG_SUIT_METADATA
@@ -210,3 +231,48 @@ suit_plat_err_t suit_plat_decode_manifest_class_id(struct zcbor_string *componen
 	return SUIT_PLAT_ERR_CBOR_DECODING;
 }
 #endif /* CONFIG_SUIT_METADATA */
+
+suit_plat_err_t suit_plat_decode_invoke_args(struct zcbor_string *invoke_args, bool *synchronous,
+					     uint32_t *timeout_ms)
+{
+	bool cbor_synchronous = false;
+	uint32_t cbor_timeout_ms = 0;
+	bool res;
+
+	if ((invoke_args == NULL) || (invoke_args->value == NULL) || (invoke_args->len == 0)) {
+		/* If invoke arguments are not set - assume asynchronous invoke. */
+		if (synchronous != NULL) {
+			*synchronous = false;
+		}
+		if (timeout_ms != NULL) {
+			*timeout_ms = 0;
+		}
+
+		return SUIT_PLAT_SUCCESS;
+	}
+
+	ZCBOR_STATE_D(state, 2, invoke_args->value, invoke_args->len, 1, 0);
+
+	res = zcbor_map_start_decode(state);
+	res = res && zcbor_uint32_expect(state, SUIT_INVOKE_SYNCHRONOUS_KEY);
+	res = res && zcbor_bool_decode(state, &cbor_synchronous);
+	if (res && cbor_synchronous) {
+		/* Timeout value is mandatory if the synchronous flag is set. */
+		res = res && zcbor_uint32_expect(state, SUIT_INVOKE_TIMEOUT_KEY);
+		res = res && zcbor_uint32_decode(state, &cbor_timeout_ms);
+	}
+	res = res && zcbor_map_end_decode(state);
+
+	if (res) {
+		if (synchronous != NULL) {
+			*synchronous = cbor_synchronous;
+		}
+		if (timeout_ms != NULL) {
+			*timeout_ms = cbor_timeout_ms;
+		}
+
+		return SUIT_PLAT_SUCCESS;
+	}
+
+	return SUIT_PLAT_ERR_CBOR_DECODING;
+}

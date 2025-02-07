@@ -120,7 +120,7 @@ static void scan_filter_no_match(struct bt_scan_device_info *device_info,
 				 bool connectable)
 {
 	int err;
-	struct bt_conn *conn;
+	struct bt_conn *conn = NULL;
 	char addr[BT_ADDR_LE_STR_LEN];
 
 	if (device_info->recv_info->adv_type == BT_GAP_ADV_TYPE_ADV_DIRECT_IND) {
@@ -588,7 +588,7 @@ int main(void)
 {
 	int err;
 
-	printk("Starting NFC Central Pairing example\n");
+	printk("Starting NFC Central Pairing sample\n");
 
 	/* Configure buttons */
 	err = dk_buttons_init(button_changed);

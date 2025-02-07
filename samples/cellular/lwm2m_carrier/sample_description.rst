@@ -101,6 +101,10 @@ The following files are available:
 
 * :file:`prj.conf` - Standard default configuration file.
 * :file:`overlay-shell.conf` - Enables the :ref:`lwm2m_carrier_shell` and :ref:`lib_at_shell`.
+* :file:`overlay-softbank.conf` and :file:`sysbuild-softbank.conf` - Enable configurations for SoftBank.
+  For more information, see the :ref:`lwm2m_carrier_dependent` section of the :ref:`liblwm2m_carrier_readme` documentation.
+* :file:`overlay-lgu.conf` and :file:`sysbuild-lgu.conf` - Enable configurations for LG U+.
+  For more information, see the :ref:`lwm2m_carrier_dependent` section of the :ref:`liblwm2m_carrier_readme` documentation.
 
 The sample can either be configured by editing the :file:`prj.conf` file and the relevant overlay files, or through menuconfig or guiconfig.
 
@@ -120,12 +124,21 @@ Building and running
 Building with overlay
 =====================
 
-To build with a Kconfig overlay, set :makevar:`EXTRA_CONF_FILE` to the :file:`overlay-shell.conf` file using the respective :ref:`CMake option <cmake_options>`, as shown in the following example:
+To build with a Kconfig overlay, set :makevar:`EXTRA_CONF_FILE` and :makevar:`SB_CONF_FILE` to the desired overlay files, using the respective :ref:`CMake option <cmake_options>`.
+
+Example of building with the shell:
 
 .. parsed-literal::
    :class: highlight
 
    west build -b *board_target* -- -DEXTRA_CONF_FILE=overlay-shell.conf
+
+Example of building with the SoftBank configuration:
+
+.. parsed-literal::
+   :class: highlight
+
+   west build -b *board_target* -- -DEXTRA_CONF_FILE=overlay-softbank.conf -DSB_CONF_FILE=sysbuild-softbank.conf
 
 |board_target|
 
@@ -140,7 +153,7 @@ Testing
 After programming the sample and all prerequisites to the development kit, test it by performing the following steps:
 
 1. Connect the USB cable and power on or reset your nRF91 Series DK.
-#. Use a terminal emulator, like `nRF Connect Serial Terminal`_, to connect to the serial port.
+#. Use a terminal emulator, like the `Serial Terminal app`_, to connect to the serial port.
    See :ref:`test_and_optimize` for the required settings and steps.
 #. Observe that the kit prints the following information::
 
@@ -199,14 +212,14 @@ To test with the sample, complete the following steps:
          Set security tag: 450
 
    #. Apply the server config.
-      After rebooting, the sample loads these settings (instead of using the static Kconfigs).
+      After rebooting, the sample loads these settings (instead of using the static Kconfig options).
 
       .. code-block:: console
 
          $ carrier_config server enable
          Enabled custom server config
 
-   #. Finally, as described in ref:`lwm2m_carrier_shell`, set ``auto_startup`` (or else the sample will wait indefinitely for you to configure all the settings).
+   #. Finally, as described in :ref:`lwm2m_carrier_shell`, set ``auto_startup`` (or else the sample will wait indefinitely for you to configure all the settings).
 
       .. code-block:: console
 

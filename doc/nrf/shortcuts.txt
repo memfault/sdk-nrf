@@ -2,11 +2,11 @@
 
 .. ### Versions
 
-.. |release| replace:: v2.7.0
-.. |release_tt| replace:: ``v2.7.0``
-.. |release_number_tt| replace:: ``2.7.0``
+.. |release| replace:: v2.9.0-nRF54H20-rc1
+.. |release_tt| replace:: ``v2.9.0-nRF54H20-rc1``
+.. |release_number_tt| replace:: ``2.9.0-nRF54H20-rc1``
 
-.. |jlink_ver| replace:: v7.94i
+.. |jlink_ver| replace:: v8.10f
 .. |jlink_ver_vsc| replace:: v7.94i
 
 .. ### Config shortcuts
@@ -25,25 +25,25 @@
 .. |connect_kit| replace:: Connect the kit to the computer using a USB cable.
    The kit is assigned a COM port (Windows) or ttyACM device (Linux), which is visible in the Device Manager.
 
-.. |connect_terminal_generic| replace:: Connect to the device with a terminal emulator (for example, nRF Connect Serial Terminal).
+.. |connect_terminal_generic| replace:: Connect to the device with a terminal emulator (for example, the `Serial Terminal app`_).
    See :ref:`test_and_optimize` for the required settings and steps.
 
-.. |connect_terminal| replace:: Connect to the kit with a terminal emulator (for example, nRF Connect Serial Terminal).
+.. |connect_terminal| replace:: Connect to the kit with a terminal emulator (for example, the `Serial Terminal app`_).
    See :ref:`test_and_optimize` for the required settings and steps.
 
-.. |connect_terminal_specific| replace:: Connect to the kit that runs this sample with a terminal emulator (for example, nRF Connect Serial Terminal).
+.. |connect_terminal_specific| replace:: Connect to the kit that runs this sample with a terminal emulator (for example, the `Serial Terminal app`_).
    See :ref:`test_and_optimize` for the required settings and steps.
 
-.. |connect_terminal_both| replace:: Connect to both kits with a terminal emulator (for example, nRF Connect Serial Terminal).
+.. |connect_terminal_both| replace:: Connect to both kits with a terminal emulator (for example, the `Serial Terminal app`_).
    See :ref:`test_and_optimize` for the required settings and steps.
 
-.. |connect_terminal_ANSI| replace:: Open a serial port connection to the kit using a terminal emulator that supports VT100/ANSI escape characters (for example, nRF Connect Serial Terminal).
+.. |connect_terminal_ANSI| replace:: Open a serial port connection to the kit using a terminal emulator that supports VT100/ANSI escape characters (for example, the `Serial Terminal app`_).
    See :ref:`test_and_optimize` for the required settings and steps.
 
-.. |connect_terminal_specific_ANSI| replace:: Connect to the kit that runs this sample with a terminal emulator that supports VT100/ANSI escape characters (for example, nRF Connect Serial Terminal).
+.. |connect_terminal_specific_ANSI| replace:: Connect to the kit that runs this sample with a terminal emulator that supports VT100/ANSI escape characters (for example, the `Serial Terminal app`_).
    See :ref:`test_and_optimize` for the required settings and steps.
 
-.. |connect_terminal_both_ANSI| replace:: Connect to both kits with a terminal emulator that supports VT100/ANSI escape characters (for example, nRF Connect Serial Terminal).
+.. |connect_terminal_both_ANSI| replace:: Connect to both kits with a terminal emulator that supports VT100/ANSI escape characters (for example, the `Serial Terminal app`_).
    See :ref:`test_and_optimize` for the required settings and steps.
 
 .. |ANSI| replace:: that supports VT100/ANSI escape characters
@@ -65,6 +65,8 @@
 .. |Thingy91| replace:: Thingy:91 (PCA20035) - see :ref:`ug_thingy91`
 .. |nRF21540DK| replace:: nRF21540 DK board (PCA10112)
 
+.. |thingy52_not_supported_note| replace:: Despite being supported in :ref:`Zephyr <zephyr:thingy52_nrf52832>`, the |NCS| does not support `Nordic Thingy:52`_.
+
 .. ### FOTA shortcuts
 
 .. |fota_upgrades_def| replace:: You can update the firmware of the device over the air, thus without a wired connection.
@@ -79,6 +81,21 @@
 .. |VSC| replace:: Visual Studio Code
 .. |nRFVSC| replace:: nRF Connect for VS Code extension
 
+.. ### Deprecation shortcuts
+
+.. |file_suffix_related_deprecation_note| replace:: This feature is deprecated and is being replaced by :ref:`suffix-based configurations <app_build_file_suffixes>`.
+    You can continue to use it until the transition is complete in the |NCS| and the feature is removed in one of the upcoming |NCS| releases.
+
+.. |sysbuild_related_deprecation_note| replace:: This feature is deprecated and is being replaced by Zephyr's :ref:`zephyr:sysbuild`.
+   You can continue to use it until the transition is complete in the |NCS| and the feature is removed in one of the upcoming |NCS| releases.
+   For more information, see :ref:`zephyr:sysbuild`, :ref:`sysbuild_images`, :ref:`zephyr_samples_sysbuild`, and :ref:`sysbuild_forced_options`.
+
+.. |nrfjprog_deprecation_note| replace:: Starting with the |NCS| v2.8.0, nrfjprog is in the process of being archived.
+   It will remain available for download, but `nRF Util (device command) <Device command overview_>`_ will gradually replace it.
+
+.. |nrf_CLT_deprecation_note| replace:: Starting with the |NCS| v2.8.0, the nRF Command Line Tools are in the process of being archived.
+   They will remain available for download, but `nRF Util`_ will gradually replace them.
+
 .. ### Thread usage shortcuts
 
 .. |enable_thread_before_testing| replace:: Make sure to enable the OpenThread stack before building and testing this sample.
@@ -89,8 +106,8 @@
 .. ### Zigbee & ZBOSS shortcuts
 
 .. |zigbee_version| replace:: Zigbee 3.0
-.. |zboss_version| replace:: 3.11.4.0
-.. |zigbee_ncp_package_version| replace:: 2.2.3
+.. |zboss_version| replace:: 3.11.5.0
+.. |zigbee_ncp_package_version| replace:: 2.2.4
 .. |zigbee_description| replace:: Zigbee is a portable, low-power software networking protocol that provides connectivity over an 802.15.4-based mesh network.
 .. |enable_zigbee_before_testing| replace:: Make sure to configure the Zigbee stack before building and testing this sample.
    See :ref:`ug_zigbee_configuring` for more information.
@@ -169,6 +186,9 @@
 
 .. |ncs_oot_sample_note| replace:: Some samples in the |NCS| are currently not designed to work out-of-tree.
    You may need to manually configure your sample to work correctly in the |nRFVSC|.
+.. |ncs_repo| replace:: https://github.com/nrfconnect/sdk-nrf
+
+.. |ncs_nrfxlib_repo| replace:: https://github.com/nrfconnect/sdk-nrfxlib
 .. |ncs_unchanged_samples_note| replace:: If you are working with embedded devices, it is a good practice to first test your setup by programming an unchanged :ref:`sample<samples>` to your development kit.
 
 .. |application_sample_definition| replace:: For simplicity, this guide will refer to both :ref:`samples<samples>` and :ref:`applications<applications>` as "applications".
@@ -195,6 +215,7 @@
    For these reasons, providing a general guide on how to test with external devices is challenging.
    The suggested approach is to test with Nordic Semiconductor devices on both sides first to verify basic functionalities and get familiar with the solution before using custom devices.
    Contact `Technical Support team <DevZone_>`_ if you need assistance.
+
 .. |usb_known_issues| replace:: Make sure to check the :ref:`nRF5340 Audio application known issues <known_issues_nrf5340audio>` related to serial connection with the USB.
 
 .. |trusted_execution| replace:: nRF5340 and nRF9160
@@ -220,19 +241,10 @@
 
 .. |board_target| replace:: Replace the *board_target* with the board target of the nRF91 Series device you are using (see the Requirements section).
 
-.. |thingy52_not_supported_note| replace:: Despite being supported in :ref:`Zephyr <zephyr:thingy52_nrf52832>`, the |NCS| does not support `Nordic Thingy:52`_.
-
-.. |sysbuild_related_deprecation_note| replace:: This feature is deprecated and is being replaced by Zephyr's :ref:`zephyr:sysbuild`.
-   You can continue to use it until the transition is complete in the |NCS| and the feature is removed in one of the upcoming |NCS| releases.
-   For more information, see :ref:`zephyr:sysbuild`, :ref:`sysbuild_images`, :ref:`zephyr_samples_sysbuild`, and :ref:`sysbuild_forced_options`.
-
 .. |sysbuild_autoenabled_ncs| replace:: When building :ref:`repository applications <create_application_types_repository>` in the :ref:`SDK repositories <dm_repo_types>`, building with sysbuild is :ref:`enabled by default <sysbuild_enabled_ncs>`.
    If you work with out-of-tree :ref:`freestanding applications <create_application_types_freestanding>`, you need to manually pass the ``--sysbuild`` parameter to every build command or :ref:`configure west to always use it <sysbuild_enabled_ncs_configuring>`.
 
 .. |parameters_override_west_config| replace:: The parameters and options passed in the command line always take precedence over ``west config`` settings.
-
-.. |file_suffix_related_deprecation_note| replace:: This feature is deprecated and is being replaced by :ref:`suffix-based configurations <app_build_file_suffixes>`.
-    You can continue to use it until the transition is complete in the |NCS| and the feature is removed in one of the upcoming |NCS| releases.
 
 .. |multi_image| replace:: These samples are built for the application core and, by default, include the network core application as child image in a multi-image build (see :ref:`ug_nrf5340_multi_image`).
 
@@ -247,3 +259,11 @@
 
 .. |toolchain_management_ncs_versions| replace:: The Toolchain Manager installation is recommended only when using the nRF54H20 DK with the |NCS| v2.7.0.
    When using any other DK, the Toolchain Manager installation is recommended for the |NCS| v1.9.x and earlier versions.
+
+.. |filter_samples_by_board| replace:: If you want to list samples available for one or more specific boards, `use the nRF Connect for Visual Studio Code extension to filter them <Browse samples_>`_.
+
+.. |54H_engb_2_8| replace:: The nRF54H20 DK Engineering A and B (up to version 0.8.2) are no longer supported starting with |NCS| v2.9.0.
+
+.. |devicetree_bindings| replace:: The devicetree bindings provide the structure for the content of the devicetree nodes.
+   The :ref:`compatible <zephyr:dt-bindings-compatible>` property defines the compatibility of a devicetree node with a devicetree binding.
+   For more information, read the :ref:`documentation about devicetree bindings in Zephyr <zephyr:dt-binding-compat>`.

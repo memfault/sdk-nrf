@@ -7,10 +7,20 @@
 #include <zephyr/kernel.h>
 #include <zephyr/drivers/gpio.h>
 
-const struct gpio_dt_spec led = GPIO_DT_SPEC_GET(DT_ALIAS(led1), gpios);
+const struct gpio_dt_spec led = GPIO_DT_SPEC_GET(DT_ALIAS(led), gpios);
 
 static bool state = true;
 extern void thread_definition(void);
+
+/* Some tests require that test thread controls the moment when it is
+ * suspended. In that case test implements this function and returns true to
+ * indicated that test thread will take case of the suspension and it can
+ * be skipped in the common code.
+ */
+__weak bool self_suspend_req(void)
+{
+	return false;
+}
 
 K_THREAD_DEFINE(thread_id, 500, thread_definition, NULL, NULL, NULL,
 				5, 0, 0);
@@ -19,12 +29,14 @@ void timer_handler(struct k_timer *dummy)
 {
 	if (state == true) {
 		state = false;
-		gpio_pin_set_dt(&led, 0);
+		gpio_pin_set_dt(&led, 1);
 		k_thread_resume(thread_id);
 	} else {
 		state = true;
-		gpio_pin_set_dt(&led, 1);
-		k_thread_suspend(thread_id);
+		gpio_pin_set_dt(&led, 0);
+		if (self_suspend_req() == false) {
+			k_thread_suspend(thread_id);
+		}
 	}
 }
 

@@ -23,9 +23,9 @@ To enable a PSA driver, set the configurations in the following table:
 +===============+==================================================+=====================================================+
 | nrf_cc3xx     | :kconfig:option:`CONFIG_PSA_CRYPTO_DRIVER_CC3XX` | Only on nRF52840, nRF91 Series, and nRF5340 devices |
 +---------------+--------------------------------------------------+-----------------------------------------------------+
-| nrf_oberon    | :kconfig:option:`CONFIG_PSA_CRYPTO_DRIVER_OBERON`|                                                     |
-+---------------+--------------------------------------------------+-----------------------------------------------------+
 | nrf_cracen    | :kconfig:option:`CONFIG_PSA_CRYPTO_DRIVER_CRACEN`| Only on nRF54L Series devices                       |
++---------------+--------------------------------------------------+-----------------------------------------------------+
+| nrf_oberon    | :kconfig:option:`CONFIG_PSA_CRYPTO_DRIVER_OBERON`|                                                     |
 +---------------+--------------------------------------------------+-----------------------------------------------------+
 
 If multiple drivers are enabled, the first ordered item in this table takes precedence for an enabled cryptographic feature, unless the driver does not enable or support it.
@@ -106,7 +106,9 @@ The following table shows key type support for each driver:
 | DH Public Key         | Not supported             | Not supported              | Not supported             |
 +-----------------------+---------------------------+----------------------------+---------------------------+
 
-The option :kconfig:option:`CONFIG_PSA_USE_CC3XX_KEY_MANAGEMENT_DRIVER` enables the :ref:`nrf_security_drivers_cc3xx` for all supported key types.
+The Kconfig option :kconfig:option:`CONFIG_PSA_USE_CC3XX_KEY_MANAGEMENT_DRIVER` enables the :ref:`nrf_security_drivers_cc3xx` for all supported key types.
+
+The Kconfig option :kconfig:option:`CONFIG_PSA_USE_CRACEN_KEY_MANAGEMENT_DRIVER` enables the :ref:`nrf_security_drivers_cracen` for all supported key types.
 
 Cipher configurations
 *********************
@@ -122,11 +124,7 @@ To enable cipher modes, set one or more of the Kconfig options in the following 
 +-----------------------+------------------------------------------------------+
 | CBC PKCS#7 padding    | :kconfig:option:`CONFIG_PSA_WANT_ALG_CBC_PKCS7`      |
 +-----------------------+------------------------------------------------------+
-| CFB                   | :kconfig:option:`CONFIG_PSA_WANT_ALG_CFB`            |
-+-----------------------+------------------------------------------------------+
 | CTR                   | :kconfig:option:`CONFIG_PSA_WANT_ALG_CTR`            |
-+-----------------------+------------------------------------------------------+
-| OFB                   | :kconfig:option:`CONFIG_PSA_WANT_ALG_OFB`            |
 +-----------------------+------------------------------------------------------+
 | CCM* no tag           | :kconfig:option:`CONFIG_PSA_WANT_ALG_CCM_STAR_NO_TAG`|
 +-----------------------+------------------------------------------------------+
@@ -149,11 +147,7 @@ The following table shows cipher algorithm support for each driver:
 +-----------------------+---------------------------+----------------------------+---------------------------+
 | CBC PKCS#7 padding    | Supported                 | Supported                  | Supported                 |
 +-----------------------+---------------------------+----------------------------+---------------------------+
-| CFB                   | Not supported             | Not supported              | Not supported             |
-+-----------------------+---------------------------+----------------------------+---------------------------+
 | CTR                   | Supported                 | Supported                  | Supported                 |
-+-----------------------+---------------------------+----------------------------+---------------------------+
-| OFB                   | Supported                 | Not supported              | Supported                 |
 +-----------------------+---------------------------+----------------------------+---------------------------+
 | CCM* no tag           | Not supported             | Supported                  | Not supported             |
 +-----------------------+---------------------------+----------------------------+---------------------------+
@@ -162,9 +156,11 @@ The following table shows cipher algorithm support for each driver:
 | Stream cipher         | Supported                 | Supported                  | Supported                 |
 +-----------------------+---------------------------+----------------------------+---------------------------+
 
-The option :kconfig:option:`CONFIG_PSA_USE_CC3XX_CIPHER_DRIVER` enables the :ref:`nrf_security_drivers_cc3xx` for all supported algorithms.
+The Kconfig option :kconfig:option:`CONFIG_PSA_USE_CC3XX_CIPHER_DRIVER` enables the :ref:`nrf_security_drivers_cc3xx` for all supported algorithms.
 
 The configuration of the :ref:`nrf_security_drivers_oberon` is automatically generated based on the user-enabled algorithms in `Cipher configurations`_.
+
+The Kconfig option :kconfig:option:`CONFIG_PSA_USE_CRACEN_CIPHER_DRIVER` enables the :ref:`nrf_security_drivers_cracen` for all supported algorithms.
 
 Key size configuration is supported as described in `AES key size configuration`_, for all algorithms except the stream cipher.
 
@@ -197,7 +193,9 @@ The following table shows Key agreement support for each driver:
 | FFDH                    | Not supported             | Not supported              | Not supported             |
 +-------------------------+---------------------------+----------------------------+---------------------------+
 
-The option :kconfig:option:`CONFIG_PSA_USE_CC3XX_KEY_AGREEMENT_DRIVER` enables the :ref:`nrf_security_drivers_cc3xx` for all supported algorithms.
+The Kconfig option :kconfig:option:`CONFIG_PSA_USE_CC3XX_KEY_AGREEMENT_DRIVER` enables the :ref:`nrf_security_drivers_cc3xx` for all supported algorithms.
+
+The Kconfig option :kconfig:option:`CONFIG_PSA_USE_CRACEN_KEY_AGREEMENT_DRIVER` enables the :ref:`nrf_security_drivers_cracen` for all supported algorithms.
 
 The algorithm support when using ECC key types is dependent on one or more Kconfig options enabling curve support according to `ECC curve configurations`_.
 
@@ -209,25 +207,27 @@ Key derivation function configurations
 
 To enable key derivation function (KDF) support, set one or more of the Kconfig options in the following table:
 
-+--------------------------+---------------------------------------------------------------+
-| KDF algorithm            | Configuration option                                          |
-+==========================+===============================================================+
-| HKDF                     | :kconfig:option:`CONFIG_PSA_WANT_ALG_HKDF`                    |
-+--------------------------+---------------------------------------------------------------+
-| HKDF-Extract             | :kconfig:option:`CONFIG_PSA_WANT_ALG_HKDF_EXTRACT`            |
-+--------------------------+---------------------------------------------------------------+
-| HKDF-Expand              | :kconfig:option:`CONFIG_PSA_WANT_ALG_HKDF_EXPAND`             |
-+--------------------------+---------------------------------------------------------------+
-| PBKDF2-HMAC              | :kconfig:option:`CONFIG_PSA_WANT_ALG_PBKDF2_HMAC`             |
-+--------------------------+---------------------------------------------------------------+
-| PBKDF2-AES-CMAC-PRF-128  | :kconfig:option:`CONFIG_PSA_WANT_ALG_PBKDF2_AES_CMAC_PRF_128` |
-+--------------------------+---------------------------------------------------------------+
-| TLS 1.2 PRF              | :kconfig:option:`CONFIG_PSA_WANT_ALG_TLS12_PRF`               |
-+--------------------------+---------------------------------------------------------------+
-| TLS 1.2 PSK to MS        | :kconfig:option:`CONFIG_PSA_WANT_ALG_TLS12_PSK_TO_MS`         |
-+--------------------------+---------------------------------------------------------------+
-| TLS 1.2 EC J-PAKE to PMS | :kconfig:option:`CONFIG_PSA_WANT_ALG_TLS12_ECJPAKE_TO_PMS`    |
-+--------------------------+---------------------------------------------------------------+
++-----------------------------+---------------------------------------------------------------+
+| KDF algorithm               | Configuration option                                          |
++=============================+===============================================================+
+| HKDF                        | :kconfig:option:`CONFIG_PSA_WANT_ALG_HKDF`                    |
++-----------------------------+---------------------------------------------------------------+
+| HKDF-Extract                | :kconfig:option:`CONFIG_PSA_WANT_ALG_HKDF_EXTRACT`            |
++-----------------------------+---------------------------------------------------------------+
+| HKDF-Expand                 | :kconfig:option:`CONFIG_PSA_WANT_ALG_HKDF_EXPAND`             |
++-----------------------------+---------------------------------------------------------------+
+| PBKDF2-HMAC                 | :kconfig:option:`CONFIG_PSA_WANT_ALG_PBKDF2_HMAC`             |
++-----------------------------+---------------------------------------------------------------+
+| PBKDF2-AES-CMAC-PRF-128     | :kconfig:option:`CONFIG_PSA_WANT_ALG_PBKDF2_AES_CMAC_PRF_128` |
++-----------------------------+---------------------------------------------------------------+
+| TLS 1.2 PRF                 | :kconfig:option:`CONFIG_PSA_WANT_ALG_TLS12_PRF`               |
++-----------------------------+---------------------------------------------------------------+
+| TLS 1.2 PSK to MS           | :kconfig:option:`CONFIG_PSA_WANT_ALG_TLS12_PSK_TO_MS`         |
++-----------------------------+---------------------------------------------------------------+
+| TLS 1.2 EC J-PAKE to PMS    | :kconfig:option:`CONFIG_PSA_WANT_ALG_TLS12_ECJPAKE_TO_PMS`    |
++-----------------------------+---------------------------------------------------------------+
+| SP 800-108r1 CMAC w/counter | :kconfig:option:`CONFIG_PSA_WANT_ALG_SP800_108_COUNTER_CMAC`  |
++-----------------------------+---------------------------------------------------------------+
 
 
 Key derivation function support
@@ -235,27 +235,31 @@ Key derivation function support
 
 The following table shows key derivation function (KDF) support for each driver:
 
-+--------------------------+--------------------------+----------------------------+---------------------------+
-| KDF algorithm            | nrf_cc3xx driver support | nrf_oberon driver support  | nrf_cracen driver support |
-+==========================+==========================+============================+===========================+
-| HKDF                     | Not supported            | Supported                  | Supported                 |
-+--------------------------+--------------------------+----------------------------+---------------------------+
-| HKDF-Extract             | Not supported            | Supported                  | Not Supported             |
-+--------------------------+--------------------------+----------------------------+---------------------------+
-| HKDF-Expand              | Not supported            | Supported                  | Not Supported             |
-+--------------------------+--------------------------+----------------------------+---------------------------+
-| PBKDF2-HMAC              | Not supported            | Supported                  | Supported                 |
-+--------------------------+--------------------------+----------------------------+---------------------------+
-| PBKDF2-AES-CMAC-PRF-128  | Not supported            | Supported                  | Supported                 |
-+--------------------------+--------------------------+----------------------------+---------------------------+
-| TLS 1.2 PRF              | Not supported            | Supported                  | Not Supported             |
-+--------------------------+--------------------------+----------------------------+---------------------------+
-| TLS 1.2 PSK to MS        | Not supported            | Supported                  | Not Supported             |
-+--------------------------+--------------------------+----------------------------+---------------------------+
-| TLS 1.2 EC J-PAKE to PMS | Not supported            | Supported                  | Supported                 |
-+--------------------------+--------------------------+----------------------------+---------------------------+
++------------------------------+--------------------------+----------------------------+---------------------------+
+| KDF algorithm                | nrf_cc3xx driver support | nrf_oberon driver support  | nrf_cracen driver support |
++==============================+==========================+============================+===========================+
+| HKDF                         | Not supported            | Supported                  | Supported                 |
++------------------------------+--------------------------+----------------------------+---------------------------+
+| HKDF-Extract                 | Not supported            | Supported                  | Supported                 |
++------------------------------+--------------------------+----------------------------+---------------------------+
+| HKDF-Expand                  | Not supported            | Supported                  | Supported                 |
++------------------------------+--------------------------+----------------------------+---------------------------+
+| PBKDF2-HMAC                  | Not supported            | Supported                  | Supported                 |
++------------------------------+--------------------------+----------------------------+---------------------------+
+| PBKDF2-AES-CMAC-PRF-128      | Not supported            | Supported                  | Supported                 |
++------------------------------+--------------------------+----------------------------+---------------------------+
+| TLS 1.2 PRF                  | Not supported            | Supported                  | Not Supported             |
++------------------------------+--------------------------+----------------------------+---------------------------+
+| TLS 1.2 PSK to MS            | Not supported            | Supported                  | Not Supported             |
++------------------------------+--------------------------+----------------------------+---------------------------+
+| TLS 1.2 EC J-PAKE to PMS     | Not supported            | Supported                  | Supported                 |
++------------------------------+--------------------------+----------------------------+---------------------------+
+| SP 800-108r1 CMAC w/counter  | Not supported            | Not supported              | Supported                 |
++------------------------------+--------------------------+----------------------------+---------------------------+
 
 The configuration of the :ref:`nrf_security_drivers_oberon` is automatically generated based on the user-enabled algorithms in `Key derivation function configurations`_.
+
+The Kconfig option :kconfig:option:`CONFIG_PSA_USE_CRACEN_KEY_DERIVATION_DRIVER` enables the :ref:`nrf_security_drivers_cracen` for all supported algorithms.
 
 MAC configurations
 ******************
@@ -287,9 +291,11 @@ The following table shows MAC algorithm support for each driver:
 | CBC-MAC        | Not supported            | Not supported              | Not  Supported            |
 +----------------+--------------------------+----------------------------+---------------------------+
 
-The option :kconfig:option:`CONFIG_PSA_USE_CC3XX_MAC_DRIVER` enables the :ref:`nrf_security_drivers_cc3xx` for all supported algorithms.
+The Kconfig option :kconfig:option:`CONFIG_PSA_USE_CC3XX_MAC_DRIVER` enables the :ref:`nrf_security_drivers_cc3xx` for all supported algorithms.
 
 The configuration of the :ref:`nrf_security_drivers_oberon` is automatically generated based on the user-enabled algorithms in `MAC configurations`_.
+
+The Kconfig option :kconfig:option:`CONFIG_PSA_USE_CRACEN_MAC_DRIVER` enables the :ref:`nrf_security_drivers_cracen` for all supported algorithms.
 
 Key size configuration for CMAC is supported as described in `AES key size configuration`_.
 
@@ -327,9 +333,11 @@ The following table shows AEAD algorithm support for each driver:
 | ChaCha20-Poly1305     | Supported                 | Supported                 | Supported                 |
 +-----------------------+---------------------------+---------------------------+---------------------------+
 
-The option :kconfig:option:`CONFIG_PSA_USE_CC3XX_AEAD_DRIVER` enables the :ref:`nrf_security_drivers_cc3xx` for all supported algorithms.
+The Kconfig option :kconfig:option:`CONFIG_PSA_USE_CC3XX_AEAD_DRIVER` enables the :ref:`nrf_security_drivers_cc3xx` for all supported algorithms.
 
 Configuration of the :ref:`nrf_security_drivers_oberon` is automatically generated based on the user-enabled algorithms in `AEAD configurations`_.
+
+The Kconfig option :kconfig:option:`CONFIG_PSA_USE_CRACEN_AEAD_DRIVER` enables the :ref:`nrf_security_drivers_cracen` for all supported algorithms.
 
 Key size configuration for CCM and GCM is supported as described in `AES key size configuration`_.
 
@@ -383,7 +391,7 @@ The following table shows asymmetric signature algorithm support for each driver
 +---------------------------------+---------------------------+----------------------------+---------------------------+
 | PureEdDSA                       | Supported                 | Supported                  | Supported                 |
 +---------------------------------+---------------------------+----------------------------+---------------------------+
-| HashEdDSA Edwards25519          | Not supported             | Not supported              | Not supported             |
+| HashEdDSA Edwards25519          | Not supported             | Not supported              | Supported                 |
 +---------------------------------+---------------------------+----------------------------+---------------------------+
 | HashEdDSA Edwards448            | Not supported             | Not supported              | Not supported             |
 +---------------------------------+---------------------------+----------------------------+---------------------------+
@@ -396,9 +404,11 @@ The following table shows asymmetric signature algorithm support for each driver
 | RSA PSS any salt                | Not supported             | Supported                  | Not Supported             |
 +---------------------------------+---------------------------+----------------------------+---------------------------+
 
-The option :kconfig:option:`CONFIG_PSA_USE_CC3XX_ASYMMETRIC_SIGNATURE_DRIVER` enables the driver :ref:`nrf_security_drivers_cc3xx` for all supported algorithms.
+The Kconfig option :kconfig:option:`CONFIG_PSA_USE_CC3XX_ASYMMETRIC_SIGNATURE_DRIVER` enables the driver :ref:`nrf_security_drivers_cc3xx` for all supported algorithms.
 
-Configuration of the :ref:`nrf_security_drivers_oberon` driver is automatically generated based on the user-enabled algorithms in `Asymmetric signature configurations`_.
+Configuration of the :ref:`nrf_security_drivers_oberon` is automatically generated based on the user-enabled algorithms in `Asymmetric signature configurations`_.
+
+The Kconfig option :kconfig:option:`CONFIG_PSA_USE_CRACEN_ASYMMETRIC_SIGNATURE_DRIVER` enables the driver :ref:`nrf_security_drivers_cracen` for all supported algorithms.
 
 The algorithm support when using ECC key types is dependent on one or more Kconfig options enabling curve support according to `ECC curve configurations`_.
 
@@ -436,9 +446,11 @@ The following table shows asymmetric encryption algorithm support for each drive
 | RSA PKCS#1 v1.5 crypt           | Supported                 | Supported                  | Supported                 |
 +---------------------------------+---------------------------+----------------------------+---------------------------+
 
-The option :kconfig:option:`CONFIG_PSA_USE_CC3XX_ASYMMETRIC_ENCRYPTION_DRIVER` enables the :ref:`nrf_security_drivers_cc3xx` for all supported algorithms.
+The Kconfig option :kconfig:option:`CONFIG_PSA_USE_CC3XX_ASYMMETRIC_ENCRYPTION_DRIVER` enables the :ref:`nrf_security_drivers_cc3xx` for all supported algorithms.
 
 Configuration of the :ref:`nrf_security_drivers_oberon` is automatically generated based on the user-enabled algorithms in `Asymmetric encryption configurations`_.
+
+The Kconfig option :kconfig:option:`CONFIG_PSA_USE_CRACEN_ASYMMETRIC_DRIVER` enables the :ref:`nrf_security_drivers_cracen` for all supported algorithms.
 
 RSA key size configuration is supported as described in `RSA key size configuration`_.
 
@@ -596,7 +608,9 @@ The following table shows ECC curve support for each driver:
 | FRP256v1                 | Not supported             | Not supported              | Not supported             |
 +--------------------------+---------------------------+----------------------------+---------------------------+
 
-The option :kconfig:option:`CONFIG_PSA_USE_CC3XX_KEY_MANAGEMENT_DRIVER` enables the :ref:`nrf_security_drivers_cc3xx` for key management using ECC curves.
+The Kconfig option :kconfig:option:`CONFIG_PSA_USE_CC3XX_KEY_MANAGEMENT_DRIVER` enables the :ref:`nrf_security_drivers_cc3xx` for key management using ECC curves.
+
+The Kconfig option :kconfig:option:`CONFIG_PSA_USE_CRACEN_KEY_MANAGEMENT_DRIVER` enables the :ref:`nrf_security_drivers_cracen` for key management using ECC curves.
 
 RNG configurations
 ******************
@@ -622,14 +636,15 @@ When RNG is enabled, set at least one of the configurations in the following tab
 RNG support
 ===========
 
-There are no public configurations for entropy and PRNG algorithm support and the choice of drivers that provide support is automatic.
-
-The PSA drivers using the Arm CryptoCell peripheral is enabled by default for nRF52840, nRF91 Series, and nRF5340 devices.
-
-For devices without a hardware-accelerated cryptographic engine, entropy is provided by the nRF RNG peripheral. PRNG support is provided by the Oberon PSA driver, which is implemented using software.
+The PSA drivers using the Arm CryptoCell peripheral are enabled by default for nRF52840, nRF91 Series, and nRF5340 devices.
 
 .. note::
    When using CryptoCell, only 1024 bytes can be requested at a time.
+
+For devices without a hardware-accelerated cryptographic engine, entropy is provided by the nRF RNG peripheral.
+PRNG support is provided by the Oberon PSA driver, which is implemented using software.
+
+The Kconfig option :kconfig:option:`CONFIG_PSA_USE_CRACEN_CTR_DRBG_DRIVER` enables the :ref:`nrf_security_drivers_cracen` for the CTR-DRBG algorithm.
 
 Hash configurations
 *******************
@@ -721,9 +736,11 @@ The following table shows hash algorithm support for each driver:
 | RIPEMD160             | Not supported              | Not supported             | Not supported             |
 +-----------------------+----------------------------+---------------------------+---------------------------+
 
-The option :kconfig:option:`CONFIG_PSA_USE_CC3XX_HASH_DRIVER` enables the :ref:`nrf_security_drivers_cc3xx` for all supported algorithms.
+The Kconfig option :kconfig:option:`CONFIG_PSA_USE_CC3XX_HASH_DRIVER` enables the :ref:`nrf_security_drivers_cc3xx` for all supported algorithms.
 
 The configuration of the :ref:`nrf_security_drivers_oberon` is automatically generated based on the user-enabled algorithms in `Hash configurations`_.
+
+The Kconfig option :kconfig:option:`CONFIG_PSA_USE_CRACEN_HASH_DRIVER` enables the :ref:`nrf_security_drivers_cracen` for all supported algorithms.
 
 Password-authenticated key exchange configurations
 **************************************************
@@ -765,6 +782,8 @@ The following table shows PAKE algorithm support for each driver:
 +-----------------------+--------------------------+---------------------------+---------------------------+
 
 Configuration of the :ref:`nrf_security_drivers_oberon` is automatically generated based on the user-enabled algorithms in  `Password-authenticated key exchange configurations`_.
+
+The Kconfig option :kconfig:option:`CONFIG_PSA_USE_CRACEN_PAKE_DRIVER` enables the :ref:`nrf_security_drivers_cracen` for all supported algorithms.
 
 Key size configurations
 ***********************

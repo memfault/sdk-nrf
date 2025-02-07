@@ -22,10 +22,6 @@
 #include "bridge/ble_connectivity_manager.h"
 #endif
 
-#ifdef CONFIG_CHIP_OTA_REQUESTOR
-#include "dfu/ota/ota_util.h"
-#endif /* CONFIG_BRIDGED_DEVICE_BT */
-
 #include <app-common/zap-generated/attributes/Accessors.h>
 #include <app-common/zap-generated/ids/Attributes.h>
 #include <app-common/zap-generated/ids/Clusters.h>
@@ -126,10 +122,10 @@ CHIP_ERROR AppTask::RestoreBridgedDevices()
 		LOG_INF("Loaded bridged device on endpoint id %d from the storage", device.mEndpointId);
 
 #ifdef CONFIG_BRIDGED_DEVICE_BT
-		BleBridgedDeviceFactory::CreateDevice(device.mDeviceType, btAddr, device.mNodeLabel, indexes[i],
-						      device.mEndpointId);
+		BleBridgedDeviceFactory::CreateDevice(device.mDeviceType, btAddr, device.mUniqueID, device.mNodeLabel,
+						      indexes[i], device.mEndpointId);
 #else
-		SimulatedBridgedDeviceFactory::CreateDevice(device.mDeviceType, device.mNodeLabel,
+		SimulatedBridgedDeviceFactory::CreateDevice(device.mDeviceType, device.mUniqueID, device.mNodeLabel,
 							    chip::Optional<uint8_t>(indexes[i]),
 							    chip::Optional<uint16_t>(device.mEndpointId));
 #endif

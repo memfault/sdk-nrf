@@ -71,7 +71,13 @@ Application
 ===========
 
 The user application runs in NSPE.
-Therefore, it must be built for the ``nrf9151dk/nrf9151/ns``, ``nrf9161dk/nrf9161/ns``, ``nrf9160dk/nrf9160/ns``, or ``thingy91/nrf9160/ns`` board target, depending on the DK that you are using.
+Therefore, you must build it for any of the following board targets, depending on the device that you are using:
+
+* ``nrf9151dk/nrf9151/ns``
+* ``nrf9161dk/nrf9161/ns``
+* ``nrf9160dk/nrf9160/ns``
+* ``thingy91/nrf9160/ns``
+* ``thingy91x/nrf9151/ns``
 
 The application image might require other images to be present.
 Some samples include the :ref:`bootloader` sample (:kconfig:option:`CONFIG_SECURE_BOOT`) and :doc:`mcuboot:index-ncs` (:kconfig:option:`CONFIG_BOOTLOADER_MCUBOOT`).
@@ -115,10 +121,10 @@ There are two ways to update the modem firmware:
 Full update
   You can use either a wired or a wireless connection to do a full update of the modem firmware:
 
-  * When using a wired connection, you can use either the `nRF Connect Programmer`_, which is part of `nRF Connect for Desktop`_, or the `nRF pynrfjprog`_ Python package.
+  * When using a wired connection, you can use either the `Programmer app`_, which is part of `nRF Connect for Desktop`_, or the `nRF pynrfjprog`_ Python package.
     Both methods use the Simple Management Protocol (SMP) to provide an interface over UART, which enables the device to perform the update.
 
-    * You can use the nRF Connect Programmer to perform the update, regardless of the images that are part of the existing firmware of the device.
+    * You can use the Programmer app to perform the update, regardless of the images that are part of the existing firmware of the device.
       For example, you can update the modem on an nRF9160 DK using the instructions described in the :ref:`nrf9160_updating_fw_modem` section.
 
     * You can also use the nRF pynrfjprog Python package to perform the update, as long as a custom application image integrating the ``lib_fmfu_mgmt`` subsystem is included in the existing firmware of the device.
@@ -159,10 +165,6 @@ The band lock mask allows you to set the bands on which you want the modem to op
 Each bit in the :kconfig:option:`CONFIG_LTE_LOCK_BAND_MASK` option represents one band.
 The maximum length of the string is 88 characters (bit string, 88 bits).
 
-For Thingy:91, you can configure the modem to use specific LTE bands by using the band lock AT command.
-The preprogrammed firmware configures the modem to use the bands currently certified on the Thingy:91 hardware.
-When building the firmware, you can configure which bands must be enabled.
-
 For more detailed information, see the `band lock section in the nRF9160 AT Commands Reference Guide`_ or the `band lock section in the nRF91x1 AT Commands Reference Guide`_, depending on the SiP you are using.
 
 .. _nrf91_ug_network_mode:
@@ -180,14 +182,6 @@ When the :ref:`lte_lc_readme` library is not used, the modem starts in LTE-M mod
 You can change the system mode and the LTE system mode preference using the ``AT%XSYSTEMMODE`` AT command.
 
 For more detailed information, see the `system mode section in the nRF9160 AT Commands Reference Guide`_ or the `system mode section in the nRF91x1 AT Commands Reference Guide`_, depending on the SiP you are using.
-
-
-LTE-M / NB-IoT switching
-------------------------
-
-Thingy:91 has a multimode modem, which enables it to support automatic switching between LTE-M and NB-IoT.
-A built-in parameter in the Thingy:91 firmware determines whether the modem first attempts to connect in LTE-M or NB-IoT mode.
-If the modem fails to connect using this preferred mode within the default timeout period (10 minutes), the modem switches to the other mode.
 
 Modem library
 *************
@@ -207,8 +201,8 @@ For more information on the integration, see :ref:`nrf_modem_lib_readme`.
 Modem trace
 ===========
 
-The modem traces of the nRF91 Series modem can be captured using the Cellular Monitor.
-For more information on how to collect traces using Cellular Monitor, see the `Cellular Monitor`_ documentation.
+The modem traces of the nRF91 Series modem can be captured using the Cellular Monitor app.
+For more information on how to do this, see the `Cellular Monitor app`_ documentation.
 To enable the modem traces in the modem and to forward them to the :ref:`modem_trace_module` over UART, include the ``nrf91-modem-trace-uart`` snippet while building your application as described in :ref:`nrf91_modem_trace_uart_snippet`.
 
 .. note::
@@ -261,9 +255,6 @@ Therefore, the performance is not ideal when there are obstructions overhead or 
 
 Customers who are developing their own hardware with the nRF9160 are strongly recommended to use the `nRF9160 Antenna and RF Interface Guidelines`_ as a reference.
 See `GPS interface and antenna`_ for more details on GNSS interface and antenna.
-
-Thingy:91 has a GNSS receiver, which allows the device to be located globally using GNSS signals if it is activated.
-In :ref:`asset_tracker_v2`, the GNSS receiver is activated by default.
 
 .. note::
 

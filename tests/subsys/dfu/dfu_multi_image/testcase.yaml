@@ -1,7 +1,10 @@
 tests:
   dfu.dfu_multi_image:
     sysbuild: true
-    platform_allow: native_posix
+    platform_allow: native_sim
     integration_platforms:
-      - native_posix
-    tags: dfu sysbuild ci_tests_subsys_dfu
+      - native_sim
+    tags:
+      - dfu
+      - sysbuild
+      - ci_tests_subsys_dfu

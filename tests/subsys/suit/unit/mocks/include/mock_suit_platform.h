@@ -17,7 +17,8 @@ FAKE_VALUE_FUNC(int, suit_plat_check_digest, enum suit_cose_alg, struct zcbor_st
 FAKE_VALUE_FUNC(int, suit_plat_authenticate_manifest, struct zcbor_string *, enum suit_cose_alg,
 		struct zcbor_string *, struct zcbor_string *, struct zcbor_string *);
 FAKE_VALUE_FUNC(int, suit_plat_authorize_unsigned_manifest, struct zcbor_string *);
-FAKE_VALUE_FUNC(int, suit_plat_create_component_handle, struct zcbor_string *, suit_component_t *);
+FAKE_VALUE_FUNC(int, suit_plat_create_component_handle, struct zcbor_string *, bool,
+		suit_component_t *);
 FAKE_VALUE_FUNC(int, suit_plat_release_component_handle, suit_component_t);
 
 #ifdef CONFIG_CHECK_IMAGE_MATCH_TEST
@@ -35,15 +36,15 @@ FAKE_VALUE_FUNC(int, suit_plat_authorize_sequence_num, enum suit_command_sequenc
 FAKE_VALUE_FUNC(int, suit_plat_authorize_component_id, struct zcbor_string *,
 		struct zcbor_string *);
 FAKE_VALUE_FUNC(int, suit_plat_fetch, suit_component_t, struct zcbor_string *,
-		struct suit_encryption_info *);
+		struct zcbor_string *, struct suit_encryption_info *);
 FAKE_VALUE_FUNC(int, suit_plat_fetch_integrated, suit_component_t, struct zcbor_string *,
+		struct zcbor_string *, struct suit_encryption_info *);
+FAKE_VALUE_FUNC(int, suit_plat_copy, suit_component_t, suit_component_t, struct zcbor_string *,
 		struct suit_encryption_info *);
-FAKE_VALUE_FUNC(int, suit_plat_copy, suit_component_t, suit_component_t,
-		struct suit_encryption_info *);
-FAKE_VALUE_FUNC(int, suit_plat_swap, suit_component_t, suit_component_t,
+FAKE_VALUE_FUNC(int, suit_plat_swap, suit_component_t, suit_component_t, struct zcbor_string *,
 		struct suit_encryption_info *);
 FAKE_VALUE_FUNC(int, suit_plat_write, suit_component_t, struct zcbor_string *,
-		struct suit_encryption_info *);
+		struct zcbor_string *, struct suit_encryption_info *);
 FAKE_VALUE_FUNC(int, suit_plat_invoke, suit_component_t, struct zcbor_string *);
 FAKE_VALUE_FUNC(int, suit_plat_report, unsigned int, struct suit_report *);
 FAKE_VALUE_FUNC(int, suit_plat_sequence_completed, enum suit_command_sequence,
@@ -53,15 +54,15 @@ FAKE_VALUE_FUNC(int, suit_plat_override_image_size, suit_component_t, size_t);
 
 #ifdef CONFIG_SUIT_PLATFORM_DRY_RUN_SUPPORT
 FAKE_VALUE_FUNC(int, suit_plat_check_fetch, suit_component_t, struct zcbor_string *,
-		struct suit_encryption_info *);
+		struct zcbor_string *, struct suit_encryption_info *);
 FAKE_VALUE_FUNC(int, suit_plat_check_fetch_integrated, suit_component_t, struct zcbor_string *,
-		struct suit_encryption_info *);
+		struct zcbor_string *, struct suit_encryption_info *);
 FAKE_VALUE_FUNC(int, suit_plat_check_copy, suit_component_t, suit_component_t,
-		struct suit_encryption_info *);
+		struct zcbor_string *, struct suit_encryption_info *);
 FAKE_VALUE_FUNC(int, suit_plat_check_swap, suit_component_t, suit_component_t,
-		struct suit_encryption_info *);
+		struct zcbor_string *, struct suit_encryption_info *);
 FAKE_VALUE_FUNC(int, suit_plat_check_write, suit_component_t, struct zcbor_string *,
-		struct suit_encryption_info *);
+		struct zcbor_string *, struct suit_encryption_info *);
 FAKE_VALUE_FUNC(int, suit_plat_check_invoke, suit_component_t, struct zcbor_string *);
 #endif /* CONFIG_SUIT_PLATFORM_DRY_RUN_SUPPORT */
 

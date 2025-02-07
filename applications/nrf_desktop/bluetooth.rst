@@ -7,14 +7,14 @@ nRF Desktop: Bluetooth
    :local:
    :depth: 2
 
-The nRF Desktop devices use :ref:`Zephyr's Bluetooth API <zephyr:bluetooth>` to handle the Bluetooth LE connections.
+The nRF Desktop devices use :ref:`Zephyr's Bluetooth API <zephyr:bluetooth>` to handle the Bluetooth® LE connections.
 
 This API is used only by the application modules that handle such connections.
 The information about peer and connection state is propagated to other application modules using :ref:`app_event_manager` events.
 
 The :ref:`CONFIG_DESKTOP_BT <config_desktop_app_options>` Kconfig option enables support for Bluetooth connectivity in the nRF Desktop.
 Specific Bluetooth configurations and application modules are selected or implied according to the HID device role.
-Apart from that, the defaults of Bluetooth-related Kconfigs are aligned with the nRF Desktop use case.
+Apart from that, the defaults of Bluetooth-related Kconfig options are aligned with the nRF Desktop use case.
 
 The nRF Desktop devices come in the following roles:
 

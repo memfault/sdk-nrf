@@ -10,9 +10,9 @@
 #include <suit_memptr_storage.h>
 #include <zephyr/logging/log.h>
 
-#if CONFIG_SUIT_IPUC
-#include <suit_plat_ipuc.h>
-#endif /* CONFIG_SUIT_IPUC */
+#if defined(CONFIG_SUIT_IPUC) && defined(CONFIG_SUIT_PLATFORM_VARIANT_SDFW)
+#include <suit_ipuc_sdfw.h>
+#endif
 
 LOG_MODULE_REGISTER(plat_components, CONFIG_SUIT_LOG_LEVEL);
 
@@ -94,7 +94,7 @@ int suit_plat_release_component_handle(suit_component_t handle)
 	return SUIT_SUCCESS;
 }
 
-int suit_plat_create_component_handle(struct zcbor_string *component_id,
+int suit_plat_create_component_handle(struct zcbor_string *component_id, bool dependency,
 				      suit_component_t *component_handle)
 {
 	suit_memptr_storage_err_t err;
@@ -128,6 +128,12 @@ int suit_plat_create_component_handle(struct zcbor_string *component_id,
 	if (suit_plat_decode_component_type(component_id, &component_type) != SUIT_PLAT_SUCCESS) {
 		LOG_ERR("Error decoding component type");
 		return SUIT_ERR_UNSUPPORTED_COMPONENT_ID;
+	}
+
+	if (dependency && (component_type != SUIT_COMPONENT_TYPE_CAND_MFST) &&
+	    (component_type != SUIT_COMPONENT_TYPE_INSTLD_MFST)) {
+		LOG_ERR("Unsupported dependency component type: %d", component_type);
+		return SUIT_ERR_UNAUTHORIZED_COMPONENT;
 	}
 
 	if ((component_type == SUIT_COMPONENT_TYPE_CAND_IMG) ||
@@ -269,13 +275,15 @@ int suit_plat_override_image_size(suit_component_t handle, size_t size)
 			return SUIT_ERR_CRASH;
 		}
 
-#if CONFIG_SUIT_IPUC
+#if defined(CONFIG_SUIT_IPUC) && defined(CONFIG_SUIT_PLATFORM_VARIANT_SDFW)
 		if (size == 0) {
-			suit_plat_ipuc_declare(handle);
+			suit_manifest_role_t role = SUIT_MANIFEST_UNKNOWN;
+
+			suit_ipuc_sdfw_declare(handle, role);
 		} else {
-			suit_plat_ipuc_revoke(handle);
+			suit_ipuc_sdfw_revoke(handle);
 		}
-#endif /* CONFIG_SUIT_IPUC */
+#endif
 
 		return SUIT_SUCCESS;
 	}

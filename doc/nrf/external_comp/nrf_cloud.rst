@@ -19,7 +19,7 @@ If the device has sufficiently large external flash storage, the modem can be en
 
 nRF Cloud also helps your devices determine their locations using GNSS.
 It uses both assisted GNSS (A-GNSS) and predicted GPS (P-GPS).
-It can determine device location from cellular and Wi-Fi network information sent by the device.
+It can determine device location from cellular and Wi-Fi® network information sent by the device.
 
 Additionally, nRF Cloud allows devices to report data to the cloud for collection and analysis later.
 To read more about nRF Cloud, see the `nRF Cloud`_ website and the `nRF Cloud documentation`_.
@@ -73,10 +73,10 @@ nRF Cloud supports a variety of device ID formats:
 
 Nordic development kits such as the nRF9160 DK have a sticker on the back indicating the device's IMEI and PIN.
 They are preprovisioned with just-in-time provisioning (JITP) certificates so they can be added easily to nRF Cloud using the device ID ``nrf-IMEI`` and PIN.
-Device IDs that start with ``nrf-`` are checked against a database of genuine Nordic development kits and Thingy:91s.
+Device IDs that start with ``nrf-`` are checked against a database of genuine Nordic development kits, Thingy:91, and Thingy:91 X.
 If the device ID (and the accompanying PIN or Hardware ID) is not found in the database, the device cannot connect.
 This means that customers using custom hardware cannot use the ``nrf-`` prefix for their device IDs.
-Choose your own PIN when creating creating JITP credentials for a custom device.
+Choose your own PIN when creating JITP credentials for a custom device.
 
 The `device_credentials_installer.py`_ script uses the device UUID format by default.
 See these command line options to use other device ID formats:
@@ -97,7 +97,7 @@ Your firmware's device ID configuration must align with the options used when ex
 See the :ref:`configuration_device_id` section of the :ref:`lib_nrf_cloud` library documentation for more information.
 
 The :file:`device_credentials_installer.py` script automatically connects over USB or RTT to your device and installs the certificates in the modem.
-Before running the script, you must install and run firmware on the device that allows it to accept AT commands over USB or RTT, such as the :ref:AT Client <at_client_sample>` sample.
+Before running the script, you must install and run firmware on the device that allows it to accept AT commands over USB or RTT, such as the :ref:`AT Client <at_client_sample>` sample.
 
 If the device already contains certificates, delete the old certificates from the device by adding the ``--delete`` option.
 
@@ -194,7 +194,7 @@ A device can successfully connect to `nRF Cloud`_ using MQTT if the following re
 
      Alternatively, use the nRF Cloud REST API to do this.
 
-  #. Program the credentials in the JSON file into the device using the `Cellular Monitor`_ app.
+  #. Program the credentials in the JSON file into the device using the `Cellular Monitor app`_.
 
   The private key is exposed during these steps, and therefore, this is the less secure option.
   See :ref:`nrf9160_ug_updating_cloud_certificate` for details.
@@ -253,7 +253,7 @@ The following samples demonstrate nRF Cloud-specific functionality using REST:
 
 * :ref:`nrf_cloud_rest_fota`
 * :ref:`nrf_cloud_rest_device_message`
-* :ref:`nrf_cloud_rest_cell_pos_sample`
+* :ref:`nrf_cloud_rest_cell_location`
 
 Other related samples and applications that use nRF Cloud services:
 

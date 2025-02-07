@@ -23,7 +23,7 @@ You need at least two development kits to test this sample:
 
 You can use mix different development kits from the list above.
 
-Additionally, the sample requires connecting each development kit to a serial terminal and using a terminal emulator (for example, `nRF Connect Serial Terminal`_).
+Additionally, the sample requires connecting each development kit to a serial terminal and using a terminal emulator (for example, the `Serial Terminal app`_).
 
 To observe that the LEDs are toggled synchronously, use a logic analyzer or an oscilloscope.
 
@@ -101,9 +101,11 @@ See the following equations:
 Hardware resource usage
 =======================
 
-This sample requires fewer hardware resources when it is run on an nRF54L Series device compared to the nRF52 or nRF53 Series devices.
-On an nRF54L Series device, only one GRTC channel and PPI channel is needed to set up accurate toggling of an LED.
-On nRF52 and nRF53 Series devices, you also need one RTC peripheral, one TIMER peripheral, one EGU channel, three PPI channels, and one PPI group.
+This sample requires fewer hardware resources when it is run on an nRF54 Series device compared to the nRF52 or nRF53 Series devices.
+On an nRF54L Series device, only one GRTC channel and one PPI channel are needed to set up accurate toggling of an LED.
+On an nRF54H Series device, two local DPPI channels are used to connect the GRTC and the LED to the local PPIB instances.
+A PPIB channel is used to connect the two PPIB instances.
+On nRF52 and nRF53 Series devices, you need one RTC peripheral, one TIMER peripheral, one EGU channel, four PPI channels, and one PPI group.
 
 User interface
 **************
@@ -131,7 +133,7 @@ Testing
 
 After programming the sample to all development kits, perform the following steps to test it:
 
-1. Connect to the kits with a terminal emulator (for example, `nRF Connect Serial Terminal`_).
+1. Connect to the kits with a terminal emulator (for example, the `Serial Terminal app`_).
    See :ref:`test_and_optimize` for the required settings and steps.
 #. Reset the kits.
 #. In one of the terminal emulators, type ``c`` to start the application in the Central role.

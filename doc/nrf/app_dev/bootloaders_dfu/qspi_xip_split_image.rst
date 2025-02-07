@@ -152,7 +152,7 @@ Configure :ref:`configuration_system_overview_sysbuild` to enable the required K
 
    .. tabs::
 
-      .. group-tab:: With networe core support
+      .. group-tab:: With network core support
 
          .. code-block:: cmake
 
@@ -217,10 +217,13 @@ Programming with the QSPI XIP split image
 Programming of the application is supported using the :ref:`standard procedure <programming>`.
 The standard procedure will program the firmware using the default nrfjprog configuration which, for QSPI, is PP4IO mode.
 
+.. note::
+      |nrfjprog_deprecation_note|
+
 Programming using a different SPI mode
 ======================================
 
-If you are using an a different SPI mode on the QSPI interface, such as DSPI, you must use a custom :file:`Qspi.ini` file.
+If you are using a different SPI mode on the QSPI interface, such as DSPI, you must use a custom :file:`Qspi.ini` file.
 The following is an example for the Thingy:53, which supports DSPI and PP:
 
 .. literalinclude:: ../../../../samples/nrf5340/extxip_smp_svr/Qspi_thingy53.ini

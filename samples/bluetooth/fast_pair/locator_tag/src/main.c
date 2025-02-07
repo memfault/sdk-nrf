@@ -90,8 +90,6 @@ static void fmdn_factory_reset_prepare(void)
 	/* Disable advertising request from the UI. */
 	fp_adv_ui_request = false;
 	app_fp_adv_request(&fp_adv_trigger_ui, fp_adv_ui_request);
-
-	app_fp_adv_rpa_rotation_suspend(false);
 }
 
 static void fmdn_factory_reset_executed(void)
@@ -206,18 +204,12 @@ static void fp_account_key_written(struct bt_conn *conn)
 		fmdn_factory_reset_schedule(
 			FACTORY_RESET_TRIGGER_PROVISIONING_TIMEOUT,
 			K_MINUTES(FMDN_PROVISIONING_TIMEOUT));
-
-		/* Fast Pair Implementation Guidelines for the locator tag use case:
-		 * after the Provider was paired, it should not change its MAC address
-		 * till FMDN is provisioned or till 5 minutes passes.
-		 */
-		app_fp_adv_rpa_rotation_suspend(true);
 	}
 
 	fp_account_key_present = bt_fast_pair_has_account_key();
 }
 
-static const struct bt_fast_pair_info_cb fp_info_callbacks = {
+static struct bt_fast_pair_info_cb fp_info_callbacks = {
 	.account_key_written = fp_account_key_written,
 };
 
@@ -380,7 +372,6 @@ static void fmdn_provisioning_state_changed(bool provisioned)
 	if (provisioned &&
 	    (factory_reset_trigger == FACTORY_RESET_TRIGGER_PROVISIONING_TIMEOUT)) {
 		fmdn_factory_reset_cancel();
-		app_fp_adv_rpa_rotation_suspend(false);
 	}
 
 	/* Fast Pair Implementation Guidelines for the locator tag use case:
@@ -422,6 +413,15 @@ static struct bt_fast_pair_fmdn_info_cb fmdn_info_cb = {
 	.provisioning_state_changed = fmdn_provisioning_state_changed,
 };
 
+static void fp_adv_state_changed(bool enabled)
+{
+	app_ui_state_change_indicate(APP_UI_STATE_FP_ADV, enabled);
+}
+
+static const struct app_fp_adv_info_cb fp_adv_info_cb = {
+	.state_changed = fp_adv_state_changed,
+};
+
 static int fast_pair_prepare(void)
 {
 	int err;
@@ -435,6 +435,12 @@ static int fast_pair_prepare(void)
 	err = app_fp_adv_id_set(APP_BT_ID);
 	if (err) {
 		LOG_ERR("Fast Pair: app_fp_adv_id_set failed (err %d)", err);
+		return err;
+	}
+
+	err = app_fp_adv_info_cb_register(&fp_adv_info_cb);
+	if (err) {
+		LOG_ERR("Fast Pair: app_fp_adv_info_cb_register failed (err %d)", err);
 		return err;
 	}
 
@@ -610,7 +616,7 @@ int main(void)
 {
 	int err;
 
-	LOG_INF("Starting Bluetooth Fast Pair locator tag example");
+	LOG_INF("Starting Bluetooth Fast Pair locator tag sample");
 
 	if (IS_ENABLED(CONFIG_APP_DFU)) {
 		app_dfu_fw_version_log();

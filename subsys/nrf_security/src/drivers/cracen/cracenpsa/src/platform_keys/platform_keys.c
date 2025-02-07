@@ -211,6 +211,14 @@ static key_type find_key(uint32_t id, platform_key *key)
 		FILL_PUBKEY(NRF_SECURE_SICR_S->AROT.RADIO.SUITPUBKEY, generation);
 	case DOMAIN_USAGE(DOMAIN_NONE, USAGE_RMOEM):
 		FILL_PUBKEY(NRF_SECURE_SICR_S->AROT.SECURE.OEMPUBKEY, generation);
+	case DOMAIN_USAGE(DOMAIN_APPLICATION, USAGE_AUTHDEBUG):
+		FILL_PUBKEY(NRF_SECURE_SICR_S->AROT.APPLICATION.AUTHDEBUGKEY, generation);
+	case DOMAIN_USAGE(DOMAIN_RADIO, USAGE_AUTHDEBUG):
+		FILL_PUBKEY(NRF_SECURE_SICR_S->AROT.RADIO.AUTHDEBUGKEY, generation);
+	case DOMAIN_USAGE(DOMAIN_WIFI, USAGE_AUTHDEBUG):
+		FILL_PUBKEY(NRF_SECURE_SICR_S->AROT.WIFICORE.AUTHDEBUGKEY, generation);
+	case DOMAIN_USAGE(DOMAIN_CELL, USAGE_AUTHDEBUG):
+		FILL_PUBKEY(NRF_SECURE_SICR_S->AROT.CELLULARCORE.AUTHDEBUGKEY, generation);
 	case DOMAIN_USAGE(DOMAIN_APPLICATION, USAGE_FWENC):
 		FILL_AESKEY(NRF_SECURE_SICR_S->AROT.APPLICATION.FWENC, generation);
 	case DOMAIN_USAGE(DOMAIN_RADIO, USAGE_FWENC):
@@ -352,8 +360,12 @@ psa_status_t cracen_platform_get_builtin_key(psa_drv_slot_number_t slot_number,
 			psa_set_key_algorithm(attributes, PSA_ALG_PURE_EDDSA);
 			psa_set_key_usage_flags(attributes, PSA_KEY_USAGE_VERIFY_MESSAGE);
 		} else if (key.sicr.type == PSA_KEY_TYPE_AES) {
-			/* This will be AES-KW when it is supported. */
-			psa_set_key_algorithm(attributes, PSA_ALG_ECB_NO_PADDING);
+			/* Currently AES-KW is not supported, so the key stored in SICR
+			 * is directly used to decrypt the firmware (using AES-GCM).
+			 * When AES-KW is supported, this will possibly need to be extended
+			 * so that both AES-KW and direct decryption can be supported.
+			 */
+			psa_set_key_algorithm(attributes, PSA_ALG_GCM);
 			psa_set_key_usage_flags(attributes, PSA_KEY_USAGE_DECRYPT);
 
 			if (PSA_BITS_TO_BYTES(key.sicr.bits) > sizeof(decrypted_key)) {
@@ -516,26 +528,24 @@ cleanup:
 	return PSA_ERROR_CORRUPTION_DETECTED;
 }
 
-size_t cracen_platform_keys_get_size(psa_key_attributes_t const *attributes)
+psa_status_t cracen_platform_keys_get_size(psa_key_attributes_t const *attributes, size_t *key_size)
 {
 	platform_key key;
 	key_type type = find_key(MBEDTLS_SVC_KEY_ID_GET_KEY_ID(psa_get_key_id(attributes)), &key);
 	psa_key_type_t key_type = psa_get_key_type(attributes);
 
-	if (type == INVALID) {
-		return 0;
-	}
-
 	if (type == IKG) {
-		return sizeof(ikg_opaque_key);
+		*key_size = sizeof(ikg_opaque_key);
+		return PSA_SUCCESS;
 	}
 
 	if (key_type == PSA_KEY_TYPE_ECC_PUBLIC_KEY(PSA_ECC_FAMILY_TWISTED_EDWARDS) ||
 	    key_type == PSA_KEY_TYPE_AES) {
-		return PSA_BITS_TO_BYTES(psa_get_key_bits(attributes));
+		*key_size = PSA_BITS_TO_BYTES(psa_get_key_bits(attributes));
+		return PSA_SUCCESS;
 	}
 
-	return 0;
+	return PSA_ERROR_INVALID_ARGUMENT;
 }
 
 psa_status_t cracen_platform_get_key_slot(mbedtls_svc_key_id_t key_id, psa_key_lifetime_t *lifetime,

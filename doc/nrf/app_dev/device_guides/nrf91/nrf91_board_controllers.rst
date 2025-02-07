@@ -23,7 +23,7 @@ The following sections have a complete list of configuration options available f
 * `Board control <nRF9151 DK board control section in the nRF9151 DK User Guide_>`_  in the nRF9151 DK Hardware guide
 
 The nRF5340 IMCU comes preprogrammed with J-Link SEGGER OB and board controller firmware.
-If you want to change the default configuration of the DK, you can use the `nRF Connect Board Configurator`_ app in `nRF Connect for Desktop`_ .
+If you want to change the default configuration of the DK, you can use the `Board Configurator app`_ in `nRF Connect for Desktop`_ .
 
 To update board controller firmware on the nRF9161 DK, download the `nRF9161 DK board controller firmware`_ from the nRF9161 DK downloads page.
 To program the HEX file, use `nRF Util`_.
@@ -40,6 +40,9 @@ Make sure to select the correct controller before you program the application to
 The nRF52840 SoC on the DK comes preprogrammed with a firmware.
 If you need to restore the original firmware at some point, download the `nRF9160 DK board controller firmware`_ from the nRF9160 DK downloads page.
 To program the HEX file, use nrfjprog (which is part of the `nRF Command Line Tools`_).
+
+.. note::
+      |nrfjprog_deprecation_note|
 
 If you want to route some pins differently from what is done in the preprogrammed firmware, program the :zephyr:code-sample:`hello_world` sample instead of the preprogrammed firmware.
 Build the sample (located under :file:`ncs/zephyr/samples/hello_world`) for the ``nrf9160dk_nrf52840`` board target.

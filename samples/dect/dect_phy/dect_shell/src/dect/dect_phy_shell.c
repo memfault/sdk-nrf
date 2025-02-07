@@ -19,7 +19,7 @@
 #include <modem/nrf_modem_lib.h>
 #include <nrf_modem_at.h>
 
-#include "nrf_modem_dect_phy.h"
+#include <nrf_modem_dect_phy.h>
 
 #include "dect_common_utils.h"
 #include "dect_phy_api_scheduler.h"
@@ -63,7 +63,7 @@ static int dect_phy_scheduler_list_purge_cmd(const struct shell *shell, size_t a
 
 /**************************************************************************************************/
 
-/* Following are not having short options: */
+/* The following do not have short options:: */
 enum {
 	DECT_SHELL_PERF_CHANNEL = 2001,
 	DECT_SHELL_PERF_SLOT_COUNT,
@@ -176,11 +176,6 @@ static struct option long_options_perf[] = {
 	{"c_tx_pwr", required_argument, 0, DECT_SHELL_PERF_TX_PWR},
 	{"c_tx_mcs", required_argument, 0, DECT_SHELL_PERF_TX_MCS},
 	{0, 0, 0, 0}};
-
-static void dect_phy_perf_cmd_print_usage(void)
-{
-	desh_print_no_format(dect_phy_perf_cmd_usage_str);
-}
 
 static int dect_phy_perf_cmd(const struct shell *shell, size_t argc, char **argv)
 {
@@ -365,13 +360,13 @@ static int dect_phy_perf_cmd(const struct shell *shell, size_t argc, char **argv
 	return 0;
 
 show_usage:
-	dect_phy_perf_cmd_print_usage();
+	desh_print_no_format(dect_phy_perf_cmd_usage_str);
 	return 0;
 }
 
 /**************************************************************************************************/
 
-/* Following are not having short options: */
+/* The following do not have short options:: */
 enum {
 	DECT_SHELL_CERT_FRAME_REPEAT_COUNT = 3001,
 	DECT_SHELL_CERT_FRAME_REPEAT_COUNT_INTERVALS,
@@ -410,7 +405,8 @@ static const char dect_phy_rf_tool_cmd_usage_str[] =
 	"  -c, --channel <int>,               Channel. Default 1665.\n"
 	"                                     Ranges: band #1: 1657-1677 (only odd numbers as per\n"
 	"                                     ETSI EN 301 406-2, ch 4.3.2.3),\n"
-	"                                     band #2 1680-1700, band #9 1691-1711.\n"
+	"                                     band #2 1680-1700, band #4 524-552,\n"
+	"                                     band #9 1703-1711, band #22 1691-1711.\n"
 	"  -e  --rx_exp_rssi_level <int>,     Set expected RSSI level on RX (dBm).\n"
 	"                                     Default: from common rx settings.\n"
 	"  -p  --tx_pwr <int>,                TX power (dBm),\n"
@@ -488,11 +484,6 @@ static struct option long_options_cert[] = {
 	{"tx_idle_subslot_count", required_argument, 0, DECT_SHELL_CERT_TX_POST_IDLE_SUBSLOT_COUNT},
 	{0, 0, 0, 0}};
 
-static void dect_phy_rf_tool_cmd_print_usage(void)
-{
-	desh_print_no_format(dect_phy_rf_tool_cmd_usage_str);
-}
-
 static int dect_phy_rf_tool_cmd(const struct shell *shell, size_t argc, char **argv)
 {
 	struct dect_phy_rf_tool_params params;
@@ -510,8 +501,8 @@ static int dect_phy_rf_tool_cmd(const struct shell *shell, size_t argc, char **a
 	optind = 1;
 
 	if (argv[1] != NULL && !strcmp(argv[1], "stop")) {
-		dect_phy_ctrl_cert_cmd_stop();
-		desh_print("cert command stopping.");
+		dect_phy_ctrl_rf_tool_cmd_stop();
+		desh_print("rf_tool command stopping.");
 		return 0;
 	}
 	struct dect_phy_settings *current_settings = dect_common_settings_ref_get();
@@ -719,7 +710,7 @@ static int dect_phy_rf_tool_cmd(const struct shell *shell, size_t argc, char **a
 		params.find_rx_sync = true;
 	}
 
-	ret = dect_phy_ctrl_cert_cmd(&params);
+	ret = dect_phy_ctrl_rf_tool_cmd(&params);
 	if (ret) {
 		desh_error("Cannot start rf_tool command, ret: %d", ret);
 	} else {
@@ -728,7 +719,7 @@ static int dect_phy_rf_tool_cmd(const struct shell *shell, size_t argc, char **a
 	return 0;
 
 show_usage:
-	dect_phy_rf_tool_cmd_print_usage();
+	desh_print_no_format(dect_phy_rf_tool_cmd_usage_str);
 	return 0;
 }
 
@@ -751,6 +742,11 @@ static const char dect_phy_ping_cmd_usage_str[] =
 	"      --c_tx_pwr <int>,      TX power (dBm),\n"
 	"                             [-40,-30,-20,-16,-12,-8,-4,0,4,7,10,13,16,19,21,23].\n"
 	"                             Default: from common tx settings.\n"
+	"      --c_tx_lbt_period <cnt>,  Listen Before Talk (LBT) period (symbol count).\n"
+	"                                Zero value disables LBT (default).\n"
+	"                                Valid range for symbol count: 2-110.\n"
+	"      --c_tx_lbt_busy_th <dbm>, LBT busy RSSI threshold (dBm). Valid only when LBT\n"
+	"                                is enabled. Default from RSSI busy threshold setting.\n"
 	"      --s_tx_id <id>,        Target server transmitter id (default: 38).\n"
 	"                             Note: lowest 16bits of transmitter id (long RD ID).\n"
 	"  -e  --rx_exp_rssi_level <int>, Set expected RSSI level on RX (dBm).\n"
@@ -780,6 +776,8 @@ enum {
 	DECT_SHELL_PING_PAYLOAD_SLOT_COUNT,
 	DECT_SHELL_PING_TX_PWR,
 	DECT_SHELL_PING_TX_MCS,
+	DECT_SHELL_PING_TX_LBT_PERIOD,
+	DECT_SHELL_PING_TX_LBT_RSSI_BUSY_THRESHOLD,
 	DECT_SHELL_PING_DEST_SERVER_TX_ID,
 	DECT_SHELL_PING_TX_PWR_CTRL_AUTO,
 	DECT_SHELL_PING_TX_PWR_CTRL_PDU_RX_EXPECTED_RSSI_LEVEL,
@@ -798,6 +796,8 @@ static struct option long_options_ping[] = {
 	{"c_slots", required_argument, 0, 'l'},
 	{"c_tx_pwr", required_argument, 0, DECT_SHELL_PING_TX_PWR},
 	{"c_tx_mcs", required_argument, 0, DECT_SHELL_PING_TX_MCS},
+	{"c_tx_lbt_period", required_argument, 0, DECT_SHELL_PING_TX_LBT_PERIOD },
+	{"c_tx_lbt_busy_th", required_argument, 0, DECT_SHELL_PING_TX_LBT_RSSI_BUSY_THRESHOLD },
 	{"rx_exp_rssi_level", required_argument, 0, 'e'},
 	{"s_tx_id", required_argument, 0, DECT_SHELL_PING_DEST_SERVER_TX_ID},
 	{"tx_pwr_ctrl_pdu_rx_exp_rssi_level", required_argument, 0,
@@ -805,17 +805,13 @@ static struct option long_options_ping[] = {
 	{"tx_pwr_ctrl_auto", no_argument, 0, DECT_SHELL_PING_TX_PWR_CTRL_AUTO},
 	{0, 0, 0, 0}};
 
-static void dect_phy_ping_cmd_print_usage(void)
-{
-	desh_print_no_format(dect_phy_ping_cmd_usage_str);
-}
-
 static int dect_phy_ping_cmd(const struct shell *shell, size_t argc, char **argv)
 {
 	struct dect_phy_ping_params params;
 	int ret;
 	int long_index = 0;
 	int opt;
+	int tmp_value;
 
 	if (argc < 2) {
 		goto show_usage;
@@ -824,8 +820,8 @@ static int dect_phy_ping_cmd(const struct shell *shell, size_t argc, char **argv
 	optind = 1;
 
 	if (argv[1] != NULL && !strcmp(argv[1], "stop")) {
-		dect_phy_ctrl_ping_cmd_stop();
 		desh_print("ping command stopping.");
+		dect_phy_ctrl_ping_cmd_stop();
 		return 0;
 	}
 	struct dect_phy_settings *current_settings = dect_common_settings_ref_get();
@@ -841,6 +837,8 @@ static int dect_phy_ping_cmd(const struct shell *shell, size_t argc, char **argv
 	params.expected_rx_rssi_level = current_settings->rx.expected_rssi_level;
 	params.tx_power_dbm = current_settings->tx.power_dbm;
 	params.tx_mcs = current_settings->tx.mcs;
+	params.tx_lbt_period_symbols = 0;
+	params.tx_lbt_rssi_busy_threshold_dbm = current_settings->rssi_scan.busy_threshold;
 	params.debugs = true;
 	params.rssi_reporting_enabled = false;
 	params.pwr_ctrl_pdu_expected_rx_rssi_level = -60;
@@ -903,6 +901,31 @@ static int dect_phy_ping_cmd(const struct shell *shell, size_t argc, char **argv
 			params.tx_mcs = atoi(optarg);
 			break;
 		}
+		case DECT_SHELL_PING_TX_LBT_PERIOD: {
+			tmp_value = atoi(optarg);
+			if (tmp_value < DECT_PHY_LBT_PERIOD_MIN_SYM ||
+				tmp_value > DECT_PHY_LBT_PERIOD_MAX_SYM) {
+				desh_error("Invalid LBT period %d (range: [%d,%d])",
+					   tmp_value,
+					   DECT_PHY_LBT_PERIOD_MIN_SYM,
+					   DECT_PHY_LBT_PERIOD_MAX_SYM);
+				goto show_usage;
+			}
+			params.tx_lbt_period_symbols = tmp_value;
+			break;
+		}
+		case DECT_SHELL_PING_TX_LBT_RSSI_BUSY_THRESHOLD: {
+			tmp_value = atoi(optarg);
+			if (tmp_value >= 0 ||
+			    tmp_value < INT8_MIN) {
+				desh_error("Invalid LBT RSSI busy threshold %d (range: [%d,-1])",
+					   tmp_value,
+					   INT8_MIN);
+				goto show_usage;
+			}
+			params.tx_lbt_rssi_busy_threshold_dbm = tmp_value;
+			break;
+		}
 		case DECT_SHELL_PING_CHANNEL: {
 			params.channel = atoi(optarg);
 			break;
@@ -956,7 +979,7 @@ static int dect_phy_ping_cmd(const struct shell *shell, size_t argc, char **argv
 	return 0;
 
 show_usage:
-	dect_phy_ping_cmd_print_usage();
+	desh_print_no_format(dect_phy_ping_cmd_usage_str);
 	return 0;
 }
 
@@ -986,27 +1009,35 @@ static const char dect_rssi_scan_usage_str[] =
 	"                                [--busy_th <dbm_value>] [--free_th <dbm_value>]\n"
 	"                                [-i <interval_secs>] [--force]]\n"
 	"Options:\n"
-	"  -c <ch_nbr>,         Channel to be scanned/measured. Zero value: all, otherwise range\n"
-	"                       based on set band.\n"
+	"  -c <ch_nbr>,         Channel to be scanned/measured. Zero value: all in a set band.\n"
 	"                       Default: 1665.\n"
 	"  -a, --only_allowed_channels,  Impacted only at band #1, scan only allowed channels per\n"
 	"                                Harmonized standard requirements\n"
 	"                                (ETSI EN 301 406-2, V3.0.1, ch 4.3.2.3\n"
 	"                                Table 2 for 1,726MHz bandwidth).\n"
-	"  -i <interval_secs>,  Scanning interval in seconds.\n"
-	"                       Default: no interval, i.e. one timer.\n"
+	"  --verdict_type_count,         Result verdicted based on SCAN_SUITABLE subslot count,\n"
+	"                                as per MAC spec ch. 5.1.2.\n"
+	"                                SCAN_SUITABLE can be adjusted from settings\n"
+	"                                 (rssi_scan_suitable_percent).\n"
+	"                                Default: Result verdicted based highest/lowest\n"
+	"                                from on all measurements\n"
+	"                                within a given ch_scanning_time_ms.\n"
+	"  --verdict_type_count_details, Same as verdict_type_count but with printing subslot\n"
+	"                                details for busy/possible subslots.\n"
+	"  -i <interval_secs>,        Scanning interval in seconds.\n"
+	"                             Default: no interval, i.e. one timer.\n"
 	"  -t <ch_scanning_time_ms>,  Time that is used to scan per channel.\n"
-	"                             Default from b_rx_rssi_scan_time\n"
+	"                             Default from rssi_scan_time\n"
 	"  --free_th <dbm_value>,     Channel access - considered as free:\n"
 	"                             measured signal level <= <value>.\n"
 	"                             Set a threshold for RSSI scan free threshold (dBm).\n"
-	"                             Default from b_rx_rssi_scan_busy_th\n"
+	"                             Default from rssi_scan_busy_th\n"
 	"                             Channel access - considered as possible:\n"
 	"                             busy_th >= measured signal level > free_th\n"
 	"  --busy_th <dbm_value>,     Channel access - considered as busy:\n"
 	"                             measured signal level > <value>.\n"
 	"                             Set a threshold for RSSI scan busy threshold (dBm).\n"
-	"                             Default from b_rx_rssi_scan_free_th\n"
+	"                             Default from rssi_scan_free_th\n"
 	"  -f, --force,               Use special force to override current items in\n"
 	"                             phy api scheduler so that RSSI scans are having priority "
 	"over\n"
@@ -1014,24 +1045,25 @@ static const char dect_rssi_scan_usage_str[] =
 	"                             in modem. Note: when used, other running items are not\n"
 	"                             scheduled to modem.\n";
 
-/* Following are not having short options: */
+/* The following do not have short options:: */
 enum {
-	DECT_SHELL_RSSI_SCAN_FREE_TH = 1001,
+	DECT_SHELL_RSSI_SCAN_RESULT_VERDICT_TYPE_SUBSLOT_COUNT = 1001,
+	DECT_SHELL_RSSI_SCAN_RESULT_VERDICT_TYPE_SUBSLOT_COUNT_DETAIL_PRINT,
+	DECT_SHELL_RSSI_SCAN_FREE_TH,
 	DECT_SHELL_RSSI_SCAN_BUSY_TH,
 };
 
 /* Specifying the expected options (both long and short): */
 static struct option long_options_rssi_scan[] = {
+	{"verdict_type_count", no_argument, 0,
+		DECT_SHELL_RSSI_SCAN_RESULT_VERDICT_TYPE_SUBSLOT_COUNT},
+	{"verdict_type_count_details", no_argument, 0,
+		DECT_SHELL_RSSI_SCAN_RESULT_VERDICT_TYPE_SUBSLOT_COUNT_DETAIL_PRINT},
 	{"free_th", required_argument, 0, DECT_SHELL_RSSI_SCAN_FREE_TH},
 	{"busy_th", required_argument, 0, DECT_SHELL_RSSI_SCAN_BUSY_TH},
 	{"force", no_argument, 0, 'f'},
 	{"only_allowed_channels", no_argument, 0, 'a'},
 	{0, 0, 0, 0}};
-
-static void dect_shell_rssi_scan_print_usage(void)
-{
-	desh_print_no_format(dect_rssi_scan_usage_str);
-}
 
 static int dect_phy_rssi_scan_cmd(const struct shell *shell, size_t argc, char **argv)
 {
@@ -1055,7 +1087,11 @@ static int dect_phy_rssi_scan_cmd(const struct shell *shell, size_t argc, char *
 	} else {
 		/* Some defaults from settings */
 		params.channel = 1665;
+		params.result_verdict_type = DECT_PHY_RSSI_SCAN_RESULT_VERDICT_TYPE_ALL;
 		params.scan_time_ms = current_settings->rssi_scan.time_per_channel_ms;
+		params.type_subslots_params = current_settings->rssi_scan.type_subslots_params;
+		params.type_subslots_params.detail_print = false;
+
 		params.busy_rssi_limit = current_settings->rssi_scan.busy_threshold;
 		params.free_rssi_limit = current_settings->rssi_scan.free_threshold;
 		params.interval_secs = 0; /* One timer */
@@ -1085,6 +1121,13 @@ static int dect_phy_rssi_scan_cmd(const struct shell *shell, size_t argc, char *
 			}
 			case 'a': {
 				params.only_allowed_channels = true;
+				break;
+			}
+			case DECT_SHELL_RSSI_SCAN_RESULT_VERDICT_TYPE_SUBSLOT_COUNT_DETAIL_PRINT:
+				params.type_subslots_params.detail_print = true;
+			case DECT_SHELL_RSSI_SCAN_RESULT_VERDICT_TYPE_SUBSLOT_COUNT: {
+				params.result_verdict_type =
+					DECT_PHY_RSSI_SCAN_RESULT_VERDICT_TYPE_SUBSLOT_COUNT;
 				break;
 			}
 			case DECT_SHELL_RSSI_SCAN_FREE_TH: {
@@ -1128,7 +1171,7 @@ static int dect_phy_rssi_scan_cmd(const struct shell *shell, size_t argc, char *
 	return 0;
 
 show_usage:
-	dect_shell_rssi_scan_print_usage();
+	desh_print_no_format(dect_rssi_scan_usage_str);
 	return 0;
 }
 
@@ -1142,50 +1185,54 @@ static const char dect_rx_usage_str[] =
 	"  start,               Start RX.\n"
 	"  stop,                Stop RX.\n"
 	"Starting options:\n"
-	"  -c <ch_nbr>, --c_ch,         Channel number. Default: 1665\n"
+	"  -c <ch_nbr>,                 Channel number. Zero value: all channels in a set band.\n"
+	"                               Default: 1665\n"
 	"  -t, --c_scan_time <int>,     Scanning duration in seconds\n"
 	"                               (default: 10 secs, max: 62 secs).\n"
 	"  -e  --c_rx_exp_rssi_level <int>, Set client expected RSSI level on RX (dBm).\n"
 	"                                   Default: 0 (fast AGC).\n"
-	"  -n, --nw_id,         Custom network id. Default: 0 (network beacons).\n"
+	"      --use_filter,    Use filter for receiving packets destinated to this device,\n"
+	"                       i.e. short network id and receiver identity\n"
+	"                       (= tx id) from settings.\n"
+	"                       Default: false, no filter.\n"
 	"  -f, --force,         Use special force to override current items in phy api scheduler\n"
 	"                       so that RX operation is having priority over others.\n"
 	"                       Note: when used, other running items are not scheduled to modem.\n"
+	"  -a, --use_all_channels,     Channel access override:\n"
+	"                              this is overriding Harmonized standard\n"
+	"                              requirements (ETSI EN 301 406-2, V3.0.1, ch 4.3.2.3,\n"
+	"                              Table 2) to use only odd channel numbers at band #1.\n"
 	"Following options only impacts on RSSI measurements during RX:\n"
 	"  -i <interval_secs>,        RSSI measurement reporting interval in seconds.\n"
 	"                             Default: 1 seconds, zero to disable.\n"
 	"  --free_th <dbm_value>,     Channel access - considered as free:\n"
 	"                             measured signal level <= <value>.\n"
 	"                             Set a threshold for RSSI scan free threshold (dBm).\n"
-	"                             Default from b_rx_rssi_scan_busy_th\n"
+	"                             Default from rssi_scan_busy_th\n"
 	"                             Channel access - considered as possible:\n"
 	"                             busy_th >= measured signal level > free_th\n"
 	"  --busy_th <dbm_value>,     Channel access - considered as busy:\n"
 	"                             measured signal level > <value>.\n"
 	"                             Set a threshold for RSSI scan busy threshold (dBm).\n"
-	"                             Default from b_rx_rssi_scan_free_th\n";
+	"                             Default from rssi_scan_free_th\n";
 
-/* Following are not having short options: */
+/* The following do not have short options:: */
 enum {
 	DECT_SHELL_RX_RSSI_SCAN_FREE_TH = 1001,
 	DECT_SHELL_RX_RSSI_SCAN_BUSY_TH,
+	DECT_SHELL_RX_USE_FILTER,
 };
 
 /* Specifying the expected options (both long and short): */
 static struct option long_options_rx[] = {
-	{"c_ch", required_argument, 0, 'c'},
 	{"c_scan_time", required_argument, 0, 't'},
-	{"nw_id", required_argument, 0, 'n'},
 	{"c_rx_exp_rssi_level", required_argument, 0, 'e'},
 	{"force", no_argument, 0, 'f'},
+	{"use_all_channels", no_argument, 0, 'a'},
 	{"free_th", required_argument, 0, DECT_SHELL_RX_RSSI_SCAN_FREE_TH},
 	{"busy_th", required_argument, 0, DECT_SHELL_RX_RSSI_SCAN_BUSY_TH},
+	{"use_filter", no_argument, 0, DECT_SHELL_RX_USE_FILTER},
 	{0, 0, 0, 0}};
-
-static void dect_shell_rx_print_usage(void)
-{
-	desh_print_no_format(dect_rx_usage_str);
-}
 
 static int dect_phy_rx_cmd(const struct shell *shell, size_t argc, char **argv)
 {
@@ -1210,22 +1257,23 @@ static int dect_phy_rx_cmd(const struct shell *shell, size_t argc, char **argv)
 		params.channel = 1665;
 		params.suspend_scheduler = false;
 		params.expected_rssi_level = 0;
-		params.network_id = 0;
 		params.duration_secs = 10;
 		params.busy_rssi_limit = current_settings->rssi_scan.busy_threshold;
 		params.free_rssi_limit = current_settings->rssi_scan.free_threshold;
 		params.rssi_interval_secs = 1;
+		params.ch_acc_use_all_channels = false;
 
-		/* No filters */
+		/* No filters as a default */
+		params.network_id = 0;
 		params.filter.is_short_network_id_used = false;
 		params.filter.receiver_identity = 0;
 		params.filter.short_network_id = 0;
 
-		while ((opt = getopt_long(argc, argv, "i:n:e:t:c:fh", long_options_rx,
+		while ((opt = getopt_long(argc, argv, "i:e:t:c:fha", long_options_rx,
 					  &long_index)) != -1) {
 			switch (opt) {
-			case 'n': {
-				params.network_id = atoi(optarg);
+			case 'a': {
+				params.ch_acc_use_all_channels = true;
 				break;
 			}
 			case 'c': {
@@ -1252,6 +1300,15 @@ static int dect_phy_rx_cmd(const struct shell *shell, size_t argc, char **argv)
 				params.busy_rssi_limit = atoi(optarg);
 				break;
 			}
+			case DECT_SHELL_RX_USE_FILTER: {
+				params.network_id = current_settings->common.network_id;
+				params.filter.is_short_network_id_used = true;
+				params.filter.receiver_identity =
+					current_settings->common.transmitter_id;
+				params.filter.short_network_id =
+					(uint8_t)(current_settings->common.network_id & 0xFF);
+				break;
+			}
 			case 'i': {
 				params.rssi_interval_secs = atoi(optarg);
 				break;
@@ -1269,7 +1326,7 @@ static int dect_phy_rx_cmd(const struct shell *shell, size_t argc, char **argv)
 			goto show_usage;
 		}
 
-		ret = dect_phy_ctrl_rx_start(&params);
+		ret = dect_phy_ctrl_rx_start(&params, false);
 		if (ret) {
 			desh_error("Cannot start RX, err %d", ret);
 		} else {
@@ -1282,17 +1339,18 @@ static int dect_phy_rx_cmd(const struct shell *shell, size_t argc, char **argv)
 	return 0;
 
 show_usage:
-	dect_shell_rx_print_usage();
+	desh_print_no_format(dect_rx_usage_str);
 	return 0;
 }
 
 /**************************************************************************************************/
 
-/* Following are not having short options: */
+/* The following do not have short options:: */
 enum {
 	DECT_SHELL_SETT_COMMON_RSSI_SCAN_TIME_PER_CHANNEL,
 	DECT_SHELL_SETT_COMMON_RSSI_SCAN_FREE_THRESHOLD,
 	DECT_SHELL_SETT_COMMON_RSSI_SCAN_BUSY_THRESHOLD,
+	DECT_SHELL_SETT_COMMON_RSSI_SCAN_SUITABLE_PERCENT,
 	DECT_SHELL_SETT_COMMON_HARQ_MDM_PROCESS_COUNT,
 	DECT_SHELL_SETT_COMMON_HARQ_MDM_EXPIRY_TIME,
 	DECT_SHELL_SETT_COMMON_SUBSLOT_COUNT_HARQ_FEEDBACK_RX,
@@ -1314,7 +1372,10 @@ static const char dect_phy_sett_cmd_usage_str[] =
 	"  -b, --band_nbr <#>,        Set used band.\n"
 	"                             Impacted on when a channel is set as zero\n"
 	"                             (e.g. in rssi_scan).\n"
-	"                             Default: band #1. Other supported bands are: 2, 9 and 22.\n"
+	"                             Default: band #1. Other supported bands are:\n"
+	"                             2, 4, 9 and 22.\n"
+	"  -d, --sche_delay <usecs>,  Estimated scheduling delay (us).\n"
+	"RSSI measurement settings:\n"
 	"      --rssi_scan_time <msecs>,   Channel access: set the time (msec) that is used for\n"
 	"                                  scanning per channel for RSSI measurements.\n"
 	"                                  Default: 2 seconds + frame.\n"
@@ -1327,7 +1388,8 @@ static const char dect_phy_sett_cmd_usage_str[] =
 	"                                  Channel access - considered as possible:\n"
 	"                                  rssi_scan_busy_th >= measured signal level >\n"
 	"                                  rssi_scan_free_th\n"
-	"  -d, --sche_delay <usecs>,       Estimated scheduling delay (us).\n"
+	"      --rssi_scan_suitable_percent <int>,  SCAN_SUITABLE as per MAC spec.\n"
+	"                                           Impact only with subslot count based verdict.\n"
 	"Common RX settings:\n"
 	"      --rx_exp_rssi_level,        Set default expected RSSI level on RX (dBm).\n"
 	"Common TX settings:\n"
@@ -1360,11 +1422,6 @@ static const char dect_phy_sett_cmd_usage_str[] =
 	"                                                    client.\n"
 	"                                                    Default: 4 (subslots).\n";
 
-static void dect_phy_sett_cmd_print_usage(void)
-{
-	desh_print_no_format(dect_phy_sett_cmd_usage_str);
-}
-
 /* Specifying the expected options (both long and short): */
 static struct option long_options_settings[] = {
 	{"nw_id", required_argument, 0, 'n'},
@@ -1389,6 +1446,8 @@ static struct option long_options_settings[] = {
 	 DECT_SHELL_SETT_COMMON_RSSI_SCAN_FREE_THRESHOLD},
 	{"rssi_scan_busy_th", required_argument, 0,
 	 DECT_SHELL_SETT_COMMON_RSSI_SCAN_BUSY_THRESHOLD},
+	{"rssi_scan_suitable_percent", required_argument, 0,
+	 DECT_SHELL_SETT_COMMON_RSSI_SCAN_SUITABLE_PERCENT},
 	{"reset", no_argument, 0, DECT_SHELL_SETT_RESET_ALL},
 	{"read", no_argument, 0, 'r'},
 	{0, 0, 0, 0}};
@@ -1419,6 +1478,8 @@ static void dect_phy_sett_cmd_print(struct dect_phy_settings *dect_sett)
 		   dect_sett->rssi_scan.busy_threshold, dect_sett->rssi_scan.free_threshold);
 	desh_print("  ch access: RSSI scan free (dBm):...............signal level <= %d",
 		   dect_sett->rssi_scan.free_threshold);
+	desh_print("  ch access: SCAN_SUITABLE%%......................%d%%",
+		   dect_sett->rssi_scan.type_subslots_params.scan_suitable_percent);
 	desh_print("Scheduler common settings:");
 	desh_print("  scheduling offset/delay (us).............................%d",
 		   dect_sett->scheduler.scheduling_delay_us);
@@ -1448,6 +1509,7 @@ static int dect_phy_sett_cmd(const struct shell *shell, size_t argc, char **argv
 
 	int long_index = 0;
 	int opt, tmp_value;
+	bool phy_api_reinit_needed = false;
 
 	if (argc < 2) {
 		goto show_usage;
@@ -1488,16 +1550,18 @@ static int dect_phy_sett_cmd(const struct shell *shell, size_t argc, char **argv
 		case 'b': {
 			tmp_value = atoi(optarg);
 			if (tmp_value == 1 || tmp_value == 2 || tmp_value == 4 || tmp_value == 9 ||
-			    tmp_value == 22 || tmp_value == 868) {
+			    tmp_value == 22) {
 				newsettings.common.band_nbr = tmp_value;
 			} else {
 				desh_error("Band #%d is not supported.", tmp_value);
 				return -EINVAL;
 			}
-			if (newsettings.common.band_nbr == 4 ||
-			    newsettings.common.band_nbr == 868) {
-				desh_print("Custom low band chosen: "
-					   "custom modem fw is needed to get it working.");
+			if ((newsettings.common.band_nbr == 4 &&
+			     current_settings.common.band_nbr != 4) ||
+			    (current_settings.common.band_nbr == 4 &&
+			     newsettings.common.band_nbr != 4)) {
+				/* If changing to/from 4, we need dto reinit PHY API */
+				phy_api_reinit_needed = true;
 			}
 			break;
 		}
@@ -1570,9 +1634,20 @@ static int dect_phy_sett_cmd(const struct shell *shell, size_t argc, char **argv
 			newsettings.rssi_scan.busy_threshold = tmp_value;
 			break;
 		}
+		case DECT_SHELL_SETT_COMMON_RSSI_SCAN_SUITABLE_PERCENT: {
+			tmp_value = atoi(optarg);
+			if (tmp_value < 0 || tmp_value > 100) {
+				desh_error("Give decent value (0-100)");
+				return -EINVAL;
+			}
+			newsettings.rssi_scan.type_subslots_params.scan_suitable_percent =
+				tmp_value;
+			break;
+		}
 		case DECT_SHELL_SETT_RESET_ALL: {
 			dect_common_settings_defaults_set();
-			return 0;
+			phy_api_reinit_needed = true;
+			goto settings_updated;
 		}
 		case 'h':
 			goto show_usage;
@@ -1588,11 +1663,15 @@ static int dect_phy_sett_cmd(const struct shell *shell, size_t argc, char **argv
 	}
 
 	dect_common_settings_write(&newsettings);
-	dect_phy_ctrl_msgq_non_data_op_add(DECT_PHY_CTRL_OP_SETTINGS_UPDATED);
+settings_updated:
+	dect_phy_ctrl_msgq_data_op_add(
+		DECT_PHY_CTRL_OP_SETTINGS_UPDATED,
+		(void *)&phy_api_reinit_needed,
+		sizeof(bool));
 	return 0;
 
 show_usage:
-	dect_phy_sett_cmd_print_usage();
+	desh_print_no_format(dect_phy_sett_cmd_usage_str);
 	return 0;
 }
 

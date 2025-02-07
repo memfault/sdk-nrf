@@ -87,12 +87,28 @@
     - MarekPieta
 
 - scenarios:
-    - sample.nrf5340.multiprotocol_rpmsg
+    - applications.sdp.gpio.mbox
   platforms:
-    - nrf5340dk/nrf5340/cpunet
-  ram_size: 55296
-  rom_size: 235929
+    - all
+  rom_size: 3800
+  ram_size: 7100
   codeowners:
-    - ankuns
-    - dawidprzybylo
-    - piotrkoziar
+    - nrfconnect/ncs-ll-ursus
+
+- scenarios:
+    - applications.sdp.gpio.icmsg
+  platforms:
+    - all
+  rom_size: 5300
+  ram_size: 8600
+  codeowners:
+    - nrfconnect/ncs-ll-ursus
+
+- scenarios:
+    - applications.sdp.gpio.icbmsg
+  platforms:
+    - all
+  rom_size: 8700
+  ram_size: 12000
+  codeowners:
+    - nrfconnect/ncs-ll-ursus

@@ -27,9 +27,13 @@ For detailed integration instructions of specific technologies and components, c
    app_dev/device_guides/nrf91/index
    app_dev/device_guides/nrf70/index
    app_dev/device_guides/nrf54l/index
-   app_dev/device_guides/nrf54h
+   app_dev/device_guides/nrf54h/index
    app_dev/device_guides/nrf53/index
    app_dev/device_guides/nrf52/index
+   app_dev/device_guides/thingy91x/index
+   app_dev/device_guides/thingy91/index
+   app_dev/device_guides/thingy53/index
    app_dev/device_guides/pmic/index
    app_dev/device_guides/fem/index
+   app_dev/device_guides/custom/index
    app_dev/device_guides/wifi_coex

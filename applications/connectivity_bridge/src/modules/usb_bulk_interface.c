@@ -12,6 +12,7 @@
 #include <zephyr/usb/msos_desc.h>
 #include <zephyr/net_buf.h>
 #include <usb_descriptor.h>
+#include <cmsis_dap.h>
 
 #define MODULE bulk_interface
 #include "module_state_event.h"
@@ -22,6 +23,8 @@ LOG_MODULE_REGISTER(MODULE, CONFIG_BRIDGE_BULK_LOG_LEVEL);
 
 /* needs to be included after defining logging config */
 #include "usb_bulk_msosv2.h"
+
+#include <cmsis_dap.h>
 
 #define USB_BULK_PACKET_SIZE  64
 #define USB_BULK_PACKET_COUNT 4
@@ -41,7 +44,7 @@ static K_FIFO_DEFINE(dap_rx_queue);
 NET_BUF_POOL_FIXED_DEFINE(dapusb_rx_pool, USB_BULK_PACKET_COUNT, USB_BULK_PACKET_SIZE, 0, NULL);
 
 /* Execute CMSIS-DAP command and write reply into output buffer */
-size_t dap_execute_cmd(uint8_t *in, uint8_t *out);
+size_t dap_execute_vendor_cmd(uint8_t *in, uint8_t *out);
 
 /* string descriptor for the interface */
 #define DAP_IFACE_STR_DESC "CMSIS-DAP v2"
@@ -171,8 +174,11 @@ static int dap_usb_process(void)
 	static uint8_t tx_buf[USB_BULK_PACKET_SIZE];
 	struct net_buf *buf = k_fifo_get(&dap_rx_queue, K_FOREVER);
 	uint8_t ep = dapusb_config.endpoint[DAP_USB_EP_IN_IDX].ep_addr;
-
+#if defined(CONFIG_BRIDGE_CMSIS_DAP_NORDIC_COMMANDS)
+	len = dap_execute_vendor_cmd(buf->data, tx_buf);
+#else
 	len = dap_execute_cmd(buf->data, tx_buf);
+#endif /* defined(CONFIG_BRIDGE_CMSIS_DAP_NORDIC_COMMANDS) */
 	LOG_DBG("response length %u, starting with [0x%02X, 0x%02X]", len, tx_buf[0], tx_buf[1]);
 	net_buf_unref(buf);
 
@@ -196,6 +202,8 @@ static int dap_usb_thread_fn(const struct device *dev)
 	return 0;
 }
 
+const struct device *const swd_dev = DEVICE_DT_GET_ONE(zephyr_swdp_gpio);
+
 K_THREAD_DEFINE(dap_usb_thread,
 		CONFIG_BULK_USB_THREAD_STACK_SIZE, dap_usb_thread_fn, NULL, NULL, NULL, 5, 0, 0);
 
@@ -208,10 +216,20 @@ static bool app_event_handler(const struct app_event_header *aeh)
 			/* tell the rest of the system that we are busy. */
 			module_set_state(MODULE_STATE_READY);
 
-			/* Add MS OS 2.0 BOS descriptor to BOS structure */
+			/* add MS OS 2.0 BOS descriptor to BOS structure. */
 			usb_bos_register_cap((void *)&bos_cap_msosv2);
-			/* Point interface index to string descriptor */
+			/* point interface index to string descriptor. */
 			iface_string_desc_init(&dapusb_config);
+
+			if (!device_is_ready(swd_dev)) {
+				LOG_ERR("SWD device is not ready");
+			}
+
+			int ret = dap_setup(swd_dev);
+
+			if (ret) {
+				LOG_ERR("Failed to initialize DAP controller, %d", ret);
+			}
 
 			/* tell the usb_cdc_handler we are done. */
 			module_set_state(MODULE_STATE_STANDBY);

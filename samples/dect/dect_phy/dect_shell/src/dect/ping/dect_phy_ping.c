@@ -13,10 +13,10 @@
 #include <zephyr/sys/byteorder.h>
 
 #include <dk_buttons_and_leds.h>
+#include <nrf_modem_dect_phy.h>
 
 #include "desh_defines.h"
 #include "desh_print.h"
-#include "nrf_modem_dect_phy.h"
 
 #include "dect_phy_common_rx.h"
 #include "dect_common_settings.h"
@@ -55,6 +55,7 @@ struct dect_phy_ping_tx_metrics {
 	uint32_t tx_total_data_amount;
 	uint32_t tx_total_ping_req_count;
 	uint32_t tx_total_ping_resp_count;
+	uint32_t tx_failed_due_to_lbt;
 };
 
 struct dect_phy_ping_rx_metrics {
@@ -521,15 +522,10 @@ static void dect_phy_ping_op_complete_cb(uint64_t const *time, int16_t temperatu
 		.status = status,
 		.time = *time,
 	};
-	struct dect_phy_api_scheduler_op_completed_params op_completed_params = {
-		.handle = handle,
-		.status = status,
-		.time = *time,
-	};
 
 	dect_app_modem_time_save(time);
 
-	dect_phy_api_scheduler_mdm_op_completed(&op_completed_params);
+	dect_phy_api_scheduler_mdm_op_completed(&ping_op_completed_params);
 	dect_phy_ping_msgq_data_op_add(DECT_PHY_PING_EVENT_MDM_OP_COMPLETED,
 				       (void *)&ping_op_completed_params,
 				       sizeof(struct dect_phy_common_op_completed_params));
@@ -548,6 +544,8 @@ static void dect_phy_ping_rx_pcc_cb(uint64_t const *time,
 	ctrl_pcc_op_params.pcc_status = *p_rx_status;
 	ctrl_pcc_op_params.phy_header = *p_phy_header;
 	ctrl_pcc_op_params.time = *time;
+	ctrl_pcc_op_params.stf_start_time = p_rx_status->stf_start_time;
+	/* Others from struct dect_phy_common_op_pcc_rcv_params are not needed */
 
 	/* Provide HARQ feedback if requested */
 	if (p_rx_status->header_status == NRF_MODEM_DECT_PHY_HDR_STATUS_VALID &&
@@ -631,7 +629,7 @@ static void dect_phy_ping_rx_pdc_cb(uint64_t const *time,
 
 	dect_app_modem_time_save(time);
 
-	struct dect_phy_commmon_op_pdc_rcv_params ping_pdc_op_params;
+	struct dect_phy_commmon_op_pdc_rcv_params ping_pdc_op_params = { 0 };
 
 	ping_pdc_op_params.rx_status = *p_rx_status;
 
@@ -642,6 +640,9 @@ static void dect_phy_ping_rx_pdc_cb(uint64_t const *time,
 		dect_common_utils_phy_tx_power_to_dbm(ping_data.rx_metrics.rx_phy_transmit_pwr);
 	ping_pdc_op_params.rx_mcs = ping_data.rx_metrics.rx_last_pcc_mcs;
 	ping_pdc_op_params.rx_rssi_level_dbm = rssi_level;
+	ping_pdc_op_params.last_rx_op_channel = ping_data.cmd_params.channel;
+
+	/* Others from struct dect_phy_commmon_op_pdc_rcv_params are not needed */
 
 	if (length <= sizeof(ping_pdc_op_params.data)) {
 		memcpy(ping_pdc_op_params.data, p_data, length);
@@ -791,9 +792,10 @@ static void dect_phy_ping_stf_cover_seq_control_cb(
 	printk("WARN: Unexpectedly in %s\n", (__func__));
 }
 
+extern struct k_sem dect_phy_ctrl_mdm_api_deinit_sema;
 static void dect_phy_ping_deinit_cb(const uint64_t *time, enum nrf_modem_dect_phy_err err)
 {
-	dect_phy_ctrl_msgq_non_data_op_add(DECT_PHY_CTRL_OP_PING_CMD_DONE);
+	k_sem_give(&dect_phy_ctrl_mdm_api_deinit_sema);
 }
 
 static const struct nrf_modem_dect_phy_callbacks ping_phy_api_config = {
@@ -822,9 +824,10 @@ static void dect_phy_ping_client_tx_all_intervals_done(uint32_t handle)
 	dect_phy_ping_msgq_non_data_op_add(DECT_PHY_PING_EVENT_CLIENT_SCHEDULER_PINGING_DONE);
 }
 
-static void dect_phy_ping_client_tx_complete_cb(uint64_t time, uint64_t tx_frame_time, int err)
+static void dect_phy_ping_client_tx_complete_cb(
+	struct dect_phy_common_op_completed_params *params, uint64_t tx_frame_time)
 {
-	if (!err) {
+	if (params->status == NRF_MODEM_DECT_PHY_SUCCESS) {
 		ping_data.client_data.tx_ping_req_tx_scheduled_mdm_ticks = tx_frame_time;
 		ping_data.tx_metrics.tx_total_data_amount += ping_data.client_data.tx_data_len;
 	}
@@ -876,7 +879,10 @@ static void dect_phy_ping_client_tx_schedule(uint64_t first_possible_tx)
 	sched_list_item_conf->length_slots = cmd_params->slot_count;
 	sched_list_item_conf->length_subslots = 0;
 
-	sched_list_item_conf->tx.phy_lbt_period = 0;
+	sched_list_item_conf->tx.phy_lbt_period = ping_data.client_data.tx_op.lbt_period;
+	sched_list_item_conf->tx.phy_lbt_rssi_threshold_max =
+		ping_data.client_data.tx_op.lbt_rssi_threshold_max;
+
 	sched_list_item->priority = DECT_PRIORITY1_TX;
 
 	sched_list_item_conf->tx.combined_tx_rx_use = true;
@@ -911,15 +917,17 @@ exit:
 
 static void dect_phy_ping_cmd_done(void)
 {
-	int ret = 0;
-
-	ping_data.on_going = false;
-	ret = nrf_modem_dect_phy_deinit();
-	if (ret) {
-		desh_error("nrf_modem_dect_phy_deinit failed, err=%d", ret);
-		dect_phy_ctrl_msgq_non_data_op_add(DECT_PHY_CTRL_OP_PING_CMD_DONE);
+	if (!ping_data.on_going) {
+		desh_error("%s called when not on going - caller %pS",
+			(__func__),
+			__builtin_return_address(0));
+		return;
 	}
-	desh_print("ping command done.");
+	ping_data.on_going = false;
+
+	/* Mdm phy api deinit is done by dect_phy_ctrl */
+
+	dect_phy_ctrl_msgq_non_data_op_add(DECT_PHY_CTRL_OP_PING_CMD_DONE);
 }
 
 static int dect_phy_ping_client_start(void)
@@ -963,7 +971,7 @@ static int dect_phy_ping_client_start(void)
 
 	uint64_t time_now = dect_app_modem_time_now();
 	uint64_t first_possible_tx =
-		time_now + (2 * US_TO_MODEM_TICKS(current_settings->scheduler.scheduling_delay_us));
+		time_now + (5 * US_TO_MODEM_TICKS(current_settings->scheduler.scheduling_delay_us));
 
 	/* Sending max amount of data that can be encoded to given slot amount */
 	int16_t ping_pdu_byte_count =
@@ -984,12 +992,14 @@ static int dect_phy_ping_client_start(void)
 		header.feedback.format1.harq_process_number0 = DECT_HARQ_CLIENT;
 	}
 
-	desh_print("Starting ping client on channel %d: byte count per TX: %d, slots %d, interval "
-		   "%d secs,"
-		   " mcs %d, count %d, timeout %d msecs, HARQ: %s, expected RSSI level on RX %d.",
+	desh_print("Starting ping client on channel %d:\n"
+		   "  byte count per TX: %d, slots %d, interval %d secs,\n"
+		   "  mcs %d, LBT period %d, count %d, timeout %d msecs, HARQ: %s,\n"
+		   "  expected RSSI level on RX %d.",
 		   params->channel, ping_pdu_byte_count, params->slot_count, params->interval_secs,
-		   params->tx_mcs, params->ping_count, params->timeout_msecs,
-		   (params->use_harq) ? "yes" : "no", params->expected_rx_rssi_level);
+		   params->tx_mcs, params->tx_lbt_period_symbols, params->ping_count,
+		   params->timeout_msecs, (params->use_harq) ? "yes" : "no",
+		   params->expected_rx_rssi_level);
 
 	uint16_t ping_pdu_payload_byte_count =
 		ping_pdu_byte_count - DECT_PHY_PING_TX_DATA_PDU_LEN_WITHOUT_PAYLOAD;
@@ -1021,7 +1031,11 @@ static int dect_phy_ping_client_start(void)
 	ping_data.client_data.tx_op.carrier = params->channel;
 	ping_data.client_data.tx_op.data_size = ping_pdu_byte_count;
 	ping_data.client_data.tx_op.data = encoded_data_to_send;
-	ping_data.client_data.tx_op.lbt_period = 0;
+	ping_data.client_data.tx_op.lbt_period = params->tx_lbt_period_symbols *
+		NRF_MODEM_DECT_SYMBOL_DURATION;
+	ping_data.client_data.tx_op.lbt_rssi_threshold_max =
+		params->tx_lbt_rssi_busy_threshold_dbm;
+
 	ping_data.client_data.tx_op.network_id = current_settings->common.network_id;
 	ping_data.client_data.tx_op.phy_header = &ping_data.client_data.tx_phy_header;
 	ping_data.client_data.tx_op.phy_type = DECT_PHY_HEADER_TYPE2;
@@ -1150,6 +1164,7 @@ static int dect_phy_ping_tx_request_results(void)
 	ping_pdu.header.transmitter_id = current_settings->common.transmitter_id;
 	ping_pdu.header.pwr_ctrl_expected_rssi_level_dbm =
 		params->pwr_ctrl_pdu_expected_rx_rssi_level;
+	ping_pdu.message.results_req.unused = 0;
 	dect_phy_ping_pdu_encode(encoded_data_to_send, &ping_pdu);
 
 	tx_op.bs_cqi = NRF_MODEM_DECT_PHY_BS_CQI_NOT_USED;
@@ -1157,6 +1172,7 @@ static int dect_phy_ping_tx_request_results(void)
 	tx_op.data_size = DECT_PHY_PING_RESULTS_REQ_LEN;
 	tx_op.data = encoded_data_to_send;
 	tx_op.lbt_period = 0;
+	tx_op.lbt_rssi_threshold_max = current_settings->rssi_scan.busy_threshold;
 	tx_op.network_id = current_settings->common.network_id;
 	tx_op.phy_header = &phy_header;
 	tx_op.phy_type = DECT_PHY_HEADER_TYPE2;
@@ -1229,6 +1245,8 @@ dect_phy_ping_client_report_local_results_and_req_server_results(int64_t *elapse
 		   ping_data.tx_metrics.tx_total_data_amount);
 	desh_print("  tx: ping req count:                      %d",
 		   ping_data.tx_metrics.tx_total_ping_req_count);
+	desh_print("  tx: ping failed due to LBT count:        %d",
+		   ping_data.tx_metrics.tx_failed_due_to_lbt);
 	desh_print("  rx: ping resp count:                     %d",
 		   ping_data.rx_metrics.rx_total_ping_resp_count);
 	desh_print("  rx: total amount of data:                %d bytes",
@@ -1267,7 +1285,7 @@ dect_phy_ping_client_report_local_results_and_req_server_results(int64_t *elapse
 	ping_data.restarted_count = 0;
 	dect_phy_ping_rx_metrics_reset(params);
 
-	memset(&ping_data.tx_metrics, 0, sizeof(struct dect_phy_ping_rx_metrics));
+	memset(&ping_data.tx_metrics, 0, sizeof(struct dect_phy_ping_tx_metrics));
 
 	return ret;
 }
@@ -1326,11 +1344,14 @@ static int dect_phy_ping_server_results_tx(char *result_str)
 	tx_op.data_size = bytes_to_send;
 	tx_op.data = encoded_data_to_send;
 	tx_op.lbt_period = 0;
+	tx_op.lbt_rssi_threshold_max = current_settings->rssi_scan.busy_threshold;
+
 	tx_op.network_id = current_settings->common.network_id;
 	tx_op.phy_header = &phy_header;
 	tx_op.phy_type = DECT_PHY_HEADER_TYPE2;
 	tx_op.handle = DECT_PHY_PING_RESULTS_RESP_TX_HANDLE;
 	tx_op.start_time = first_possible_tx;
+
 	tx_rx_param.tx = tx_op;
 	tx_rx_param.rx = ping_data.server_data.server_rx_op;
 
@@ -1418,6 +1439,8 @@ static int dect_phy_ping_server_ping_resp_tx(struct dect_phy_data_rcv_common_par
 	tx_op.data_size = bytes_to_send;
 	tx_op.data = encoded_data_to_send;
 	tx_op.lbt_period = 0;
+	tx_op.lbt_rssi_threshold_max = current_settings->rssi_scan.busy_threshold;
+
 	tx_op.network_id = current_settings->common.network_id;
 	tx_op.phy_header = &phy_header;
 	tx_op.phy_type = DECT_PHY_HEADER_TYPE2;
@@ -1445,7 +1468,9 @@ static void dect_phy_ping_server_report_local_and_tx_results(void)
 {
 
 	if (!ping_data.rx_metrics.rx_total_data_amount) {
-		desh_print("Nothing received on server side - no results to show.");
+		desh_print("Nothing received on server side - "
+			   "no results to show.");
+		goto clear_results;
 	}
 
 	int64_t elapsed_time_ms = ping_data.server_data.rx_last_data_received -
@@ -1491,6 +1516,7 @@ static void dect_phy_ping_server_report_local_and_tx_results(void)
 		desh_error("Cannot start sending server results");
 	}
 
+clear_results:
 	/* Clear results */
 	struct dect_phy_ping_params *params = &(ping_data.cmd_params);
 
@@ -1693,29 +1719,33 @@ static void dect_phy_ping_thread_fn(void)
 			struct dect_phy_common_op_completed_params *params =
 				(struct dect_phy_common_op_completed_params *)event.data;
 
-			if (params->status != NRF_MODEM_DECT_PHY_SUCCESS) {
-				char tmp_str[128] = {0};
-
-				dect_common_utils_modem_phy_err_to_string(
-					params->status, params->temperature, tmp_str);
-
-				if (params->status != NRF_MODEM_DECT_PHY_ERR_OP_CANCELED) {
-					if (dect_phy_ping_handle_is(params->handle)) {
-						desh_warn("%s: ping modem operation failed: %s, "
-							  "handle %d",
-							  __func__, tmp_str, params->handle);
-						dect_phy_ping_mdm_op_completed(params);
-					} else {
-						desh_error("%s: operation (handle %d) failed with "
-							   "status: %s",
-							   __func__, params->handle, tmp_str);
-					}
-				}
-			} else {
+			if (params->status == NRF_MODEM_DECT_PHY_SUCCESS) {
 				if (dect_phy_ping_handle_is(params->handle)) {
 					dect_phy_ping_mdm_op_completed(params);
 				} else if (params->handle == DECT_HARQ_FEEDBACK_TX_HANDLE) {
 					desh_print("HARQ feedback sent.");
+				}
+			} else if (params->status != NRF_MODEM_DECT_PHY_ERR_OP_CANCELED) {
+				char tmp_str[128] = {0};
+
+				dect_common_utils_modem_phy_err_to_string(
+					params->status, params->temperature, tmp_str);
+				if (dect_phy_ping_handle_is(params->handle)) {
+					if (params->status ==
+						NRF_MODEM_DECT_PHY_ERR_LBT_CHANNEL_BUSY) {
+						desh_warn("%s: cannot TX ping due to LBT, "
+							"channel was busy", __func__);
+						ping_data.tx_metrics.tx_failed_due_to_lbt++;
+					} else {
+						desh_warn("%s: ping modem operation "
+							"failed: %s, handle %d",
+							__func__, tmp_str, params->handle);
+					}
+					dect_phy_ping_mdm_op_completed(params);
+				} else {
+					desh_error("%s: operation (handle %d) failed with "
+						   "status: %s",
+						   __func__, params->handle, tmp_str);
 				}
 			}
 			break;
@@ -2032,6 +2062,8 @@ int dect_phy_ping_cmd_handle(struct dect_phy_ping_params *params)
 	struct nrf_modem_dect_phy_init_params ping_phy_init_params = {
 		.harq_rx_expiry_time_us = current_settings->harq.mdm_init_harq_expiry_time_us,
 		.harq_rx_process_count = current_settings->harq.mdm_init_harq_process_count,
+		.reserved = 0,
+		.band4_support = ((current_settings->common.band_nbr == 4) ? 1 : 0),
 	};
 	int ret;
 
@@ -2059,7 +2091,7 @@ int dect_phy_ping_cmd_handle(struct dect_phy_ping_params *params)
 void dect_phy_ping_cmd_stop(void)
 {
 	if (!ping_data.on_going) {
-		desh_print("NO ping command running - nothing to stop.");
+		desh_print("No ping command running - nothing to stop.");
 		return;
 	}
 	if (ping_data.cmd_params.role == DECT_PHY_COMMON_ROLE_CLIENT) {

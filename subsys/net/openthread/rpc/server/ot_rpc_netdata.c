@@ -18,58 +18,44 @@
 static void ot_rpc_cmd_netdata_get(const struct nrf_rpc_group *group, struct nrf_rpc_cbor_ctx *ctx,
 				   void *handler_data)
 {
-	struct nrf_rpc_cbor_ctx rsp_ctx;
-	otError error = OT_ERROR_NONE;
 	bool stable;
-	bool decoded_ok;
-	bool buff_allocated = false;
-	uint8_t length = 0;
+	uint8_t length;
+	otError error;
+	uint8_t *netdata;
+	struct nrf_rpc_cbor_ctx rsp_ctx;
+	size_t cbor_buffer_size = 0;
 
-	decoded_ok = zcbor_bool_decode(ctx->zs, &stable);
+	stable = nrf_rpc_decode_bool(ctx);
+	length = nrf_rpc_decode_uint(ctx);
 
-	if (!decoded_ok) {
-		error = OT_ERROR_INVALID_ARGS;
-		goto exit;
+	if (!nrf_rpc_decoding_done_and_check(group, ctx)) {
+		ot_rpc_report_cmd_decoding_error(OT_RPC_CMD_NETDATA_GET);
+		return;
 	}
 
-	decoded_ok = zcbor_uint_decode(ctx->zs, &length, sizeof(length));
-	if (!decoded_ok) {
-		error = OT_ERROR_INVALID_ARGS;
-		goto exit;
-	}
+	netdata = malloc(UINT8_MAX);
 
-	nrf_rpc_cbor_decoding_done(group, ctx);
-
-	NRF_RPC_CBOR_ALLOC(group, rsp_ctx, sizeof(error) + length + 3);
-	buff_allocated = true;
-
-	if (!zcbor_bstr_start_encode(rsp_ctx.zs)) {
-		error = OT_ERROR_FAILED;
-		goto exit;
+	if (!netdata) {
+		nrf_rpc_err(-ENOMEM, NRF_RPC_ERR_SRC_RECV, group, OT_RPC_CMD_NETDATA_GET,
+			    NRF_RPC_PACKET_TYPE_CMD);
+		return;
 	}
 
 	openthread_api_mutex_lock(openthread_get_default_context());
-
-	error = otNetDataGet(openthread_get_default_instance(), stable, rsp_ctx.zs[0].payload_mut,
-			     &length);
-	rsp_ctx.zs[0].payload_mut += length;
-
+	error = otNetDataGet(openthread_get_default_instance(), stable, netdata, &length);
 	openthread_api_mutex_unlock(openthread_get_default_context());
 
-	if (!zcbor_bstr_end_encode(rsp_ctx.zs, NULL)) {
-		goto exit;
+	cbor_buffer_size += 1 + sizeof(error);
+	cbor_buffer_size += (error == OT_ERROR_NONE) ? 2 + length : 0;
+
+	NRF_RPC_CBOR_ALLOC(group, rsp_ctx, cbor_buffer_size);
+	nrf_rpc_encode_uint(&rsp_ctx, error);
+
+	if (error == OT_ERROR_NONE) {
+		nrf_rpc_encode_buffer(&rsp_ctx, netdata, length);
 	}
 
-exit:
-	if (!decoded_ok) {
-		nrf_rpc_cbor_decoding_done(group, ctx);
-	}
-
-	if (!buff_allocated) {
-		NRF_RPC_CBOR_ALLOC(group, rsp_ctx, sizeof(error) + 1);
-	}
-
-	zcbor_uint_encode(rsp_ctx.zs, &error, sizeof(error));
+	free(netdata);
 	nrf_rpc_cbor_rsp_no_err(group, &rsp_ctx);
 }
 
@@ -77,43 +63,26 @@ static void ot_rpc_cmd_get_next_service(const struct nrf_rpc_group *group,
 					struct nrf_rpc_cbor_ctx *ctx, void *handler_data)
 {
 	struct nrf_rpc_cbor_ctx rsp_ctx;
-	otError error = OT_ERROR_NONE;
+	otError error;
 	otNetworkDataIterator iterator;
-	bool decoded_ok = false;
 	otServiceConfig service_config;
 
-	NRF_RPC_CBOR_ALLOC(group, rsp_ctx, sizeof(error) + sizeof(service_config) + 7);
-
-	decoded_ok = zcbor_uint_decode(ctx->zs, &iterator, sizeof(iterator));
-
-	if (!decoded_ok) {
-		error = OT_ERROR_INVALID_ARGS;
-		goto exit;
+	iterator = nrf_rpc_decode_uint(ctx);
+	if (!nrf_rpc_decoding_done_and_check(group, ctx)) {
+		ot_rpc_report_cmd_decoding_error(OT_RPC_CMD_NETDATA_GET_NEXT_SERVICE);
+		return;
 	}
-
-	nrf_rpc_cbor_decoding_done(group, ctx);
 
 	openthread_api_mutex_lock(openthread_get_default_context());
 	error = otNetDataGetNextService(openthread_get_default_instance(), &iterator,
 					&service_config);
 	openthread_api_mutex_unlock(openthread_get_default_context());
 
-	if (!zcbor_uint_encode(rsp_ctx.zs, &iterator, sizeof(iterator))) {
-		error = OT_ERROR_FAILED;
-		goto exit;
-	}
+	NRF_RPC_CBOR_ALLOC(group, rsp_ctx, sizeof(error) + sizeof(service_config) + 7);
 
-	if (error == OT_ERROR_NONE) {
-		ot_rpc_encode_service_config(&rsp_ctx, &service_config);
-	} else {
-		ot_rpc_encode_service_config(&rsp_ctx, NULL);
-	}
-
-exit:
-	if (!decoded_ok) {
-		nrf_rpc_cbor_decoding_done(group, ctx);
-	}
-	zcbor_uint_encode(rsp_ctx.zs, &error, sizeof(error));
+	nrf_rpc_encode_uint(&rsp_ctx, iterator);
+	ot_rpc_encode_service_config(&rsp_ctx, error == OT_ERROR_NONE ? &service_config : NULL);
+	nrf_rpc_encode_uint(&rsp_ctx, error);
 	nrf_rpc_cbor_rsp_no_err(group, &rsp_ctx);
 }
 
@@ -122,42 +91,25 @@ static void ot_rpc_cmd_netdata_get_next_on_mesh_prefix(const struct nrf_rpc_grou
 						       void *handler_data)
 {
 	struct nrf_rpc_cbor_ctx rsp_ctx;
-	otError error = OT_ERROR_NONE;
+	otError error;
 	otNetworkDataIterator iterator;
-	bool decoded_ok = false;
 	otBorderRouterConfig config;
 
-	NRF_RPC_CBOR_ALLOC(group, rsp_ctx, sizeof(error) + sizeof(config) + 14);
-
-	decoded_ok = zcbor_uint_decode(ctx->zs, &iterator, sizeof(iterator));
-
-	if (!decoded_ok) {
-		error = OT_ERROR_INVALID_ARGS;
-		goto exit;
+	iterator = nrf_rpc_decode_uint(ctx);
+	if (!nrf_rpc_decoding_done_and_check(group, ctx)) {
+		ot_rpc_report_cmd_decoding_error(OT_RPC_CMD_NETDATA_GET_NEXT_ON_MESH_PREFIX);
+		return;
 	}
-
-	nrf_rpc_cbor_decoding_done(group, ctx);
 
 	openthread_api_mutex_lock(openthread_get_default_context());
 	error = otNetDataGetNextOnMeshPrefix(openthread_get_default_instance(), &iterator, &config);
 	openthread_api_mutex_unlock(openthread_get_default_context());
 
-	if (!zcbor_uint_encode(rsp_ctx.zs, &iterator, sizeof(iterator))) {
-		error = OT_ERROR_FAILED;
-		goto exit;
-	}
+	NRF_RPC_CBOR_ALLOC(group, rsp_ctx, sizeof(error) + sizeof(config) + 14);
 
-	if (error == OT_ERROR_NONE) {
-		ot_rpc_encode_border_router_config(&rsp_ctx, &config);
-	} else {
-		ot_rpc_encode_border_router_config(&rsp_ctx, NULL);
-	}
-
-exit:
-	if (!decoded_ok) {
-		nrf_rpc_cbor_decoding_done(group, ctx);
-	}
-	zcbor_uint_encode(rsp_ctx.zs, &error, sizeof(error));
+	nrf_rpc_encode_uint(&rsp_ctx, iterator);
+	ot_rpc_encode_border_router_config(&rsp_ctx, error == OT_ERROR_NONE ? &config : NULL);
+	nrf_rpc_encode_uint(&rsp_ctx, error);
 	nrf_rpc_cbor_rsp_no_err(group, &rsp_ctx);
 }
 

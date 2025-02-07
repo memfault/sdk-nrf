@@ -17,10 +17,6 @@
 #include "pwm/pwm_device.h"
 #endif
 
-#ifdef CONFIG_CHIP_OTA_REQUESTOR
-#include "dfu/ota/ota_util.h"
-#endif
-
 #include <app-common/zap-generated/attributes/Accessors.h>
 #include <app/DeferredAttributePersistenceProvider.h>
 #include <app/clusters/identify-server/identify-server.h>
@@ -264,6 +260,29 @@ void AppTask::UpdateClusterState()
 	});
 }
 
+void AppTask::InitPWMDDevice()
+{
+#if defined(CONFIG_PWM)
+	/* Initialize lighting device (PWM) */
+	uint8_t minLightLevel = kDefaultMinLevel;
+	Clusters::LevelControl::Attributes::MinLevel::Get(kLightEndpointId, &minLightLevel);
+
+	uint8_t maxLightLevel = kDefaultMaxLevel;
+	Clusters::LevelControl::Attributes::MaxLevel::Get(kLightEndpointId, &maxLightLevel);
+
+	Clusters::LevelControl::Attributes::CurrentLevel::TypeInfo::Type currentLevel;
+	Clusters::LevelControl::Attributes::CurrentLevel::Get(kLightEndpointId, currentLevel);
+
+	int ret =
+		mPWMDevice.Init(&sLightPwmDevice, minLightLevel, maxLightLevel, currentLevel.ValueOr(kDefaultMaxLevel));
+	if (ret != 0) {
+		LOG_ERR("Failed to initialize PWD device.");
+	}
+
+	mPWMDevice.SetCallbacks(ActionInitiated, ActionCompleted);
+#endif
+}
+
 CHIP_ERROR AppTask::Init()
 {
 	/* Initialize Matter stack */
@@ -291,22 +310,6 @@ CHIP_ERROR AppTask::Init()
 
 	/* Initialize trigger effect timer */
 	k_timer_init(&sTriggerEffectTimer, &AppTask::TriggerEffectTimerTimeoutCallback, nullptr);
-
-	/* Initialize lighting device (PWM) */
-	uint8_t minLightLevel = kDefaultMinLevel;
-	Clusters::LevelControl::Attributes::MinLevel::Get(kLightEndpointId, &minLightLevel);
-
-	uint8_t maxLightLevel = kDefaultMaxLevel;
-	Clusters::LevelControl::Attributes::MaxLevel::Get(kLightEndpointId, &maxLightLevel);
-
-#if defined(CONFIG_PWM)
-	int ret = mPWMDevice.Init(&sLightPwmDevice, minLightLevel, maxLightLevel, maxLightLevel);
-	if (ret != 0) {
-		return chip::System::MapErrorZephyr(ret);
-	}
-
-	mPWMDevice.SetCallbacks(ActionInitiated, ActionCompleted);
-#endif
 
 	return Nrf::Matter::StartServer();
 }

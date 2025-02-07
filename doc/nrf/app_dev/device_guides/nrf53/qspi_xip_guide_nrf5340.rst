@@ -92,7 +92,7 @@ See the following snippet for an example of the Nordic Thingy:53 configuration t
     };
 
 .. note::
-    Due to QSPI peripheral product anomaly, the QSPI peripheral must be ran with the ``HFCLK192MCTRL=0`` setting.
+    Due to QSPI peripheral product anomaly, the QSPI peripheral must be run with the ``HFCLK192MCTRL=0`` setting.
     Any other value may cause undefined operation of the device.
 
 Add the following to the DTS overlay for your board:
@@ -204,6 +204,9 @@ Programming the project
 
 For the nRF5340 DK and other boards equipped with flash working in the QSPI mode, use the :ref:`standard programming command <programming>` (``west flash``).
 For other cases, set up a configuration file for nrfjprog, as described in the following section.
+
+.. note::
+      |nrfjprog_deprecation_note|
 
 Programming to external flash in SPI/DSPI mode
 ==============================================

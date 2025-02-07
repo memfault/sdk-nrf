@@ -15,9 +15,9 @@
 
 #include <modem/nrf_modem_lib.h>
 #include <nrf_modem_at.h>
+#include <nrf_modem_dect_phy.h>
 
 #include "desh_print.h"
-#include "nrf_modem_dect_phy.h"
 
 #include "dect_common_utils.h"
 #include "dect_common_settings.h"
@@ -30,6 +30,8 @@
 #include "dect_phy_perf.h"
 #include "dect_phy_ping.h"
 #include "dect_phy_rf_tool.h"
+#include "dect_phy_mac.h"
+#include "dect_phy_mac_nbr.h"
 #include "dect_phy_ctrl.h"
 
 #define DECT_PHY_CTRL_STACK_SIZE 4096
@@ -48,12 +50,13 @@ static struct dect_phy_ctrl_data {
 
 	bool scheduler_suspended;
 
-	bool perf_on_going;
-	bool ping_on_going;
-	bool cert_on_going;
+	bool perf_ongoing;
+	bool ping_ongoing;
+	bool cert_ongoing;
 	bool ext_command_running;
 
 	bool rx_cmd_on_going;
+	uint16_t rx_cmd_current_channel;
 	struct dect_phy_rx_cmd_params rx_cmd_params;
 
 	bool time_cmd;
@@ -66,13 +69,14 @@ static struct dect_phy_ctrl_data {
 	uint8_t last_received_pcc_short_nw_id;
 	uint16_t last_received_pcc_transmitter_short_rd_id;
 
+	int16_t last_valid_temperature;
+
 	uint8_t last_received_pcc_phy_len;
 	enum dect_phy_packet_length_type last_received_pcc_phy_len_type;
 
-	bool rssi_scan_on_going;
+	bool rssi_scan_ongoing;
 	bool rssi_scan_cmd_running;
 	struct dect_phy_rssi_scan_params rssi_scan_params;
-	struct dect_phy_rssi_channel_scan_result_t rssi_scan_results;
 	dect_phy_ctrl_rssi_scan_completed_callback_t rssi_scan_complete_cb;
 
 	/* Registered callbacks for ext command usage */
@@ -84,14 +88,14 @@ static struct dect_phy_ctrl_data {
 
 K_SEM_DEFINE(rssi_scan_sema, 0, 1);
 
-K_SEM_DEFINE(phy_api_deinit, 0, 1);
-K_SEM_DEFINE(phy_api_init, 0, 1);
+K_SEM_DEFINE(dect_phy_ctrl_mdm_api_deinit_sema, 0, 1);
+K_SEM_DEFINE(dect_phy_ctrl_mdm_api_init_sema, 0, 1);
 
 /**************************************************************************************************/
 
-static void dect_phy_rssi_channel_scan_callback(
-	struct dect_phy_rssi_channel_scan_result_t *p_scan_results);
+static void dect_phy_rssi_channel_scan_completed_cb(enum nrf_modem_dect_phy_err phy_status);
 static void dect_phy_ctrl_on_modem_lib_init(int ret, void *ctx);
+static int dect_phy_ctrl_phy_reinit(void);
 
 /**************************************************************************************************/
 
@@ -149,33 +153,27 @@ static void dect_phy_ctrl_msgq_thread_handler(void)
 			break;
 		}
 		case DECT_PHY_CTRL_OP_PERF_CMD_DONE: {
-			ctrl_data.perf_on_going = false;
+			ctrl_data.perf_ongoing = false;
 			dect_phy_ctrl_msgq_non_data_op_add(DECT_PHY_CTRL_OP_DEBUG_ON);
 
-			/* Deinit was done by perf module:
-			 * reinit phy api to have our callbacks back
-			 */
-			dect_phy_ctrl_on_modem_lib_init(0, NULL);
+			dect_phy_ctrl_phy_reinit();
+
+			desh_print("perf command done.");
 			break;
 		}
 		case DECT_PHY_CTRL_OP_PING_CMD_DONE: {
-			ctrl_data.ping_on_going = false;
+			ctrl_data.ping_ongoing = false;
 			dect_phy_ctrl_msgq_non_data_op_add(DECT_PHY_CTRL_OP_DEBUG_ON);
 
-			/* Deinit was done by ping module:
-			 * reinit phy api to have our callbacks back
-			 */
-			dect_phy_ctrl_on_modem_lib_init(0, NULL);
+			dect_phy_ctrl_phy_reinit();
+			desh_print("ping command done.");
 			break;
 		}
 		case DECT_PHY_CTRL_OP_RF_TOOL_CMD_DONE: {
-			ctrl_data.cert_on_going = false;
+			ctrl_data.cert_ongoing = false;
 			dect_phy_ctrl_msgq_non_data_op_add(DECT_PHY_CTRL_OP_DEBUG_ON);
 
-			/* Deinit was done by rf tool module:
-			 * reinit phy api to have our callbacks back
-			 */
-			dect_phy_ctrl_on_modem_lib_init(0, NULL);
+			dect_phy_ctrl_phy_reinit();
 			break;
 		}
 		case DECT_PHY_CTRL_OP_DEBUG_ON: {
@@ -187,6 +185,11 @@ static void dect_phy_ctrl_msgq_thread_handler(void)
 			break;
 		}
 		case DECT_PHY_CTRL_OP_SETTINGS_UPDATED: {
+			bool phy_api_reinit_needed = *((bool *)event.data);
+
+			if (phy_api_reinit_needed) {
+				dect_phy_ctrl_phy_reinit();
+			}
 			if (ctrl_data.ext_cmd.sett_changed_cb != NULL) {
 				ctrl_data.ext_cmd.sett_changed_cb();
 			}
@@ -195,13 +198,21 @@ static void dect_phy_ctrl_msgq_thread_handler(void)
 		case DECT_PHY_CTRL_OP_PHY_API_MDM_INITIALIZED: {
 			struct dect_phy_common_op_initialized_params *params =
 				(struct dect_phy_common_op_initialized_params *)event.data;
+			char tmp_str[128] = {0};
+
+			if (params->temperature != NRF_MODEM_DECT_PHY_TEMP_NOT_MEASURED) {
+				ctrl_data.last_valid_temperature = params->temperature;
+			}
 
 			if (params->status) {
+				dect_common_utils_modem_phy_err_to_string(
+				params->status, params->temperature, tmp_str);
+
 				desh_error("(%s): init failed (time %llu, temperature %d, "
-					   "temp_limit %d): %d",
+					   "temp_limit %d): %d (%s)",
 					   (__func__), params->time, params->temperature,
 					   params->modem_configuration.temperature_limit,
-					   params->status);
+					   params->status, tmp_str);
 			} else {
 				if (ctrl_data.phy_api_init_count <= 1) {
 					desh_print("DECT modem initialized:");
@@ -252,7 +263,6 @@ static void dect_phy_ctrl_msgq_thread_handler(void)
 						params->modem_configuration.latency.txrx_tx_to_rx);
 				}
 			}
-			k_sem_give(&phy_api_init);
 			break;
 		}
 
@@ -298,8 +308,11 @@ static void dect_phy_ctrl_msgq_thread_handler(void)
 						   "transmitter id %u",
 						   params->short_nw_id, params->short_nw_id,
 						   params->transmitter_short_rd_id);
-					desh_print("  receiver id: %u",
-						   params->receiver_short_rd_id);
+					if (params->pcc_status.phy_type == 1) {
+						/* Type 2 header */
+						desh_print("  receiver id: %u",
+							params->receiver_short_rd_id);
+					}
 					desh_print("  len %d, MCS %d, TX pwr: %d dBm",
 						   params->phy_len, params->mcs, params->pwr_dbm);
 				}
@@ -315,7 +328,10 @@ static void dect_phy_ctrl_msgq_thread_handler(void)
 				(struct dect_phy_commmon_op_pdc_rcv_params *)event.data;
 			bool data_handled = false;
 
-			if (ctrl_data.ext_cmd.pdc_rcv_cb != NULL) {
+			/* 1st try to decode dect mac */
+			data_handled = dect_phy_mac_handle(params);
+
+			if (!data_handled && ctrl_data.ext_cmd.pdc_rcv_cb != NULL) {
 				data_handled = ctrl_data.ext_cmd.pdc_rcv_cb(params);
 			}
 
@@ -345,6 +361,10 @@ static void dect_phy_ctrl_msgq_thread_handler(void)
 			struct dect_phy_common_op_completed_params *params =
 				(struct dect_phy_common_op_completed_params *)event.data;
 
+			if (params->temperature != NRF_MODEM_DECT_PHY_TEMP_NOT_MEASURED) {
+				ctrl_data.last_valid_temperature = params->temperature;
+			}
+
 			if (params->status != NRF_MODEM_DECT_PHY_SUCCESS) {
 				char tmp_str[128] = {0};
 
@@ -352,7 +372,7 @@ static void dect_phy_ctrl_msgq_thread_handler(void)
 					params->status, params->temperature, tmp_str);
 				if (params->handle == DECT_PHY_COMMON_RSSI_SCAN_HANDLE) {
 					dect_phy_scan_rssi_finished_handle(params->status);
-				} else if (params->handle == DECT_PHY_COMMON_RX_CMD_HANDLE) {
+				} else if (params->handle == ctrl_data.rx_cmd_params.handle) {
 					dect_phy_api_scheduler_resume();
 					desh_error("%s: cannot start RX: %s", __func__, tmp_str);
 					ctrl_data.rx_cmd_on_going = false;
@@ -362,10 +382,17 @@ static void dect_phy_ctrl_msgq_thread_handler(void)
 					}
 				}
 			} else {
-				if (params->handle == DECT_PHY_COMMON_RX_CMD_HANDLE) {
-					ctrl_data.rx_cmd_on_going = false;
-					dect_phy_api_scheduler_resume();
-					desh_print("RX DONE.");
+				if (params->handle == ctrl_data.rx_cmd_params.handle) {
+					struct dect_phy_rx_cmd_params copy_params =
+						ctrl_data.rx_cmd_params;
+					int err;
+
+					err = dect_phy_ctrl_rx_start(&copy_params, true);
+					if (err) {
+						ctrl_data.rx_cmd_on_going = false;
+						dect_phy_api_scheduler_resume();
+						desh_print("RX DONE.");
+					}
 				} else if (params->handle == DECT_PHY_COMMON_RSSI_SCAN_HANDLE) {
 					dect_phy_scan_rssi_finished_handle(params->status);
 				} else {
@@ -378,21 +405,30 @@ static void dect_phy_ctrl_msgq_thread_handler(void)
 		}
 
 		case DECT_PHY_CTRL_OP_RSSI_SCAN_RUN: {
-			if (ctrl_data.rssi_scan_on_going ||
+			int err = 0;
+
+			if (ctrl_data.rssi_scan_ongoing ||
 			    (ctrl_data.rssi_scan_cmd_running &&
 			     ctrl_data.rssi_scan_params.interval_secs)) {
 				if (ctrl_data.rssi_scan_params.suspend_scheduler) {
 					dect_phy_api_scheduler_suspend();
 				}
-				dect_phy_scan_rssi_start(&ctrl_data.rssi_scan_params,
-							 dect_phy_rssi_channel_scan_callback);
+				err = dect_phy_scan_rssi_start(
+					&ctrl_data.rssi_scan_params,
+					dect_phy_rssi_channel_scan_completed_cb);
+				if (err) {
+					desh_error("RSSI scan start failed: %d", err);
+					dect_phy_ctrl_rssi_scan_stop();
+				}
 			}
 			break;
 		}
 		case DECT_PHY_CTRL_OP_PHY_API_MDM_RSSI_CB_ON_RX_OP: {
 			if (ctrl_data.rx_cmd_on_going || ctrl_data.ext_command_running) {
 				dect_phy_scan_rssi_finished_handle(NRF_MODEM_DECT_PHY_SUCCESS);
-				dect_phy_scan_rssi_data_reinit_with_current_params();
+				if (dect_phy_scan_rssi_data_reinit_with_current_params()) {
+					desh_error("Cannot reinit rssi scan data");
+				}
 			}
 			break;
 		}
@@ -428,6 +464,7 @@ static void dect_phy_ctrl_mdm_initialize_cb(const uint64_t *time, int16_t temper
 		ctrl_data.phy_api_initialized = true;
 	}
 
+	k_sem_give(&dect_phy_ctrl_mdm_api_init_sema);
 	dect_phy_ctrl_msgq_data_op_add(DECT_PHY_CTRL_OP_PHY_API_MDM_INITIALIZED,
 				       (void *)&ctrl_op_initialized_params,
 				       sizeof(struct dect_phy_common_op_initialized_params));
@@ -469,22 +506,18 @@ static void dect_phy_ctrl_mdm_rx_operation_stop_cb(uint64_t const *time,
 static void dect_phy_ctrl_mdm_operation_complete_cb(uint64_t const *time, int16_t temperature,
 					     enum nrf_modem_dect_phy_err status, uint32_t handle)
 {
-	struct dect_phy_common_op_completed_params ctrl_op_completed_params = {
+	struct dect_phy_common_op_completed_params op_completed_params = {
 		.handle = handle,
 		.temperature = temperature,
 		.status = status,
 		.time = *time,
 	};
-	struct dect_phy_api_scheduler_op_completed_params op_completed_params = {
-		.handle = handle,
-		.status = status,
-		.time = *time,
-	};
-	dect_app_modem_time_save(time);
 
+
+	dect_app_modem_time_save(time);
 	dect_phy_api_scheduler_mdm_op_completed(&op_completed_params);
 	dect_phy_ctrl_msgq_data_op_add(DECT_PHY_CTRL_OP_PHY_API_MDM_COMPLETED,
-				       (void *)&ctrl_op_completed_params,
+				       (void *)&op_completed_params,
 				       sizeof(struct dect_phy_common_op_completed_params));
 }
 
@@ -604,7 +637,12 @@ static void dect_phy_ctrl_mdm_on_rssi_cb(const uint64_t *time,
 				  const struct nrf_modem_dect_phy_rssi_meas *p_result)
 {
 	dect_app_modem_time_save(time);
-	dect_phy_scan_rssi_cb_handle(NRF_MODEM_DECT_PHY_SUCCESS, p_result);
+
+	if (ctrl_data.rssi_scan_ongoing || ctrl_data.rx_cmd_on_going) {
+		dect_phy_scan_rssi_cb_handle(NRF_MODEM_DECT_PHY_SUCCESS, p_result);
+	} else if (ctrl_data.ext_cmd.direct_rssi_cb != NULL) {
+		ctrl_data.ext_cmd.direct_rssi_cb(p_result);
+	}
 }
 
 static void dect_phy_ctrl_mdm_on_link_configuration_cb(uint64_t const *time,
@@ -683,7 +721,7 @@ static void dect_phy_ctrl_mdm_on_stf_cover_seq_control_cb(
 static void dect_phy_ctrl_mdm_on_deinit_cb(const uint64_t *time, enum nrf_modem_dect_phy_err err)
 {
 	ctrl_data.phy_api_initialized = false;
-	k_sem_give(&phy_api_deinit);
+	k_sem_give(&dect_phy_ctrl_mdm_api_deinit_sema);
 }
 
 static const struct nrf_modem_dect_phy_callbacks dect_phy_api_config = {
@@ -710,8 +748,13 @@ static void dect_phy_ctrl_phy_init(void)
 
 	ctrl_data.dect_phy_init_params.harq_rx_expiry_time_us =
 		current_settings->harq.mdm_init_harq_expiry_time_us;
+
 	ctrl_data.dect_phy_init_params.harq_rx_process_count =
 		current_settings->harq.mdm_init_harq_process_count;
+	ctrl_data.dect_phy_init_params.reserved = 0;
+	ctrl_data.dect_phy_init_params.band4_support =
+		((current_settings->common.band_nbr == 4) ? 1 : 0);
+
 	if (ret) {
 		printk("nrf_modem_dect_phy_callback_set returned: %i\n", ret);
 	} else {
@@ -740,16 +783,26 @@ int dect_phy_ctrl_time_query(void)
 	return nrf_modem_dect_phy_time_get();
 }
 
+int dect_phy_ctrl_modem_temperature_get(void)
+{
+	return ctrl_data.last_valid_temperature;
+}
+
 /**************************************************************************************************/
+
+bool dect_phy_ctrl_rx_is_ongoing(void)
+{
+	return ctrl_data.rx_cmd_on_going;
+}
 
 void dect_phy_ctrl_rx_stop(void)
 {
 	ctrl_data.rx_cmd_on_going = false;
-	(void)nrf_modem_dect_phy_rx_stop(DECT_PHY_COMMON_RX_CMD_HANDLE);
+	(void)nrf_modem_dect_phy_rx_stop(ctrl_data.rx_cmd_params.handle);
 	dect_phy_api_scheduler_resume();
 }
 
-int dect_phy_ctrl_rx_start(struct dect_phy_rx_cmd_params *params)
+int dect_phy_ctrl_rx_start(struct dect_phy_rx_cmd_params *params, bool restart)
 {
 	int err;
 
@@ -758,7 +811,12 @@ int dect_phy_ctrl_rx_start(struct dect_phy_rx_cmd_params *params)
 		return -EACCES;
 	}
 
-	if (ctrl_data.rx_cmd_on_going) {
+	if (restart && !ctrl_data.rx_cmd_on_going) {
+		desh_warn("Cannot restart RX when RX is not on going.");
+		return -EINVAL;
+	}
+
+	if (ctrl_data.rx_cmd_on_going && !restart) {
 		desh_error("rx cmd already on going.");
 		return -EALREADY;
 	}
@@ -767,15 +825,53 @@ int dect_phy_ctrl_rx_start(struct dect_phy_rx_cmd_params *params)
 		dect_phy_api_scheduler_suspend();
 	}
 
+	struct dect_phy_settings *current_settings = dect_common_settings_ref_get();
+
+	if (params->channel == 0) {
+		if (restart) {
+			uint16_t next_channel = dect_common_utils_get_next_channel_in_band_range(
+				current_settings->common.band_nbr,
+				ctrl_data.rx_cmd_current_channel,
+				!params->ch_acc_use_all_channels);
+
+			if (next_channel) {
+				ctrl_data.rx_cmd_current_channel = next_channel;
+			} else {
+				/* We are done */
+				desh_print("All channels in band scanned.");
+				return -ENODATA;
+			}
+		} else {
+			/* All channels in a set band */
+			ctrl_data.rx_cmd_current_channel =
+				dect_common_utils_channel_min_on_band(
+					current_settings->common.band_nbr);
+		}
+	} else {
+		if (restart) {
+			/* Cannot restart RX on a specific channel */
+			return -EINVAL;
+		}
+		ctrl_data.rx_cmd_current_channel = params->channel;
+	}
+
 	struct dect_phy_rssi_scan_params rssi_params = {
-		.channel = params->channel,
+		.channel = ctrl_data.rx_cmd_current_channel,
+		.result_verdict_type = DECT_PHY_RSSI_SCAN_RESULT_VERDICT_TYPE_ALL,
 		.busy_rssi_limit = params->busy_rssi_limit,
 		.free_rssi_limit = params->free_rssi_limit,
 		.interval_secs = params->rssi_interval_secs,
+		.scan_time_ms = params->rssi_interval_secs * 1000,
 	};
 
 	ctrl_data.rx_cmd_params = *params;
-	dect_phy_scan_rssi_data_init(&rssi_params);
+	params->channel = ctrl_data.rx_cmd_current_channel;
+
+	err = dect_phy_scan_rssi_data_init(&rssi_params);
+	if (err) {
+		desh_error("RSSI scan data init failed: err", err);
+		return err;
+	}
 
 	err = dect_phy_rx_msgq_data_op_add(DECT_PHY_RX_OP_START, (void *)params,
 					   sizeof(struct dect_phy_rx_cmd_params));
@@ -790,9 +886,9 @@ int dect_phy_ctrl_rx_start(struct dect_phy_rx_cmd_params *params)
 void dect_phy_ctrl_status_get_n_print(void)
 {
 	char tmp_mdm_str[128] = {0};
-	int temperature;
 	int ret;
 	struct dect_phy_settings *current_settings = dect_common_settings_ref_get();
+	int temperature = dect_phy_ctrl_modem_temperature_get();
 
 	desh_print("desh-dect-phy status:");
 	ret = nrf_modem_at_scanf("AT+CGMR", "%s", tmp_mdm_str);
@@ -809,8 +905,7 @@ void dect_phy_ctrl_status_get_n_print(void)
 	}
 	desh_print("  HW version:        %s", tmp_mdm_str);
 
-	ret = nrf_modem_at_scanf("AT%XTEMP?", "%%XTEMP: %d", &temperature);
-	if (ret <= 0) {
+	if (temperature == NRF_MODEM_DECT_PHY_TEMP_NOT_MEASURED) {
 		sprintf(tmp_mdm_str, "%s", "not known");
 	} else {
 		sprintf(tmp_mdm_str, "%d", temperature);
@@ -852,48 +947,88 @@ void dect_phy_ctrl_status_get_n_print(void)
 
 /**************************************************************************************************/
 
+int dect_phy_ctrl_rssi_scan_results_print_and_best_channel_get(bool print_results)
+{
+	struct dect_phy_rssi_scan_channel_results scan_results;
+	int err = dect_phy_scan_rssi_channel_results_get(&scan_results);
+	int best_channel = -ENODATA;
+
+	if (err) {
+		desh_error("RSSI scan results not available.");
+		return -ENODATA;
+	}
+	best_channel = dect_phy_scan_rssi_results_based_best_channel_get();
+
+	if (print_results) {
+		desh_print("--------------------------------------------------------------"
+			   "---------------");
+		desh_print(" RSSI scan done. Found %d free, %d possible and "
+			   "%d busy channels.",
+			   scan_results.free_channels_count, scan_results.possible_channels_count,
+			   scan_results.busy_channels_count);
+	}
+
+	if (best_channel <= 0) {
+		desh_print("   No best channel found.");
+		return -ENODATA;
+	}
+
+	char final_verdict_str[10];
+	struct dect_phy_rssi_scan_data_result scan_result;
+
+	if (print_results) {
+		desh_print("   Best channel: %d", best_channel);
+	}
+
+	err = dect_phy_scan_rssi_results_get_by_channel(best_channel, &scan_result);
+	if (err) {
+		desh_warn("   No scan result found for best channel.");
+		return best_channel;
+	}
+
+	if (print_results) {
+		dect_phy_rssi_scan_result_verdict_to_string(scan_result.result, final_verdict_str);
+
+		desh_print("   Final verdict: %s", final_verdict_str);
+
+		if (ctrl_data.rssi_scan_params.result_verdict_type ==
+		    DECT_PHY_RSSI_SCAN_RESULT_VERDICT_TYPE_SUBSLOT_COUNT) {
+			desh_print("     Free subslots: %d",
+				   scan_result.subslot_count_type_results.free_subslot_count);
+			desh_print("     Possible subslots: %d",
+				   scan_result.subslot_count_type_results.possible_subslot_count);
+			desh_print("     Busy subslots: %d",
+				   scan_result.subslot_count_type_results.busy_subslot_count);
+		}
+	}
+	return best_channel;
+}
+
 static void dect_phy_ctrl_rssi_scan_timer_handler(struct k_timer *timer_id)
 {
 	dect_phy_ctrl_msgq_non_data_op_add(DECT_PHY_CTRL_OP_RSSI_SCAN_RUN);
 }
 K_TIMER_DEFINE(rssi_scan_timer, dect_phy_ctrl_rssi_scan_timer_handler, NULL);
 
-static void dect_phy_rssi_channel_scan_callback(
-	struct dect_phy_rssi_channel_scan_result_t *p_scan_results)
+static void dect_phy_rssi_channel_scan_completed_cb(enum nrf_modem_dect_phy_err phy_status)
 {
-	memcpy(ctrl_data.rssi_scan_results.free_channels, p_scan_results->free_channels,
-	       p_scan_results->free_channels_count * sizeof(uint16_t));
-	ctrl_data.rssi_scan_results.free_channels_count = p_scan_results->free_channels_count;
+	(void)dect_phy_ctrl_rssi_scan_results_print_and_best_channel_get(true);
 
-	memcpy(ctrl_data.rssi_scan_results.possible_channels, p_scan_results->possible_channels,
-	       p_scan_results->possible_channels_count * sizeof(uint16_t));
-	ctrl_data.rssi_scan_results.possible_channels_count =
-		p_scan_results->possible_channels_count;
-
-	memcpy(ctrl_data.rssi_scan_results.busy_channels, p_scan_results->busy_channels,
-	       p_scan_results->busy_channels_count * sizeof(uint16_t));
-	ctrl_data.rssi_scan_results.busy_channels_count = p_scan_results->busy_channels_count;
-
-	desh_print(" RSSI scan done. Found %d free, %d possible and %d busy channels.",
-		   ctrl_data.rssi_scan_results.free_channels_count,
-		   ctrl_data.rssi_scan_results.possible_channels_count,
-		   ctrl_data.rssi_scan_results.busy_channels_count);
-
-	if (p_scan_results->phy_status == NRF_MODEM_DECT_PHY_SUCCESS) {
+	if (phy_status == NRF_MODEM_DECT_PHY_SUCCESS) {
 		k_sem_give(&rssi_scan_sema);
 	} else {
 		char tmp_str[128] = {0};
 
 		dect_common_utils_modem_phy_err_to_string(
-			p_scan_results->phy_status, NRF_MODEM_DECT_PHY_TEMP_NOT_MEASURED, tmp_str);
+			phy_status, NRF_MODEM_DECT_PHY_TEMP_NOT_MEASURED, tmp_str);
 
 		k_sem_reset(&rssi_scan_sema); /* -EAGAIN should be returned from k_sem_take() */
-		desh_warn(" RSSI scan failed: %s (%d)", tmp_str, p_scan_results->phy_status);
+		desh_warn(" RSSI scan failed: %s (%d)", tmp_str, phy_status);
 	}
 	dect_phy_api_scheduler_resume();
-	ctrl_data.rssi_scan_on_going = false;
+	ctrl_data.rssi_scan_ongoing = false;
 	if (ctrl_data.rssi_scan_complete_cb) {
-		ctrl_data.rssi_scan_complete_cb(p_scan_results->phy_status);
+		ctrl_data.rssi_scan_complete_cb(phy_status);
 	}
 	if (ctrl_data.rssi_scan_cmd_running && ctrl_data.rssi_scan_params.interval_secs) {
 		k_timer_start(&rssi_scan_timer, K_SECONDS(ctrl_data.rssi_scan_params.interval_secs),
@@ -907,26 +1042,25 @@ static int dect_phy_ctrl_phy_reinit(void)
 {
 	int ret;
 
-	k_sem_reset(&phy_api_deinit);
-
+	k_sem_reset(&dect_phy_ctrl_mdm_api_deinit_sema);
 	ret = nrf_modem_dect_phy_deinit();
-
 	if (ret) {
 		desh_error("nrf_modem_dect_phy_deinit failed, err=%d", ret);
 		return ret;
 	}
 
 	/* Wait that deinit is done */
-	ret = k_sem_take(&phy_api_deinit, K_SECONDS(5));
+	ret = k_sem_take(&dect_phy_ctrl_mdm_api_deinit_sema, K_SECONDS(10));
 	if (ret) {
 		desh_error("(%s): nrf_modem_dect_phy_deinit() timeout.", (__func__));
 		return -ETIMEDOUT;
 	}
 
-	k_sem_reset(&phy_api_init);
+	k_sem_reset(&dect_phy_ctrl_mdm_api_init_sema);
 	dect_phy_ctrl_phy_init();
 
-	ret = k_sem_take(&phy_api_init, K_SECONDS(5));
+	/* Wait that init is done */
+	ret = k_sem_take(&dect_phy_ctrl_mdm_api_init_sema, K_SECONDS(60));
 	if (ret) {
 		desh_error("(%s): nrf_modem_dect_phy_init() timeout.", (__func__));
 		return -ETIMEDOUT;
@@ -944,14 +1078,14 @@ int dect_phy_ctrl_rssi_scan_start(struct dect_phy_rssi_scan_params *params,
 		return -EACCES;
 	}
 
-	if (ctrl_data.rssi_scan_on_going) {
+	if (ctrl_data.rssi_scan_ongoing) {
 		desh_error("RSSI scan already on going.\n");
 		return -EBUSY;
 	}
 
 	k_sem_reset(&rssi_scan_sema);
 
-	ctrl_data.rssi_scan_on_going = true;
+	ctrl_data.rssi_scan_ongoing = true;
 	ctrl_data.rssi_scan_cmd_running = true;
 	ctrl_data.rssi_scan_params = *params;
 	ctrl_data.rssi_scan_complete_cb = fp_result_callback;
@@ -963,6 +1097,9 @@ int dect_phy_ctrl_rssi_scan_start(struct dect_phy_rssi_scan_params *params,
 	if (params->reinit_mdm_api) {
 		ret = dect_phy_ctrl_phy_reinit();
 		if (ret) {
+			if (params->suspend_scheduler) {
+				dect_phy_api_scheduler_resume();
+			}
 			return ret;
 		}
 	}
@@ -974,7 +1111,7 @@ int dect_phy_ctrl_rssi_scan_start(struct dect_phy_rssi_scan_params *params,
 void dect_phy_ctrl_rssi_scan_stop(void)
 {
 	ctrl_data.rssi_scan_cmd_running = false;
-	ctrl_data.rssi_scan_on_going = false;
+	ctrl_data.rssi_scan_ongoing = false;
 	k_timer_stop(&rssi_scan_timer);
 	dect_phy_scan_rssi_stop();
 	k_sem_reset(&rssi_scan_sema);
@@ -983,17 +1120,41 @@ void dect_phy_ctrl_rssi_scan_stop(void)
 
 /**************************************************************************************************/
 
+static bool dect_phy_ctrl_op_ongoing(void)
+{
+	if (ctrl_data.rssi_scan_ongoing) {
+		desh_warn("RSSI scan ongoing.");
+		return true;
+	}
+	if (ctrl_data.perf_ongoing) {
+		desh_warn("Performance test ongoing.");
+		return true;
+	}
+	if (ctrl_data.ping_ongoing) {
+		desh_warn("Ping ongoing.");
+		return true;
+	}
+	if (ctrl_data.cert_ongoing) {
+		desh_warn("Certification ongoing.");
+		return true;
+	}
+	if (ctrl_data.ext_command_running) {
+		desh_warn("External command ongoing.");
+		return true;
+	}
+	return false;
+}
+
 int dect_phy_ctrl_perf_cmd(struct dect_phy_perf_params *params)
 {
 	int ret;
 
-	if (ctrl_data.rssi_scan_on_going || ctrl_data.perf_on_going || ctrl_data.ping_on_going ||
-	    ctrl_data.cert_on_going || ctrl_data.ext_command_running) {
+	if (dect_phy_ctrl_op_ongoing()) {
 		desh_error(
 			"DECT operation already on going. Stop all before starting running perf.");
 		return -EBUSY;
 	}
-	k_sem_reset(&phy_api_deinit);
+	k_sem_reset(&dect_phy_ctrl_mdm_api_deinit_sema);
 
 	/* We want to have own callbacks for perf command */
 	ret = nrf_modem_dect_phy_deinit();
@@ -1003,14 +1164,14 @@ int dect_phy_ctrl_perf_cmd(struct dect_phy_perf_params *params)
 	}
 
 	/* Wait that deinit is done */
-	ret = k_sem_take(&phy_api_deinit, K_SECONDS(5));
+	ret = k_sem_take(&dect_phy_ctrl_mdm_api_deinit_sema, K_SECONDS(10));
 	if (ret) {
 		desh_error("(%s): nrf_modem_dect_phy_deinit() timeout.", (__func__));
 		return -ETIMEDOUT;
 	}
 
 	dect_phy_ctrl_msgq_non_data_op_add(DECT_PHY_CTRL_OP_DEBUG_OFF);
-	ctrl_data.perf_on_going = true;
+	ctrl_data.perf_ongoing = true;
 	ret = dect_phy_perf_cmd_handle(params);
 	if (ret) {
 		dect_phy_ctrl_msgq_non_data_op_add(DECT_PHY_CTRL_OP_PERF_CMD_DONE);
@@ -1031,13 +1192,11 @@ void dect_phy_ctrl_perf_cmd_stop(void)
 int dect_phy_ctrl_ping_cmd(struct dect_phy_ping_params *params)
 {
 	int ret;
-
-	if (ctrl_data.rssi_scan_on_going || ctrl_data.perf_on_going || ctrl_data.ping_on_going ||
-	    ctrl_data.cert_on_going || ctrl_data.ext_command_running) {
+	if (dect_phy_ctrl_op_ongoing()) {
 		desh_error("Operation already on going. Stop all before starting running ping.");
 		return -EBUSY;
 	}
-	k_sem_reset(&phy_api_deinit);
+	k_sem_reset(&dect_phy_ctrl_mdm_api_deinit_sema);
 
 	/* We want to have own mdm phy api callbacks for ping command */
 	ret = nrf_modem_dect_phy_deinit();
@@ -1047,14 +1206,14 @@ int dect_phy_ctrl_ping_cmd(struct dect_phy_ping_params *params)
 	}
 
 	/* Wait that deinit is done */
-	ret = k_sem_take(&phy_api_deinit, K_SECONDS(5));
+	ret = k_sem_take(&dect_phy_ctrl_mdm_api_deinit_sema, K_SECONDS(10));
 	if (ret) {
 		desh_error("(%s): nrf_modem_dect_phy_deinit() timeout.", (__func__));
 		return -ETIMEDOUT;
 	}
 
 	dect_phy_ctrl_msgq_non_data_op_add(DECT_PHY_CTRL_OP_DEBUG_OFF);
-	ctrl_data.ping_on_going = true;
+	ctrl_data.ping_ongoing = true;
 	ret = dect_phy_ping_cmd_handle(params);
 	if (ret) {
 		dect_phy_ctrl_msgq_non_data_op_add(DECT_PHY_CTRL_OP_PING_CMD_DONE);
@@ -1072,16 +1231,16 @@ void dect_phy_ctrl_ping_cmd_stop(void)
 
 /**************************************************************************************************/
 
-int dect_phy_ctrl_cert_cmd(struct dect_phy_rf_tool_params *params)
+int dect_phy_ctrl_rf_tool_cmd(struct dect_phy_rf_tool_params *params)
 {
 	int ret;
 
-	if (ctrl_data.rssi_scan_on_going || ctrl_data.perf_on_going || ctrl_data.ping_on_going ||
-	    ctrl_data.cert_on_going || ctrl_data.ext_command_running) {
+	if (dect_phy_ctrl_op_ongoing()) {
 		desh_error("Operation already on going. Stop all before starting running rf_tool.");
 		return -EBUSY;
 	}
-	k_sem_reset(&phy_api_deinit);
+
+	k_sem_reset(&dect_phy_ctrl_mdm_api_deinit_sema);
 
 	/* We want to have own mdm phy api callbacks for cert command */
 	ret = nrf_modem_dect_phy_deinit();
@@ -1091,14 +1250,14 @@ int dect_phy_ctrl_cert_cmd(struct dect_phy_rf_tool_params *params)
 	}
 
 	/* Wait that deinit is done */
-	ret = k_sem_take(&phy_api_deinit, K_SECONDS(5));
+	ret = k_sem_take(&dect_phy_ctrl_mdm_api_deinit_sema, K_SECONDS(10));
 	if (ret) {
 		desh_error("(%s): nrf_modem_dect_phy_deinit() timeout.", (__func__));
 		return -ETIMEDOUT;
 	}
 
 	dect_phy_ctrl_msgq_non_data_op_add(DECT_PHY_CTRL_OP_DEBUG_OFF);
-	ctrl_data.cert_on_going = true;
+	ctrl_data.cert_ongoing = true;
 	ret = dect_phy_rf_tool_cmd_handle(params);
 	if (ret) {
 		dect_phy_ctrl_msgq_non_data_op_add(DECT_PHY_CTRL_OP_RF_TOOL_CMD_DONE);
@@ -1107,7 +1266,7 @@ int dect_phy_ctrl_cert_cmd(struct dect_phy_rf_tool_params *params)
 	return ret;
 }
 
-void dect_phy_ctrl_cert_cmd_stop(void)
+void dect_phy_ctrl_rf_tool_cmd_stop(void)
 {
 	dect_phy_ctrl_msgq_non_data_op_add(DECT_PHY_CTRL_OP_DEBUG_ON);
 
@@ -1164,8 +1323,16 @@ bool dect_phy_ctrl_phy_api_scheduler_suspended(void)
 
 int dect_phy_ctrl_ext_command_start(struct dect_phy_ctrl_ext_callbacks ext_callbacks)
 {
-	if (!dect_phy_ctrl_mdm_phy_api_initialized() || ctrl_data.rssi_scan_on_going ||
-	    ctrl_data.perf_on_going || ctrl_data.ping_on_going) {
+	if (!dect_phy_ctrl_mdm_phy_api_initialized()) {
+		desh_error("(%s): Phy api not initialized", (__func__));
+		return -EACCES;
+	}
+
+	if (ctrl_data.rssi_scan_ongoing ||
+	    ctrl_data.perf_ongoing || ctrl_data.ping_ongoing) {
+		desh_error("(%s): Operation already on going. "
+			   "Stop all before starting running ext command.",
+				(__func__));
 		return -EBUSY;
 	}
 	ctrl_data.ext_cmd = ext_callbacks;
@@ -1192,7 +1359,7 @@ bool dect_phy_ctrl_nbr_is_in_channel(uint16_t channel)
 	if (ctrl_data.ext_cmd.channel_has_nbr_cb != NULL) {
 		return ctrl_data.ext_cmd.channel_has_nbr_cb(channel);
 	} else {
-		return false;
+		return dect_phy_mac_nbr_is_in_channel(channel);
 	}
 }
 
@@ -1204,7 +1371,15 @@ static void dect_phy_ctrl_on_modem_lib_init(int ret, void *ctx)
 	ARG_UNUSED(ctx);
 
 	if (!ctrl_data.phy_api_initialized) {
+		k_sem_reset(&dect_phy_ctrl_mdm_api_init_sema);
+
 		dect_phy_ctrl_phy_init();
+
+		/* Wait that init is done */
+		ret = k_sem_take(&dect_phy_ctrl_mdm_api_init_sema, K_SECONDS(2));
+		if (ret) {
+			desh_error("(%s): nrf_modem_dect_phy_init() timeout.", (__func__));
+		}
 	}
 }
 
@@ -1213,6 +1388,7 @@ NRF_MODEM_LIB_ON_INIT(dect_phy_ctrl_init_hook, dect_phy_ctrl_on_modem_lib_init, 
 static int dect_phy_ctrl_init(void)
 {
 	memset(&ctrl_data, 0, sizeof(struct dect_phy_ctrl_data));
+	ctrl_data.last_valid_temperature = NRF_MODEM_DECT_PHY_TEMP_NOT_MEASURED;
 
 	ctrl_data.debug = true; /* Debugs enabled as a default */
 	k_work_queue_start(&dect_phy_ctrl_work_q, dect_phy_ctrl_th_stack,

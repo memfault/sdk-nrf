@@ -14,8 +14,6 @@
 #define BLKCIPHER_MODEID_ECB	 0
 #define BLKCIPHER_MODEID_CBC	 1
 #define BLKCIPHER_MODEID_CTR	 2
-#define BLKCIPHER_MODEID_CFB	 3
-#define BLKCIPHER_MODEID_OFB	 4
 #define BLKCIPHER_MODEID_XTS	 7
 #define BLKCIPHER_MODEID_CHACH20 8
 
@@ -33,10 +31,18 @@ struct sx_blkcipher_cmdma_tags {
 };
 
 struct sx_blkcipher_cmdma_cfg {
-	uint32_t encr;
-	uint32_t decr;
 	const struct sx_blkcipher_cmdma_tags *dmatags;
+	unsigned char decr;
+	unsigned char ctxsave;
+	unsigned char ctxload;
+	unsigned char mode;
+	unsigned char inminsz;
+	unsigned char granularity;
+	unsigned char blocksz;
+	unsigned char statesz;
+
 };
 
-#define OFFSET_EXTRAMEM(c) (sizeof((c)->dma.dmamem) + sizeof((c)->allindescs))
+#define OFFSET_EXTRAMEM(c) (sizeof((c)->dma.dmamem) + sizeof((c)->descs))
+
 #endif

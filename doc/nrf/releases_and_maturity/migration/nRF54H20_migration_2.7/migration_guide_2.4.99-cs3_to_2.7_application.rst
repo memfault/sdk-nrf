@@ -21,7 +21,7 @@ Updated |NCS| toolchain
 
 Sysbuild
   A new build system was recently introduced in the |NCS|.
-  For more information, see the :ref:`Migrating to sysbuild <child_parent_to_sysbuild_migration>` userguide.
+  For more information, see the :ref:`Migrating to sysbuild <child_parent_to_sysbuild_migration>` user guide.
 
 Hardware Model v2
   A new hardware model was recently introduced in the |NCS|.
@@ -79,7 +79,7 @@ General
 
    * Sysbuild
      A new build system was recently introduced in |NCS|
-     For more information, see the :ref:`Migrating to sysbuild <child_parent_to_sysbuild_migration>` userguide.
+     For more information, see the :ref:`Migrating to sysbuild <child_parent_to_sysbuild_migration>` user guide.
 
    * Hardware Model v2
      A new hardware model was recently introduced in the |NCS|.
@@ -562,7 +562,7 @@ Security
        It is not backward compatible with the previous PSA ITS implementation.
        Migrating from the PSA ITS implementation, enabled by the ``CONFIG_PSA_NATIVE_ITS`` option, to the new :ref:`trusted_storage_readme` library requires manual data migration.
 
-   * For :ref:`lib_wifi_credentials` library and Wi-Fi samples:
+   * For :ref:`lib_wifi_credentials` library and Wi-Fi® samples:
 
      * ``CONFIG_WIFI_CREDENTIALS_BACKEND_PSA_UID_OFFSET`` has been removed because it was specific to the previous solution that used PSA Protected Storage instead of PSA Internal Trusted Storage (ITS).
        Use :kconfig:option:`CONFIG_WIFI_CREDENTIALS_BACKEND_PSA_OFFSET` to specify the key offset for PSA ITS.

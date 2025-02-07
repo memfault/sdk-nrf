@@ -9,6 +9,7 @@
 #include <suit_types.h>
 #include <suit_plat_decode_util.h>
 #include <psa/crypto.h>
+#include <suit_mci.h>
 #ifdef CONFIG_SUIT_AES_KW_MANUAL
 #include "suit_aes_key_unwrap_manual.h"
 #endif
@@ -23,10 +24,11 @@ LOG_MODULE_REGISTER(suit_decrypt_filter, CONFIG_SUIT_LOG_LEVEL);
 struct decrypt_ctx {
 	mbedtls_svc_key_id_t cek_key_id;
 	psa_aead_operation_t operation;
-	struct stream_sink enc_sink;
+	struct stream_sink out_sink;
 	size_t tag_size;
 	size_t stored_tag_bytes;
 	uint8_t tag[PSA_AEAD_TAG_MAX_SIZE];
+	enum suit_cose_alg kw_alg_id;
 	bool in_use;
 };
 
@@ -65,8 +67,8 @@ static suit_plat_err_t erase(void *ctx)
 		decrypt_ctx->stored_tag_bytes = 0;
 		memset(decrypt_ctx->tag, 0, sizeof(decrypt_ctx->tag));
 
-		if (decrypt_ctx->enc_sink.erase != NULL) {
-			res = decrypt_ctx->enc_sink.erase(decrypt_ctx->enc_sink.ctx);
+		if (decrypt_ctx->out_sink.erase != NULL) {
+			res = decrypt_ctx->out_sink.erase(decrypt_ctx->out_sink.ctx);
 		}
 	} else {
 		res = SUIT_PLAT_ERR_INVAL;
@@ -124,7 +126,12 @@ static suit_plat_err_t write(void *ctx, const uint8_t *buf, size_t size)
 			goto cleanup;
 		}
 
-		err = decrypt_ctx->enc_sink.write(decrypt_ctx->enc_sink.ctx, decrypted_buf,
+		if (decrypted_len == 0) {
+			/* The remaining data will be decrypted by the flush function */
+			goto cleanup;
+		}
+
+		err = decrypt_ctx->out_sink.write(decrypt_ctx->out_sink.ctx, decrypted_buf,
 						  decrypted_len);
 
 		if (err != SUIT_PLAT_SUCCESS) {
@@ -188,19 +195,27 @@ static suit_plat_err_t flush(void *ctx)
 		} else {
 			LOG_INF("Firmware decryption successful");
 
-			/* Using enc_sink without a write API is blocked by the filter constructor.
+			/* Using out_sink without a write API is blocked by the filter constructor.
 			 */
 			if (decrypted_len > 0) {
-				res = decrypt_ctx->enc_sink.write(decrypt_ctx->enc_sink.ctx,
+				res = decrypt_ctx->out_sink.write(decrypt_ctx->out_sink.ctx,
 								  decrypted_buf, decrypted_len);
 				if (res != SUIT_PLAT_SUCCESS) {
 					LOG_ERR("Failed to write decrypted data: %d", res);
+					/* Revert all the changes so that
+					 * no decrypted data remains
+					 */
+					erase(decrypt_ctx);
 				}
 			}
 		}
 	}
 
-	psa_destroy_key(decrypt_ctx->cek_key_id);
+#ifdef CONFIG_SUIT_AES_KW_MANUAL
+	if (decrypt_ctx->kw_alg_id == suit_cose_aes256_kw) {
+		psa_destroy_key(decrypt_ctx->cek_key_id);
+	}
+#endif
 
 	zeroize(decrypted_buf, sizeof(decrypted_buf));
 
@@ -209,6 +224,7 @@ static suit_plat_err_t flush(void *ctx)
 	decrypt_ctx->tag_size = 0;
 	decrypt_ctx->stored_tag_bytes = 0;
 	zeroize(decrypt_ctx->tag, sizeof(decrypt_ctx->tag));
+	decrypt_ctx->kw_alg_id = 0;
 
 	return res;
 }
@@ -224,16 +240,16 @@ static suit_plat_err_t release(void *ctx)
 
 	suit_plat_err_t res = flush(ctx);
 
-	if (decrypt_ctx->enc_sink.release != NULL) {
+	if (decrypt_ctx->out_sink.release != NULL) {
 		suit_plat_err_t release_ret =
-			decrypt_ctx->enc_sink.release(decrypt_ctx->enc_sink.ctx);
+			decrypt_ctx->out_sink.release(decrypt_ctx->out_sink.ctx);
 
 		if (res == SUIT_SUCCESS) {
 			res = release_ret;
 		}
 	}
 
-	zeroize(&decrypt_ctx->enc_sink, sizeof(struct stream_sink));
+	zeroize(&decrypt_ctx->out_sink, sizeof(struct stream_sink));
 
 	decrypt_ctx->in_use = false;
 
@@ -249,16 +265,17 @@ static suit_plat_err_t used_storage(void *ctx, size_t *size)
 		return SUIT_PLAT_ERR_INVAL;
 	}
 
-	if (decrypt_ctx->enc_sink.used_storage != NULL) {
-		return decrypt_ctx->enc_sink.used_storage(decrypt_ctx->enc_sink.ctx, size);
+	if (decrypt_ctx->out_sink.used_storage != NULL) {
+		return decrypt_ctx->out_sink.used_storage(decrypt_ctx->out_sink.ctx, size);
 	}
 
 	return SUIT_PLAT_ERR_UNSUPPORTED;
 }
 
-static suit_plat_err_t unwrap_cek(enum suit_cose_alg kw_alg_id,
-				  union suit_key_encryption_data kw_key,
-				  mbedtls_svc_key_id_t *cek_key_id)
+static suit_plat_err_t validate_key_and_unwrap_cek(enum suit_cose_alg kw_alg_id,
+						   union suit_key_encryption_data kw_key,
+						   const suit_manifest_class_id_t *class_id,
+						   mbedtls_svc_key_id_t *cek_key_id)
 {
 	switch (kw_alg_id) {
 #ifdef CONFIG_SUIT_AES_KW_MANUAL
@@ -267,6 +284,13 @@ static suit_plat_err_t unwrap_cek(enum suit_cose_alg kw_alg_id,
 
 		if (suit_plat_decode_key_id(&kw_key.aes.key_id, &kek_key_id) != SUIT_PLAT_SUCCESS) {
 			return SUIT_PLAT_ERR_INVAL;
+		}
+		LOG_ERR("KEK KEY ID: %x", kek_key_id);
+
+		if (suit_mci_fw_encryption_key_id_validate(class_id, kek_key_id)
+		    != SUIT_PLAT_SUCCESS) {
+			LOG_ERR("Encryption key ID validation failed");
+			return SUIT_PLAT_ERR_AUTHENTICATION;
 		}
 
 		/* TODO proper key unwrap algorithm from PSA */
@@ -278,6 +302,28 @@ static suit_plat_err_t unwrap_cek(enum suit_cose_alg kw_alg_id,
 		}
 		break;
 #endif
+	case suit_cose_direct:
+		psa_key_id_t cek_key_id_value;
+
+		if (suit_plat_decode_key_id(&kw_key.direct.key_id, &cek_key_id_value)
+			!= SUIT_PLAT_SUCCESS) {
+			return SUIT_PLAT_ERR_INVAL;
+		}
+
+		if (suit_mci_fw_encryption_key_id_validate(class_id, cek_key_id_value)
+		    != SUIT_PLAT_SUCCESS) {
+			LOG_ERR("Encryption key ID validation failed");
+			return SUIT_PLAT_ERR_AUTHENTICATION;
+		}
+
+#ifdef MBEDTLS_PSA_CRYPTO_KEY_ID_ENCODES_OWNER
+		cek_key_id->MBEDTLS_PRIVATE(key_id) = cek_key_id_value;
+		cek_key_id->MBEDTLS_PRIVATE(owner) = NRF_OWNER_SECURE;
+#else  /* MBEDTLS_PSA_CRYPTO_KEY_ID_ENCODES_OWNER */
+		*cek_key_id = cek_key_id_value;
+#endif /* MBEDTLS_PSA_CRYPTO_KEY_ID_ENCODES_OWNER */
+		break;
+
 	default:
 		LOG_ERR("Unsupported key wrap/key derivation algorithm: %d", kw_alg_id);
 		return SUIT_PLAT_ERR_INVAL;
@@ -302,9 +348,10 @@ static suit_plat_err_t get_psa_alg_info(enum suit_cose_alg cose_alg_id, psa_algo
 	return SUIT_PLAT_SUCCESS;
 }
 
-suit_plat_err_t suit_decrypt_filter_get(struct stream_sink *dec_sink,
+suit_plat_err_t suit_decrypt_filter_get(struct stream_sink *in_sink,
 					struct suit_encryption_info *enc_info,
-					struct stream_sink *enc_sink)
+					const suit_manifest_class_id_t *class_id,
+					struct stream_sink *out_sink)
 {
 	suit_plat_err_t ret = SUIT_PLAT_SUCCESS;
 
@@ -313,8 +360,8 @@ suit_plat_err_t suit_decrypt_filter_get(struct stream_sink *dec_sink,
 		return SUIT_PLAT_ERR_BUSY;
 	}
 
-	if ((enc_info == NULL) || (enc_sink == NULL) || (dec_sink == NULL) ||
-	    (enc_sink->write == NULL)) {
+	if ((enc_info == NULL) || (out_sink == NULL) || (in_sink == NULL) ||
+	    (out_sink->write == NULL) || class_id == NULL) {
 		return SUIT_PLAT_ERR_INVAL;
 	}
 
@@ -328,12 +375,15 @@ suit_plat_err_t suit_decrypt_filter_get(struct stream_sink *dec_sink,
 
 	ctx.in_use = true;
 
-	ret = unwrap_cek(enc_info->kw_alg_id, enc_info->kw_key, &ctx.cek_key_id);
+	ret = validate_key_and_unwrap_cek(enc_info->kw_alg_id, enc_info->kw_key, class_id,
+					  &ctx.cek_key_id);
 
 	if (ret != SUIT_PLAT_SUCCESS) {
 		ctx.in_use = false;
 		return ret;
 	}
+
+	ctx.kw_alg_id = enc_info->kw_alg_id;
 
 	ctx.operation = psa_aead_operation_init();
 
@@ -357,23 +407,30 @@ suit_plat_err_t suit_decrypt_filter_get(struct stream_sink *dec_sink,
 
 	status = psa_aead_update_ad(&ctx.operation, enc_info->aad.value, enc_info->aad.len);
 
+	if (status != PSA_SUCCESS) {
+		LOG_ERR("Failed to pass additional data for authentication operation: %d", status);
+		psa_aead_abort(&ctx.operation);
+		ctx.in_use = false;
+		return SUIT_PLAT_ERR_CRASH;
+	}
+
 	ctx.stored_tag_bytes = 0;
-	memcpy(&ctx.enc_sink, enc_sink, sizeof(struct stream_sink));
+	memcpy(&ctx.out_sink, out_sink, sizeof(struct stream_sink));
 
-	dec_sink->ctx = &ctx;
+	in_sink->ctx = &ctx;
 
-	dec_sink->write = write;
-	dec_sink->erase = erase;
-	dec_sink->release = release;
-	dec_sink->flush = flush;
-	if (enc_sink->used_storage != NULL) {
-		dec_sink->used_storage = used_storage;
+	in_sink->write = write;
+	in_sink->erase = erase;
+	in_sink->release = release;
+	in_sink->flush = flush;
+	if (out_sink->used_storage != NULL) {
+		in_sink->used_storage = used_storage;
 	} else {
-		dec_sink->used_storage = NULL;
+		in_sink->used_storage = NULL;
 	}
 
 	/* Seeking is not possible on encrypted payload. */
-	dec_sink->seek = NULL;
+	in_sink->seek = NULL;
 
 	return SUIT_PLAT_SUCCESS;
 }

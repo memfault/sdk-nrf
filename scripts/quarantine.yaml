@@ -1,64 +1,49 @@
 # The configurations resulting as a product of scenarios and platforms
 # will be skipped if quarantine is used. More details here:
 # https://docs.zephyrproject.org/latest/guides/test/twister.html#quarantine
-# To have an empty list use:
-
 
 - scenarios:
-    - sample.matter.light_bulb.memory_profiling.persistent_subscriptions
-  platforms:
-    - nrf7002dk/nrf5340/cpuapp
-  comment: "https://nordicsemi.atlassian.net/browse/KRKNWK-19027"
-
-- scenarios:
-    - ".*nrf7002eb.*"
-    - ".*nrf7002_eb.*"
-    - ".thingy91x_nrf700.*"
-    - ".thingy91x_wifi.*"
     - applications.matter_bridge.lto.br_ble.nrf54h20.wifi
     - applications.matter_bridge.release.br_ble.nrf54h20.wifi
-  comment: "nRF7002EB, Thingy91x are not support in the upstream nRF70 driver yet"
-
-- scenarios:
-    - applications.asset_tracker_v2.nrf_cloud
-    - ".*thingy.*nrf70.*"
-    - ".*thingy.*wifi.*"
-  comment: "Thingy is not supported in the upstream nRF70 driver yet"
-
-- scenarios:
-    - sample.cellular.modem_shell.location_service_ext_pgps_nrf7002ek_wifi
-    - sample.cellular.nrf7002ek_wifi.scan
-    - sample.cellular.nrf7002ek_wifi.conn
-  platforms:
-    - nrf9161dk/nrf9161/ns
-    - nrf5340dk/nrf5340/cpuapp/ns
-    - nrf9151dk/nrf9151/ns
-  comment: "Unknown failures using NS (TF-M), unable to replicate locally, temporarily excluded"
+    - sample.matter.template.nrf54h20.nrf7002eb
+  comment: "54H Wi-Fi PSA and Matter Legacy crypto config"
 
 - scenarios:
     - net.lib.wifi_credentials_backend_psa
   comment: "Fix not known at time of upmerge, temporarily excluded to be fixed after upmerge"
 
 - scenarios:
-    - sample.matter.lock.smp_dfu
-    - sample.matter.light_bulb.aws
+    - applications.matter_bridge.lto.br_ble.memory_profiling
+    - sample.matter.light_switch.persistent_subscriptions
   platforms:
     - nrf7002dk/nrf5340/cpuapp
-  comment: "Flash or RAM overflow, temporarily excluded"
+  comment: https://nordicsemi.atlassian.net/browse/NCSDK-31119
 
 - scenarios:
-    - sample.matter.lock.thread_wifi_switched.lto.smp_dfu
+    - sample.nrf7002.shell.otbr
   platforms:
-    - nrf5340dk/nrf5340/cpuapp
-  comment: "Flash or RAM overflow, temporarily excluded"
+    - nrf7002dk/nrf5340/cpuapp
+  comment: https://nordicsemi.atlassian.net/browse/NCSDK-31155
+
+- platforms:
+    - native_posix
+  comment: "native_posix will be removed soon - native_sim platform is the default simulator now"
 
 - scenarios:
-    - applications.matter_bridge.lto.nrf5340.wifi
-  comment: "nRF7002EK is not support in the upstream nRF70 driver yet"
-
-- scenarios:
-    - applications.zigbee_weather_station
-    - applications.zigbee_weather_station.debug
+    - sample.benchmark.coremark.heap_memory
+    - sample.benchmark.coremark.multiple_threads
   platforms:
-    - thingy53/nrf5340/cpuapp
-  comment: "https://nordicsemi.atlassian.net/browse/NCSDK-29488"
+    - nrf54h20dk/nrf54h20/cpuapp
+  comment: "https://nordicsemi.atlassian.net/browse/NCSDK-31409"
+
+- scenarios:
+    - applications.matter_bridge.lto
+    - applications.matter_bridge.lto.br_ble
+    - applications.matter_bridge.lto.br_ble.memory_profiling
+    - applications.matter_bridge.release
+    - applications.matter_bridge.release.br_ble
+    - sample.openthread.cli
+    - sample.openthread.cli.singleprotocol
+  platforms:
+    - nrf54h20dk/nrf54h20/cpuapp
+  comment: "https://nordicsemi.atlassian.net/browse/NCSDK-31493"

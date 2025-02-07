@@ -98,20 +98,37 @@ See the following files for more options that you might want to change:
 .. note::
    You can find the default configuration for all :ref:`openthread_samples` in the :file:`nrf/subsys/net/openthread/Kconfig.defconfig` file.
 
+.. _thread_configuring_messagepool:
+
+Message pool configuration
+**************************
+
+OpenThread uses a message pool to manage memory for message buffers.
+Memory for the message pool can be statically allocated by the OpenThread stack or managed by the platform.
+You can use the :kconfig:option:`CONFIG_OPENTHREAD_PLATFORM_MESSAGE_MANAGEMENT` Kconfig option to enable platform message management.
+
+Message buffer size and number of message buffers in the pool can be configured with the :kconfig:option:`CONFIG_OPENTHREAD_MESSAGE_BUFFER_SIZE` and :kconfig:option:`CONFIG_OPENTHREAD_NUM_MESSAGE_BUFFERS` Kconfig options, respectively.
+By default, the message buffer size is set to ``128``, and the number of message buffers is set to ``96`` for a Full Thread Device and ``64`` for a Minimal Thread Device.
+
+.. note::
+   When using :ref:`thread_ug_prebuilt`, changing the :kconfig:option:`CONFIG_OPENTHREAD_PLATFORM_MESSAGE_MANAGEMENT` Kconfig option will have no effect.
+   Additionally, the :kconfig:option:`CONFIG_OPENTHREAD_MESSAGE_BUFFER_SIZE` Kconfig option has to be set to the same value that is used in the pre-built library.
+
 .. _thread_ug_thread_specification_options:
 
 Thread Specification options
 ============================
 
-The OpenThread stack can be configured to operate in compliance with either the Thread 1.1 Specification, the :ref:`Thread 1.2 Specification <thread_ug_supported_features_v12>`, or the :ref:`Thread 1.3 Specification <thread_ug_supported_features_v13>`.
+The OpenThread stack can be configured to operate in compliance with either the Thread 1.1 Specification, the :ref:`Thread 1.2 Specification <thread_ug_supported_features_v12>`, the :ref:`Thread 1.3 Specification <thread_ug_supported_features_v13>`, or the :ref:`Thread 1.4 Specification <thread_ug_supported_features_v14>`.
 You can change the stack version by using the following Kconfig options:
 
 * :kconfig:option:`CONFIG_OPENTHREAD_THREAD_VERSION_1_1` - Selects the Thread stack version that is compliant with the Thread 1.1 Specification.
 * :kconfig:option:`CONFIG_OPENTHREAD_THREAD_VERSION_1_2` - Selects the Thread stack version that is compliant with the Thread 1.2 Specification.
 * :kconfig:option:`CONFIG_OPENTHREAD_THREAD_VERSION_1_3` - Selects the Thread stack version that is compliant with the Thread 1.3 Specification.
+* :kconfig:option:`CONFIG_OPENTHREAD_THREAD_VERSION_1_4` - Selects the Thread stack version that is compliant with the Thread 1.4 Specification.
   This option is enabled by default if no other option is selected.
 
-By enabling support for Thread 1.2, you enable the following :ref:`thread_ug_supported_features_v12` in addition to the Thread 1.1 features:
+By selecting support for Thread 1.2, you enable the following :ref:`thread_ug_supported_features_v12` in addition to the Thread 1.1 features:
 
 * Coordinated Sampled Listening (CSL)
 * Link Metrics Probing
@@ -120,12 +137,16 @@ By enabling support for Thread 1.2, you enable the following :ref:`thread_ug_sup
 * Enhanced Frame Pending
 * Enhanced Keep Alive
 
-By selecting support for Thread 1.3, you enable the following features in addition to the :ref:`Thread 1.2 features <thread_ug_supported_features>`:
+By selecting support for Thread 1.3, you enable the following :ref:`thread_ug_supported_features_v13` in addition to the :ref:`thread_ug_supported_features_v12`:
 
 * Service Registration Protocol (SRP) client
 
+By selecting support for Thread 1.4, you enable the following :ref:`thread_ug_supported_features_v14` in addition to the :ref:`thread_ug_supported_features_v13` and :ref:`thread_ug_supported_features_v12`:
+
+* Enhanced Internet Connectivity
+* Enhanced Network Diagnostics
+
 For a list of all supported features in the |NCS|, see the :ref:`thread_ug_feature_sets`.
-For more information about Thread 1.2 features, see the `Thread 1.2 Base Features`_ document.
 
 .. _ug_thread_configuring_eui64:
 
@@ -260,11 +281,8 @@ Minimal Thread Device (MTD)
 Trusted Firmware-M support options
 ==================================
 
-To configure your Thread application on the nRF5340 DK to run with Trusted Firmware-M, use the ``nrf5340dk/nrf5340/cpuapp/ns`` board target and enable the following Kconfig options:
+To configure your Thread application to run with Trusted Firmware-M, use the following board target:
 
-* :kconfig:option:`CONFIG_BUILD_WITH_TFM`
-* :kconfig:option:`CONFIG_OPENTHREAD_CRYPTO_PSA`
-
-In the |NCS|, these options are enabled by default for the :ref:`application core <ug_nrf5340_intro_app_core>` of the :ref:`openthread_samples` that can be programmed with the ``nrf5340dk/nrf5340/cpuapp/ns`` board target.
+* ``nrf54l15dk/nrf54l15/cpuapp/ns``` for the nRF54L15 DK
 
 For more Trusted Firmware-M documentation, see :ref:`ug_tfm` and the official `TF-M documentation`_.

@@ -47,7 +47,7 @@ Before you start updating the modem firmware and application on the Thingy:91, y
 
 Complete the following steps to prepare the Thingy:91 for setup:
 
-1. Install the `Cellular Monitor`_ app on the computer:
+1. Install the `Cellular Monitor app`_ on the computer:
 
    a. Go to `nRF Connect for Desktop Downloads <Download nRF Connect for Desktop_>`_.
    #. Download and install nRF Connect for Desktop.
@@ -60,8 +60,9 @@ Complete the following steps to prepare the Thingy:91 for setup:
    #. Remove the protective cover.
    #. Punch out the nano-SIM from the SIM card and plug it into the SIM card holder on the Thingy:91.
 
-      .. figure:: images/thingy91_insert_sim.svg
+      .. figure:: images/thingy91_insert_sim.webp
          :alt: Inserting SIM
+         :width: 352px
 
          Inserting SIM
 
@@ -104,22 +105,22 @@ Before you start, make sure the Thingy:91 is connected to the computer with a mi
 
 To update the firmware on the Thingy:91, complete the following steps:
 
-1. Open the `Cellular Monitor`_ app.
+1. Open the `Cellular Monitor app`_.
 #. Click :guilabel:`SELECT DEVICE` and select the Thingy:91 from the drop-down list.
 
    .. figure:: images/cellularmonitor_selectdevice_thingy91.png
-      :alt: Cellular Monitor - Select device
+      :alt: Cellular Monitor app - Select device
 
-      Cellular Monitor - Select device
+      Cellular Monitor app - Select device
 
    The drop-down text changes to the type of the selected device, with its SEGGER ID below the name.
 
 #. Click :guilabel:`Program device` in the **ADVANCED OPTIONS** section.
 
    .. figure:: images/cellularmonitor_programdevice_thingy91.png
-      :alt: Cellular Monitor - Program device
+      :alt: Cellular Monitor app - Program device
 
-      Cellular Monitor - Program device
+      Cellular Monitor app - Program device
 
    The **Program sample app** window appears, displaying applications you can program to the Thingy:91.
 
@@ -127,9 +128,9 @@ To update the firmware on the Thingy:91, complete the following steps:
    Asset Tracker v2 is an application that simulates sensor data and transmits it to Nordic Semiconductor's cloud solution, `nRF Cloud`_.
 
    .. figure:: images/cellularmonitor_selectassettracker.png
-      :alt: Cellular Monitor - Select Asset Tracker V2
+      :alt: Cellular Monitor app - Select Asset Tracker V2
 
-      Cellular Monitor - Select Asset Tracker V2
+      Cellular Monitor app - Select Asset Tracker V2
 
    The **Program Modem Firmware (Optional)** window appears.
 
@@ -138,9 +139,9 @@ To update the firmware on the Thingy:91, complete the following steps:
    The **Program Mode Firmware (Optional)** window expands to display additional information.
 
    .. figure:: images/cellularmonitor_enablemcuboot.png
-      :alt: Cellular Monitor - Enable MCUboot
+      :alt: Cellular Monitor app - Enable MCUboot
 
-      Cellular Monitor - Enable MCUboot
+      Cellular Monitor app - Enable MCUboot
 
 #. Switch off the Thingy:91.
 #. Press **SW3** while switching **SW1** to the **ON** position to enable MCUboot mode.
@@ -179,9 +180,9 @@ To update the firmware on the Thingy:91, complete the following steps:
    #. Copy the ICCID by clicking on the **ICCID** label or the displayed ICCID number in the **Sim** section.
 
       .. figure:: images/cellularmonitor_iccid.png
-         :alt: Cellular Monitor - ICCID
+         :alt: Cellular Monitor app - ICCID
 
-         Cellular Monitor - ICCID
+         Cellular Monitor app - ICCID
 
       .. note::
          The ICCID copied here has 20 digits.

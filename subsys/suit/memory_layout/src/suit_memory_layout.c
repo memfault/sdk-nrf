@@ -10,17 +10,13 @@
 
 /* Definitions for SOC internal nonvolatile memory */
 #if (DT_NODE_EXISTS(DT_NODELABEL(mram1x))) /* nrf54H20 */
-#define INTERNAL_NVM_START (DT_REG_ADDR(DT_NODELABEL(mram1x)))
-#define INTERNAL_NVM_SIZE  DT_REG_SIZE(DT_NODELABEL(mram1x))
-#elif (DT_NODE_EXISTS(DT_NODELABEL(mram10))) /* nrf54H20 */
-#define INTERNAL_NVM_START (DT_REG_ADDR(DT_NODELABEL(mram10)))
-#define INTERNAL_NVM_SIZE  DT_REG_SIZE(DT_NODELABEL(mram10)) + DT_REG_SIZE(DT_NODELABEL(mram11))
+#define INTERNAL_NVM_START    (DT_REG_ADDR(DT_NODELABEL(mram1x)))
+#define INTERNAL_NVM_SIZE     DT_REG_SIZE(DT_NODELABEL(mram1x))
+#define SDFW_UPDATE_AREA_ADDR (INTERNAL_NVM_START + INTERNAL_NVM_SIZE / 2)
+#define SDFW_UPDATE_AREA_SIZE (INTERNAL_NVM_SIZE / 2)
 #elif (DT_NODE_EXISTS(DT_NODELABEL(flash0))) /* nrf52 or flash simulator */
 #define INTERNAL_NVM_START DT_REG_ADDR(DT_NODELABEL(flash0))
 #define INTERNAL_NVM_SIZE  DT_REG_SIZE(DT_NODELABEL(flash0))
-#elif (DT_NODE_EXISTS(DT_NODELABEL(rram0))) /* nrf54l15 */
-#define INTERNAL_NVM_START DT_REG_ADDR(DT_NODELABEL(rram0))
-#define INTERNAL_NVM_SIZE  DT_REG_SIZE(DT_NODELABEL(rram0))
 #else
 #error "No recognizable internal nvm nodes found."
 #endif
@@ -85,13 +81,13 @@ static struct ram_area ram_area_map[] = {
 		.ra_start = DT_REG_ADDR(DT_NODELABEL(cpuapp_ram0x_region)),
 		.ra_size = DT_REG_SIZE(DT_NODELABEL(cpuapp_ram0x_region)),
 	},
-#endif							/* ram0x */
+#endif						/* ram0x */
 #if (DT_NODE_EXISTS(DT_NODELABEL(cpuapp_ram0))) /* nrf54H20 */
 	{
 		.ra_start = DT_REG_ADDR(DT_NODELABEL(cpuapp_ram0)),
 		.ra_size = DT_REG_SIZE(DT_NODELABEL(cpuapp_ram0)),
 	},
-#endif						/* cpuapp_ram0 */
+#endif							/* cpuapp_ram0 */
 #if (DT_NODE_EXISTS(DT_NODELABEL(shared_ram20_region))) /* nrf54H20 */
 	{
 		.ra_start = DT_REG_ADDR(DT_NODELABEL(shared_ram20_region)),
@@ -106,12 +102,12 @@ static struct ram_area ram_area_map[] = {
 #endif /* sram0 */
 };
 
-/* In case of tests on native_posix RAM emulation is used and visible below
+/* In case of tests on native_sim RAM emulation is used and visible below
  * mem_for_sim_ram is used as the buffer for emulation. It is here to allow not only
  * write but also read operations with emulated RAM. Address is translated to point to
  * the buffer. Size is taken from dts so it is required that the sram0 node is defined.
  */
-#if (DT_NODE_EXISTS(DT_NODELABEL(sram0))) && defined(CONFIG_BOARD_NATIVE_POSIX)
+#if (DT_NODE_EXISTS(DT_NODELABEL(sram0))) && defined(CONFIG_BOARD_NATIVE_SIM)
 #define SIM_RAM_SIZE DT_REG_SIZE(DT_NODELABEL(sram0))
 #else
 #define SIM_RAM_SIZE 0
@@ -224,7 +220,7 @@ bool suit_memory_global_address_range_is_in_nvm(uintptr_t address, size_t size)
 
 bool suit_memory_global_address_is_in_ram(uintptr_t address)
 {
-	if (IS_ENABLED(CONFIG_BOARD_NATIVE_POSIX)) {
+	if (IS_ENABLED(CONFIG_BOARD_NATIVE_SIM)) {
 		return !suit_memory_global_address_is_in_nvm(address);
 	}
 
@@ -233,7 +229,7 @@ bool suit_memory_global_address_is_in_ram(uintptr_t address)
 
 uintptr_t suit_memory_global_address_to_ram_address(uintptr_t address)
 {
-	if (IS_ENABLED(CONFIG_BOARD_NATIVE_POSIX) && DT_NODE_EXISTS(DT_NODELABEL(sram0))) {
+	if (IS_ENABLED(CONFIG_BOARD_NATIVE_SIM) && DT_NODE_EXISTS(DT_NODELABEL(sram0))) {
 		const struct ram_area *area = find_ram_area(address);
 
 		if (area) {
@@ -251,7 +247,7 @@ bool suit_memory_global_address_range_is_in_ram(uintptr_t address, size_t size)
 	/* Zero-sized ranges are treated as if they were one byte in size. */
 	size = MAX(1, size);
 
-	if (IS_ENABLED(CONFIG_BOARD_NATIVE_POSIX)) {
+	if (IS_ENABLED(CONFIG_BOARD_NATIVE_SIM)) {
 		return !suit_memory_global_address_range_is_in_nvm(address, size);
 	}
 
@@ -301,4 +297,20 @@ bool suit_memory_global_address_to_external_memory_offset(uintptr_t address, uin
 const struct device *suit_memory_external_memory_device_get(void)
 {
 	return EXTERNAL_NVM_DEV;
+}
+
+bool suit_memory_sdfw_update_area_info_get(uintptr_t *address, size_t *size)
+{
+#if defined SDFW_UPDATE_AREA_ADDR && defined SDFW_UPDATE_AREA_SIZE
+	if (address) {
+		*address = SDFW_UPDATE_AREA_ADDR;
+	}
+	if (size) {
+		*size = SDFW_UPDATE_AREA_SIZE;
+	}
+
+	return true;
+#else
+	return false;
+#endif
 }

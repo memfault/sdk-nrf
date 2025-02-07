@@ -46,6 +46,15 @@ The implementation demonstrated in this sample supports issuing the following al
 * End of service alert - Issued if the device service was ended either by the expiration date or other physical conditions, and it needs to be replaced.
 * Battery level alert - Issued if the device battery level is too low.
 
+The sample implements two instances of a Power Source cluster:
+
+* Wired power source on the endpoint 0
+* Battery power source on the endpoint 1
+
+The usage of power sources is implemented with a preference to select wired power source and switch to battery power source, only if the wired one is not available.
+The power source changes are emulated using :ref:`test event triggers <ug_matter_test_event_triggers>`.
+Every power source can be independently enabled or disabled using a dedicated test event trigger.
+
 You can test the device remotely over a Thread network, which requires more devices.
 
 The remote control testing requires a Matter controller that you can configure either on a PC or a mobile device.
@@ -60,6 +69,14 @@ The smoke CO alarm works as a Matter Intermittently Connected Device (ICD) with 
 The device starts operation in the Short Idle Time (SIT) mode and remains in it until it is commissioned to the Matter fabric and registers the first ICD client.
 It then switches the operation mode to LIT to reduce the power consumption.
 
+The sample supports ICD Dynamic SIT LIT switching (DSLS) feature to switch between SIT and LIT modes, depending on the used power source.
+The device uses the SIT mode, when the wired power source is active.
+Otherwise, it switches to the LIT mode, to indicate that it is possible to save the energy, when using a battery power source.
+Dynamic switching is possible only if the ICD device meets all criteria for operating in the LIT mode (it has at least one client registered).
+DSLS support is disabled by default.
+To enable it, set the :kconfig:option:`CONFIG_CHIP_ICD_DSLS_SUPPORT` Kconfig option to ``y`` and enable the feature support in the ICD Management cluster's feature map, by setting it to ``0xf`` in the sample's ``.zap`` file.
+Regenerate the source files after modifying the ``.zap`` file.
+
 In the LIT mode, the device responsiveness is much lower than in the SIT mode.
 However, you can request the device to become responsive to, for example, change its configuration.
 To do that, you need to use the User Active Mode Trigger (UAT) feature by pressing the appropriate button.
@@ -70,6 +87,9 @@ See `User interface`_ for information about how to switch the operation modes.
 
 Remote testing in a network
 ===========================
+
+.. |Bluetoothsc| replace:: Bluetooth®
+.. |WiFi| replace:: Wi-Fi®
 
 .. include:: ../light_bulb/README.rst
     :start-after: matter_light_bulb_sample_remote_testing_start
@@ -91,6 +111,8 @@ Matter smoke CO alarm custom configurations
 
 Device Firmware Upgrade support
 ===============================
+
+.. |Bluetooth| replace:: Bluetooth
 
 .. include:: ../lock/README.rst
     :start-after: matter_door_lock_sample_build_with_dfu_start

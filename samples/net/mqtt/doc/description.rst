@@ -7,7 +7,7 @@ Sample description
    :local:
    :depth: 2
 
-The MQTT sample communicates with an MQTT broker either over LTE using an nRF91 Series device, or over Wi-Fi®  using an nRF70 Series device.
+The MQTT sample communicates with an MQTT broker either over LTE using an nRF91 Series device, or over Wi-Fi® using an nRF70 Series device or an nRF54L15 DK connected with nRF7002 EB as a shield.
 
 .. |wifi| replace:: Wi-Fi
 
@@ -109,6 +109,7 @@ The sample provides predefined configuration files for the following development
 * :file:`boards/thingy91_nrf9160_ns.conf` - Configuration file for the Thingy:91.
 * :file:`thingy91x_nrf9151_ns.conf` - Configuration file for the Thingy:91 X.
 * :file:`boards/nrf7002dk_nrf5340_cpuapp.conf` - Configuration file for the nRF7002 DK.
+* :file:`nrf54l15dk_nrf54l15_cpuapp.conf` - Configuration file for the nRF54L15 DK.
 * :file:`boards/native_sim.conf` - Configuration file for the native simulator board.
 
 Files that are located under the :file:`/boards` folder is automatically merged with the :file:`prj.conf` file when you build for corresponding target.
@@ -117,6 +118,7 @@ In addition, the sample provides the following overlay configuration files, whic
 
 * :file:`overlay-tls-nrf91.conf` - TLS overlay configuration file for nRF91 Series devices.
 * :file:`overlay-tls-nrf70.conf` - TLS overlay configuration file for nRF70 Series devices.
+* :file:`overlay-tls-nrf54l15-nrf70.conf` - TLS overlay configuration file for nRF54L15 DK.
 * :file:`overlay-tls-native_sim.conf` - TLS overlay configuration file for the native simulator board.
 
 They are located in :file:`samples/net/mqtt` folder.
@@ -242,7 +244,7 @@ The sample output showing IPv6, but for a different build configuration using LT
 .. note::
    For nRF91 Series devices, the output differs from the above example output.
    This is because the sample enables the :ref:`lib_at_host` library using the :kconfig:option:`CONFIG_AT_HOST_LIBRARY` option.
-   This library makes it possible to send AT commands to the nRF91 Series modem and receive responses using the `Cellular Monitor`_ app from nRF Connect for Desktop.
+   This library makes it possible to send AT commands to the nRF91 Series modem and receive responses using the `Cellular Monitor app`_ in nRF Connect for Desktop.
    The additional logs are AT command responses that the modem sends to the application core that are forwarded over UART to be displayed on any of these nRF Connect for Desktop apps.
 
 Reconnection logic
@@ -283,7 +285,7 @@ Troubleshooting
 
 To enable more verbose logging from the MQTT helper library, enable the :kconfig:option:`CONFIG_MQTT_HELPER_LOG_LEVEL_DBG` option.
 
-* If you have issues with connectivity on nRF91 Series devices, see the `Cellular Monitor`_ documentation to learn how to capture modem traces in order to debug network traffic in Wireshark.
+* If you have issues with connectivity on nRF91 Series devices, see the `Cellular Monitor app`_ documentation to learn how to capture modem traces in order to debug network traffic in Wireshark.
   The sample enables modem traces by default.
 * Public MQTT brokers might be unstable.
   If you have trouble connecting to the MQTT broker, try switching to another broker by changing the value of the :ref:`CONFIG_MQTT_SAMPLE_TRANSPORT_BROKER_HOSTNAME <CONFIG_MQTT_SAMPLE_TRANSPORT_BROKER_HOSTNAME>` configuration option.

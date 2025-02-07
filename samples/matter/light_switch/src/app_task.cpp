@@ -12,10 +12,6 @@
 #include "app/task_executor.h"
 #include "board/board.h"
 
-#ifdef CONFIG_CHIP_OTA_REQUESTOR
-#include "dfu/ota/ota_util.h"
-#endif
-
 #include <app/clusters/identify-server/identify-server.h>
 #include <app/server/OnboardingCodesUtil.h>
 
@@ -98,7 +94,7 @@ void AppTask::ButtonEventHandler(Nrf::ButtonState state, Nrf::ButtonMask hasChan
 #ifdef CONFIG_CHIP_ICD_UAT_SUPPORT
 	} else if ((UAT_BUTTON_MASK & state & hasChanged)) {
 		LOG_INF("ICD UserActiveMode has been triggered.");
-		Server::GetInstance().GetICDManager().UpdateOperationState(ICDManager::OperationalState::ActiveMode);
+		Server::GetInstance().GetICDManager().OnNetworkActivity();
 #endif
 	}
 }

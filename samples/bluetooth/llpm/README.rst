@@ -94,12 +94,15 @@ Building and running
 
 .. include:: /includes/nRF54H20_erase_UICR.txt
 
+.. note::
+   |54H_engb_2_8|
+
 Testing
 =======
 
 After programming the sample to both development kits, test it by performing the following steps:
 
-1. Connect to both kits with a terminal emulator (for example, `nRF Connect Serial Terminal`_).
+1. Connect to both kits with a terminal emulator (for example, the `Serial Terminal app`_).
    See :ref:`test_and_optimize` for the required settings and steps.
 #. Reset both kits.
 #. In one of the terminal emulators, type "c" to start the application on the connected board in the central (tester) role.
@@ -164,7 +167,7 @@ The result should look similar to the following output.
 - For the central::
 
    *** Booting Zephyr OS build v3.3.99-ncs1-2858-gc9d01d05ce83 ***
-   Starting Bluetooth LLPM example
+   Starting Bluetooth LLPM sample
    I: SoftDevice Controller build revision:
    I: 01 2d a8 d4 0d e5 25 cf |.-....%.
    I: a3 48 8d 2f 56 e0 59 c8 |.H./V.Y.
@@ -239,7 +242,7 @@ The result should look similar to the following output.
 - For the peripheral::
 
    *** Booting Zephyr OS build v3.3.99-ncs1-2858-gc9d01d05ce83 ***
-   Starting Bluetooth LLPM example
+   Starting Bluetooth LLPM sample
    I: SoftDevice Controller build revision:
    I: 01 2d a8 d4 0d e5 25 cf |.-....%.
    I: a3 48 8d 2f 56 e0 59 c8 |.H./V.Y.

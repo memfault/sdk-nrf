@@ -15,7 +15,7 @@
 };
 
 &uart0 {
-	status = "disabled";
+	disable-rx;
 };
 
 &gpiote {
@@ -37,8 +37,4 @@
 			low-power-enable;
 		};
 	};
-};
-
-&rtc0 {
-	status = "okay";
 };

@@ -366,7 +366,7 @@ Depending on the development kit you use, you need to select the respective conf
 
       .. table-from-rows:: /includes/sample_board_rows.txt
          :header: heading
-         :rows: nrf52840dk_nrf52840, nrf52833dk_nrf52833, nrf52833dk_nrf52820, nrf5340dk_nrf5340_cpuapp, nrf54l15dk_nrf54l15_cpuapp, nrf54h20dk_nrf54h20_cpuapp
+         :rows: nrf52840dk_nrf52840, nrf52833dk_nrf52833, nrf52833dk_nrf52820, nrf5340dk_nrf5340_cpuapp, nrf54l15dk_nrf54l15_cpuapp, nrf54l15dk_nrf54l10_cpuapp, nrf54l15dk_nrf54l05_cpuapp, nrf54h20dk_nrf54h20_cpuapp
 
       Depending on the configuration, a DK may act either as mouse, keyboard or dongle.
       For information about supported configurations for each board, see the :ref:`nrf_desktop_board_configuration_files` section.
@@ -900,6 +900,9 @@ The nRF Desktop application is built the same way to any other |NCS| application
 .. note::
    Information about the known issues in nRF Desktop can be found in |NCS|'s :ref:`release_notes` and on the :ref:`known_issues` page.
 
+.. note::
+   |54H_engb_2_8|
+
 .. _nrf_desktop_selecting_build_types:
 
 Selecting a build type
@@ -948,6 +951,24 @@ See :ref:`app_build_file_suffixes` and :ref:`cmake_options` for information abou
    For details, see `Verifying Fast Pair`_ in the GFPS documentation.
 
 .. nrf_desktop_fastpair_important_end
+
+nRF54L MCUboot provisioning
+===========================
+
+nRF54L-based nRF Desktop devices enable hardware cryptography for the MCUboot bootloader.
+The public key that MCUboot uses to validate the application image is securely stored in the hardware Key Management Unit (KMU).
+In this use case, the application image is automatically signed by the |NCS| build system.
+However, the public key is not automatically provisioned to the device when programming the bootloader and the application images using the ``west flash`` command.
+
+To provision the MCUboot keys, use the ``west ncs-provision`` command before programming the bootloader and application images.
+Make sure that the provisioned public key is generated from the private key that was used to sign the application image.
+The private keys are stored in the application configuration directory of the board.
+Path to the private key is defined by the ``SB_CONFIG_BOOT_SIGNATURE_KEY_FILE`` sysbuild Kconfig option.
+You only need to provision one public key to an nRF Desktop device.
+For details, see :ref:`provisioning KMU for nRF54L devices <ug_nrf54l_developing_provision_kmu>`.
+
+.. note::
+   You must provision the device again after erasing it.
 
 .. _nrf_desktop_testing_steps:
 

@@ -97,9 +97,15 @@ Snippets
 The following snippets are available:
 
 * ``usb`` - Enables USB transport support.
+
+  .. note::
+     The ``usb`` snippet does not support the ``nrf54l15dk/nrf54l15/cpuapp`` and ``nrf54l15dk/nrf54l10/cpuapp`` board targets.
+
 * ``logging`` - Enables logging using RTT.
   For additional options, refer to :ref:`RTT logging <ug_logging_backends_rtt>`.
 * ``debug`` - Enables debugging the Thread sample with GDB thread awareness.
+* ``diag_gpio`` - Configures DK's Buttons and LEDs for diagnostic GPIO commands.
+  For more information, see `OpenThread Factory Diagnostics Module Reference`_.
 * ``ci`` - Disables boot banner and shell prompt.
 * ``multiprotocol`` - Enables Bluetooth LE support in this sample.
   Not compatible with the ``tcat`` snippet.
@@ -146,6 +152,9 @@ Building and running
 |enable_thread_before_testing|
 
 .. include:: /includes/build_and_run_ns.txt
+
+.. note::
+   |54H_engb_2_8|
 
 To update the OpenThread libraries provided by ``nrfxlib``, use the following commands:
 

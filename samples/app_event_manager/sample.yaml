@@ -34,7 +34,9 @@ tests:
       - nrf9160dk/nrf9160/ns
       - nrf21540dk/nrf52840
       - nrf54h20dk/nrf54h20/cpuapp
-    tags: sysbuild ci_samples_app_event_manager
+    tags:
+      - sysbuild
+      - ci_samples_app_event_manager
   sample.app_event_manager_shell:
     sysbuild: true
     build_only: false
@@ -58,13 +60,19 @@ tests:
       - nrf54h20dk/nrf54h20/cpuapp
     extra_configs:
       - CONFIG_SHELL=y
-    platform_exclude: native_posix
-    tags: sysbuild ci_samples_app_event_manager
-  sample.app_event_manager_shell.native_posix:
+    platform_exclude: native_sim
+    tags:
+      - sysbuild
+      - ci_samples_app_event_manager
+  sample.app_event_manager_shell.native_sim:
     sysbuild: true
     build_only: false
     extra_configs:
       - CONFIG_SHELL=y
       - CONFIG_NATIVE_UART_0_ON_STDINOUT=y
-    platform_allow: native_posix
-    tags: sysbuild ci_samples_app_event_manager
+    platform_allow: native_sim
+    integration_platforms:
+      - native_sim
+    tags:
+      - sysbuild
+      - ci_samples_app_event_manager

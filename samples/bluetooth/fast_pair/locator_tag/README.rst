@@ -79,6 +79,18 @@ Recovery mode
 In the provisioned state, you can enter the recovery mode for a limited time.
 This mode allows the Android device to recover a lost provisioning key from the locator tag.
 
+Motion detector mode
+--------------------
+
+In the provisioned state, the accessory can activate the motion detector mode defined in the DULT specification.
+The mode is activated when the accessory is separated from the owner for a sufficient amount of time (see :kconfig:option:`CONFIG_DULT_MOTION_DETECTOR_SEPARATED_UT_TIMEOUT_PERIOD_MIN` and :kconfig:option:`CONFIG_DULT_MOTION_DETECTOR_SEPARATED_UT_TIMEOUT_PERIOD_MAX` Kconfig options).
+In this state, if motion is detected, the accessory starts the ringing action.
+Emitted sounds help to alert the non-owner that they are carrying an accessory that does not belong to them and might be used by the original owner to track their location.
+On DKs, you can generate the simulated motion by button action.
+On the Thingy:53, the built-in accelerometer is used to detect the motion.
+The motion detector is deactivated for the period set in the :kconfig:option:`CONFIG_DULT_MOTION_DETECTOR_SEPARATED_UT_BACKOFF_PERIOD` Kconfig option after 10 sounds has been played or after the motion has been detected and 20 seconds have passed.
+The motion detector is also deactivated if the accessory reappears near its owner.
+
 FMDN unprovisioning
 ===================
 
@@ -123,11 +135,17 @@ To start Fast Pair discoverable advertising after the FMDN unprovisioning and fa
 Device Firmware Update (DFU)
 ============================
 
-The locator tag sample uses the :ref:`MCUboot <mcuboot:mcuboot_ncs>` bootloader firmware image, enabling application firmware image upgrades through the :ref:`app_dfu` procedure.
-Over-the-air updates are supported using MCUmgr's Simple Management Protocol (SMP) over Bluetooth.
+The locator tag sample supports over-the-air updates using MCUmgr's Simple Management Protocol (SMP) over Bluetooth.
+The application configures the appropriate DFU solution in relation to the selected board target (see the following table for more details).
+The following DFU solutions are supported in this sample:
+
+* The :ref:`MCUboot <mcuboot:mcuboot_ncs>` bootloader solution.
+  See the :ref:`app_dfu` user guide for more information.
+* The Software Update for Internet of Things (SUIT) solution.
+  See the :ref:`SUIT <ug_nrf54h20_suit_dfu>` user guide for more information.
 
 To enable the DFU functionality use the ``SB_CONFIG_APP_DFU`` sysbuild Kconfig option.
-It is enabled by default if the MCUboot bootloader image is used.
+This option is enabled by default if a supported DFU solution is configured (see the following table to learn about supported configurations).
 
 To select a specific version of the application, change the :file:`VERSION` file in the sample root directory.
 See the :ref:`zephyr:app-version-details` for details.
@@ -139,21 +157,23 @@ See the :ref:`zephyr:app-version-details` for details.
    * :kconfig:option:`CONFIG_BT_FAST_PAIR_FMDN_DULT_FIRMWARE_VERSION_MINOR`
    * :kconfig:option:`CONFIG_BT_FAST_PAIR_FMDN_DULT_FIRMWARE_VERSION_REVISION`
 
-The bootloader configuration varies depending on the board target:
+The configuration of the DFU solution varies depending on the board target:
 
-+-----------------------------------------+------------------------------------------------------------+
-| Bootloader configuration                | Board targets                                              |
-+=========================================+============================================================+
-| MCUboot, direct-xip mode without revert | * ``nrf52dk/nrf52832`` (only ``release`` configuration)    |
-|                                         | * ``nrf52833dk/nrf52833`` (only ``release`` configuration) |
-|                                         | * ``nrf52840dk/nrf52840``                                  |
-|                                         | * ``nrf54l15dk/nrf54l15/cpuapp``                           |
-+-----------------------------------------+------------------------------------------------------------+
-| MCUboot, overwrite only mode            | * ``nrf5340dk/nrf5340/cpuapp``                             |
-|                                         | * ``nrf5340dk/nrf5340/cpuapp/ns``                          |
-|                                         | * ``thingy53/nrf5340/cpuapp``                              |
-|                                         | * ``thingy53/nrf5340/cpuapp/ns``                           |
-+-----------------------------------------+------------------------------------------------------------+
++--------------+--------------------------------+------------------------------------------------------------+
+| DFU solution | Mode of operation              | Board targets                                              |
++==============+================================+============================================================+
+| MCUboot      | direct-xip mode without revert | * ``nrf52dk/nrf52832`` (only ``release`` configuration)    |
+|              |                                | * ``nrf52833dk/nrf52833`` (only ``release`` configuration) |
+|              |                                | * ``nrf52840dk/nrf52840``                                  |
+|              |                                | * ``nrf54l15dk/nrf54l15/cpuapp``                           |
++--------------+--------------------------------+------------------------------------------------------------+
+| MCUboot      | overwrite only mode            | * ``nrf5340dk/nrf5340/cpuapp``                             |
+|              |                                | * ``nrf5340dk/nrf5340/cpuapp/ns``                          |
+|              |                                | * ``thingy53/nrf5340/cpuapp``                              |
+|              |                                | * ``thingy53/nrf5340/cpuapp/ns``                           |
++--------------+--------------------------------+------------------------------------------------------------+
+| SUIT         | overwrite only mode            | * ``nrf54h20dk/nrf54h20/cpuapp``                           |
++--------------+--------------------------------+------------------------------------------------------------+
 
 DFU mode
 --------
@@ -220,11 +240,12 @@ The user interface of the sample depends on the hardware platform you are using.
          * Blinks at a 0.25 second interval if the DFU mode is enabled.
 
       LED 2:
-         Indicates that the ringing action is in progress.
-         Depending on the ringing state:
+         Depending on the motion detected event, the ringing state, and the motion detector state:
 
-         * Lit if the device is ringing.
-         * Off if the device is not ringing.
+         * Blinks fast twice if the motion detected event appears.
+         * Lit if the device is ringing and no motion detection event is being indicated.
+         * Blinks at a 0.25 second interval if the motion detector is active and none of the above conditions are met.
+         * Off if none of the above conditions are met.
 
       LED 3:
          Depending on the FMDN provisioning state and the Fast Pair advertising state:
@@ -248,7 +269,8 @@ The user interface of the sample depends on the hardware platform you are using.
          See the :ref:`fast_pair_locator_tag_fp_adv_policy` section for details.
 
       Button 2:
-         Stops the ongoing ringing action.
+         Stops the ongoing ringing action on a single press.
+         Generates simulated motion event on a double press.
 
       Button 3:
          Decrements the battery level by 10% (the default value in the :ref:`CONFIG_APP_BATTERY_LEVEL_DECREMENT <CONFIG_APP_BATTERY_LEVEL_DECREMENT>` Kconfig option), starting from the full battery level of 100%.
@@ -303,11 +325,12 @@ The user interface of the sample depends on the hardware platform you are using.
          * Blinks at a 0.25 second interval if the DFU mode is enabled.
 
       LED 1:
-         Indicates that the ringing action is in progress.
-         Depending on the ringing state:
+         Depending on the motion detected event, the ringing state, and the motion detector state:
 
-         * Lit if the device is ringing.
-         * Off if the device is not ringing.
+         * Blinks fast twice if the motion detected event appears.
+         * Lit if the device is ringing and no motion detection event is being indicated.
+         * Blinks at a 0.25 second interval if the motion detector is active and none of the above conditions are met.
+         * Off if none of the above conditions are met.
 
       LED 2:
          Depending on the FMDN provisioning state and the Fast Pair advertising state:
@@ -331,7 +354,8 @@ The user interface of the sample depends on the hardware platform you are using.
          See the :ref:`fast_pair_locator_tag_fp_adv_policy` section for details.
 
       Button 1:
-         Stops the ongoing ringing action.
+         Stops the ongoing ringing action on a single press.
+         Generates simulated motion event on a double press.
 
       Button 2:
          Decrements the battery level by 10% (the default value in the :ref:`CONFIG_APP_BATTERY_LEVEL_DECREMENT <CONFIG_APP_BATTERY_LEVEL_DECREMENT>` Kconfig option), starting from the full battery level of 100%.
@@ -390,6 +414,7 @@ The user interface of the sample depends on the hardware platform you are using.
          * Red - Indicates that the recovery mode is active.
          * White - Indicates that the Fast Pair advertising is active.
          * Purple - Indicates that the DFU mode is active.
+         * Cyan - Indicates that the motion detector is active.
 
       Speaker/Buzzer:
          Produces sound when the ringing action is in progress and to indicate a new button action.
@@ -440,7 +465,7 @@ SB_CONFIG_APP_DFU
    The sample sysbuild configuration option enables the Device Firmware Update (DFU) functionality.
    The value of this option is propagated to the application configuration option :ref:`CONFIG_APP_DFU <CONFIG_APP_DFU>`.
    On multi-core devices, it adds the Kconfig fragment to the network core image configuration which speeds up the DFU process.
-   By default, this option is enabled if the MCUboot bootloader image is used.
+   This option is enabled by default if the MCUboot bootloader image is used (``SB_CONFIG_BOOTLOADER_MCUBOOT``) or if the chosen board target is based on an nRF54H Series SoC  (``SB_CONFIG_SOC_SERIES_NRF54HX``).
 
 .. _CONFIG_APP_DFU:
 
@@ -498,9 +523,6 @@ To build the sample in a release variant, set the ``FILE_SUFFIX=release`` CMake 
 The build will use the :file:`prj_release.conf` configuration file instead of :file:`prj.conf`.
 Check the contents of both files to learn which configuration changes you should apply when preparing the production build of your end product.
 
-.. note::
-   The sample does not support the DFU functionality.
-
 The release build reduces the code size and RAM usage of the sample by disabling logging functionality and performing other optimizations.
 Additionally, it enables the Link Time Optimization (LTO) configuration through the :kconfig:option:`CONFIG_LTO` Kconfig option, which further reduces the code size.
 LTO is an advanced compilation technique that optimizes across all compiled units of an application at the link stage, rather than optimizing each unit separately.
@@ -516,6 +538,24 @@ For example, when building from the command line, you can add it as follows:
 
    west build -b *board_target* -- -DFILE_SUFFIX=release
 
+.. _fast_pair_locator_tag_motion_detector_test_build:
+
+Motion detector test build
+==========================
+
+If you want to make testing the motion detector easier, enable the :kconfig:option:`CONFIG_DULT_MOTION_DETECTOR_TEST_MODE` Kconfig option to shorten the period between the device entering the Unwanted Tracking Protection mode and the activation of the motion detector.
+With this option enabled, the values of the :kconfig:option:`CONFIG_DULT_MOTION_DETECTOR_SEPARATED_UT_TIMEOUT_PERIOD_MIN` and :kconfig:option:`CONFIG_DULT_MOTION_DETECTOR_SEPARATED_UT_TIMEOUT_PERIOD_MAX` Kconfig options that are responsible for this period are shortened to three minutes.
+Otherwise, the period would be a random value between 8 and 24 hours.
+The :kconfig:option:`CONFIG_DULT_MOTION_DETECTOR_TEST_MODE` Kconfig option also shortens the motion detector backoff period (:kconfig:option:`CONFIG_DULT_MOTION_DETECTOR_SEPARATED_UT_BACKOFF_PERIOD`) from six hours to two minutes.
+
+See :ref:`configuring_kconfig` for detailed instructions on how to enable the :kconfig:option:`CONFIG_DULT_MOTION_DETECTOR_TEST_MODE` Kconfig option in your build.
+For example, when building from the command line, you can enable it as follows:
+
+.. parsed-literal::
+   :class: highlight
+
+   west build -b *board_target* -- -DCONFIG_DULT_MOTION_DETECTOR_TEST_MODE=y
+
 .. _fast_pair_locator_tag_testing:
 
 Testing
@@ -526,7 +566,7 @@ Testing
    The debug device model name is covered by asterisks and the default Fast Pair logo is displayed instead of the one specified during the device model registration.
 
    If the test Android device uses a primary email account that is not on Google's email allow list for the FMDN feature, testing steps will fail at the FMDN provisioning stage for the default debug (uncertified) device model.
-   To be able to test with debug device models, register your development email account by completing Google's device proposal form.
+   To be able to test with debug device models and use the "Inspect Spot device" tool in the `Find My Device app`_, register your development email account by completing Google's device proposal form.
    You can find the link to the device proposal form in the `Fast Pair Find My Device Network extension`_ specification.
 
 |test_sample|
@@ -744,6 +784,135 @@ To test this feature, complete the following steps:
       #. Start the ringing action on your device by tapping the :guilabel:`Play sound` button.
       #. Observe that **LED 1** is lit to confirm that the Android device is able to connect to your development kit after a clock synchronization.
 
+Motion detector
+---------------
+
+To test this feature, complete the following steps:
+
+.. tabs::
+
+   .. group-tab:: nRF52 and nRF53 DKs
+
+      1. Enable the :kconfig:option:`CONFIG_DULT_MOTION_DETECTOR_TEST_MODE` Kconfig option in the sample configuration to shorten the motion detector activation periods.
+         Refer to the :ref:`fast_pair_locator_tag_motion_detector_test_build` section for details on how to build the sample in the motion detector test mode.
+      #. Build and flash the application in the motion detector test mode on your target device.
+      #. Go to the :ref:`fast_pair_locator_tag_testing` section and follow the instructions on performing the FMDN provisioning operation.
+      #. Observe that **LED 3** is lit, which indicates that the device is provisioned as an FMDN beacon.
+      #. Double-click **Button 2** to simulate the motion event.
+      #. Observe that **LED 2** blinks fast twice, which indicates that the motion detected event appears.
+      #. Observe that the ringing action does not start, because the motion detector is inactive.
+      #. Put the device into the Unwanted Tracking Protection mode.
+         You can do it in two ways.
+         If you have access to the "Inspect Spot device" tool in the Find My Device Android app, you can:
+
+         1. Open the Find My Device app.
+         #. Tap your accessory in the list.
+            The accessory should have "Nearby" written under its name.
+         #. Tap the gear icon next to the device name
+         #. Tap the 3-dot menu and then :guilabel:`Inspect Spot device (internal)`.
+         #. Tap the 3-dot menu and then :guilabel:`Activate Unwanted Tracking Mode`.
+         #. Observe the "Changed unwanted tracking mode successfully" message on the screen.
+         #. Turn off your Android device to prevent it from automatically deactivating the mode.
+            Do this as quickly as possible after activating the mode.
+
+         Otherwise, you can:
+
+         1. Turn off your Android device.
+         #. Wait for minimum 30 minutes for other Android device to put the device into the Unwanted Tracking Protection mode.
+            The other Android device can belong to anyone around you.
+            It is recommended to be in a crowded area.
+
+      #. Wait for three minutes (random value between the :kconfig:option:`CONFIG_DULT_MOTION_DETECTOR_SEPARATED_UT_TIMEOUT_PERIOD_MIN` and :kconfig:option:`CONFIG_DULT_MOTION_DETECTOR_SEPARATED_UT_TIMEOUT_PERIOD_MAX` Kconfig options) for the motion detector to be activated.
+      #. Observe that **LED 2** blinks at a 0.25 second interval, which indicates that the motion detector is active.
+      #. Double-click **Button 2** to simulate the motion event.
+      #. Observe that **LED 2** blinks fast twice, which indicates that the motion detected event appears.
+      #. Observe that after up to 10 seconds, the ringing action starts for one second, which is indicated by **LED 2** being lit.
+      #. Observe that **LED 2** goes back to blinking at a 0.25 second interval, which indicates that the motion detector is active.
+      #. Double-click **Button 2** to simulate the motion event.
+      #. Observe that **LED 2** blinks fast twice, which indicates that the motion detected event appears.
+      #. Observe that after up to 0.5 second, the ringing action starts for one second, which is indicated by **LED 2** being lit.
+      #. Observe that **LED 2** goes back to blinking at a 0.25 second interval, which indicates that the motion detector is active.
+      #. Double-click **Button 2** to simulate the motion event.
+      #. Observe that **LED 2** blinks fast twice, which indicates that the motion detected event appears.
+      #. Observe that after up to 0.5 second, the ringing action starts, which is indicated by **LED 2** being lit.
+      #. Double-click **Button 2** to simulate the motion event while the **LED 2** is still lit (ringing action is still in progress).
+      #. Observe that **LED 2** blinks fast twice, which indicates that the motion detected event appears.
+      #. Observe that after 0.5 second, of not ringing, the ringing action starts again for one second, which is indicated by **LED 2** being lit.
+      #. Observe that **LED 2** goes back to blinking at a 0.25 second interval, which indicates that the motion detector is active.
+      #. Observe that after 20 seconds from the first motion event or after 10 ringing actions completes, the **LED 2** is off, which indicates that the motion detector is inactive.
+      #. Double-click **Button 2** to simulate the motion event.
+      #. Observe that **LED 2** blinks fast twice, which indicates that the motion detected event appears.
+      #. Observe that the ringing action does not start, because the motion detector is inactive.
+      #. Wait for two minutes (the backoff period defined by the :kconfig:option:`CONFIG_DULT_MOTION_DETECTOR_SEPARATED_UT_BACKOFF_PERIOD` Kconfig option) for the motion detector to be activated again.
+      #. Observe that **LED 2** blinks at a 0.25 second interval, which indicates that the motion detector is active.
+      #. Double-click **Button 2** to simulate the motion event and observe the ringing action just as before.
+      #. Wait for 20 seconds for the **LED 2** to go off, which indicates that the motion detector is inactive.
+      #. Wait for two minutes for the motion detector to be activated again.
+      #. Observe that **LED 2** blinks at a 0.25 second interval, which indicates that the motion detector is active.
+      #. Turn on your Android device.
+      #. Observe that after up to few hours the **LED 2** goes off, which means that the motion detector has been deactivated, because the device is no longer in the Unwanted Tracking Protection mode.
+
+   .. group-tab:: nRF54 DKs
+
+      1. Enable the :kconfig:option:`CONFIG_DULT_MOTION_DETECTOR_TEST_MODE` Kconfig option in the sample configuration to shorten the motion detector activation periods.
+         Refer to the :ref:`fast_pair_locator_tag_motion_detector_test_build` section for details on how to build the sample in the motion detector test mode.
+      #. Build and flash the application in the motion detector test mode on your target device.
+      #. Go to the :ref:`fast_pair_locator_tag_testing` section and follow the instructions on performing the FMDN provisioning operation.
+      #. Observe that **LED 2** is lit, which indicates that the device is provisioned as an FMDN beacon.
+      #. Double-click **Button 1** to simulate the motion event.
+      #. Observe that **LED 1** blinks fast twice, which indicates that the motion detected event appears.
+      #. Observe that the ringing action does not start, because the motion detector is inactive.
+      #. Put the device into the Unwanted Tracking Protection mode.
+         You can do it in two ways.
+         If you have access to the "Inspect Spot device" tool in the Find My Device Android app, you can:
+
+         1. Open the Find My Device app.
+         #. Tap your accessory in the list.
+            The accessory should have "Nearby" written under its name.
+         #. Tap the gear icon next to the device name
+         #. Tap the 3-dot menu and then :guilabel:`Inspect Spot device (internal)`.
+         #. Tap the 3-dot menu and then :guilabel:`Activate Unwanted Tracking Mode`.
+         #. Observe the "Changed unwanted tracking mode successfully" message on the screen.
+         #. Turn off your Android device to prevent it from automatically deactivating the mode.
+            Do this as quickly as possible after activating the mode.
+
+         Otherwise, you can:
+
+         1. Turn off your Android device.
+         #. Wait for minimum 30 minutes for other Android device to put the device into the Unwanted Tracking Protection mode.
+            The other Android device can belong to anyone around you.
+            It is recommended to be in a crowded area.
+
+      #. Wait for three minutes (random value between the :kconfig:option:`CONFIG_DULT_MOTION_DETECTOR_SEPARATED_UT_TIMEOUT_PERIOD_MIN` and :kconfig:option:`CONFIG_DULT_MOTION_DETECTOR_SEPARATED_UT_TIMEOUT_PERIOD_MAX` Kconfig options) for the motion detector to be activated.
+      #. Observe that **LED 1** blinks at a 0.25 second interval, which indicates that the motion detector is active.
+      #. Double-click **Button 1** to simulate the motion event.
+      #. Observe that **LED 1** blinks fast twice, which indicates that the motion detected event appears.
+      #. Observe that after up to 10 seconds, the ringing action starts for one second, which is indicated by **LED 1** being lit.
+      #. Observe that **LED 1** goes back to blinking at a 0.25 second interval, which indicates that the motion detector is active.
+      #. Double-click **Button 1** to simulate the motion event.
+      #. Observe that **LED 1** blinks fast twice, which indicates that the motion detected event appears.
+      #. Observe that after up to 0.5 second, the ringing action starts for one second, which is indicated by **LED 1** being lit.
+      #. Observe that **LED 1** goes back to blinking at a 0.25 second interval, which indicates that the motion detector is active.
+      #. Double-click **Button 1** to simulate the motion event.
+      #. Observe that **LED 1** blinks fast twice, which indicates that the motion detected event appears.
+      #. Observe that after up to 0.5 second, the ringing action starts, which is indicated by **LED 1** being lit.
+      #. Double-click **Button 1** to simulate the motion event while the **LED 1** is still lit (ringing action is still in progress).
+      #. Observe that **LED 1** blinks fast twice, which indicates that the motion detected event appears.
+      #. Observe that after 0.5 second, of not ringing, the ringing action starts again for one second, which is indicated by **LED 1** being lit.
+      #. Observe that **LED 1** goes back to blinking at a 0.25 second interval, which indicates that the motion detector is active.
+      #. Observe that after 20 seconds from the first motion event or after 10 ringing actions completes, the **LED 1** is off, which indicates that the motion detector is inactive.
+      #. Double-click **Button 1** to simulate the motion event.
+      #. Observe that **LED 1** blinks fast twice, which indicates that the motion detected event appears.
+      #. Observe that the ringing action does not start, because the motion detector is inactive.
+      #. Wait for two minutes (the backoff period defined by the :kconfig:option:`CONFIG_DULT_MOTION_DETECTOR_SEPARATED_UT_BACKOFF_PERIOD` Kconfig option) for the motion detector to be activated again.
+      #. Observe that **LED 1** blinks at a 0.25 second interval, which indicates that the motion detector is active.
+      #. Double-click **Button 1** to simulate the motion event and observe the ringing action just as before.
+      #. Wait for 20 seconds for the **LED 1** to go off, which indicates that the motion detector is inactive.
+      #. Wait for two minutes for the motion detector to be activated again.
+      #. Observe that **LED 1** blinks at a 0.25 second interval, which indicates that the motion detector is active.
+      #. Turn on your Android device.
+      #. Observe that after up to few hours the **LED 1** goes off, which means that the motion detector has been deactivated, because the device is no longer in the Unwanted Tracking Protection mode.
+
 Performing the DFU procedure
 ----------------------------
 
@@ -763,7 +932,7 @@ To perform the DFU procedure, complete the following steps:
             :start-after: fota_upgrades_over_ble_nrfcdm_common_dfu_steps_start
             :end-before: fota_upgrades_over_ble_nrfcdm_common_dfu_steps_end
 
-   .. group-tab:: nRF54 DKs
+   .. group-tab:: nRF54L DKs
 
       1. Observe that **LED 0** is blinking at a 1 second interval, which indicates that the DFU mode is disabled.
       #. Press the **Button 3** for 7 seconds or more to enter the DFU mode.
@@ -774,6 +943,37 @@ To perform the DFU procedure, complete the following steps:
          .. include:: /app_dev/device_guides/nrf52/fota_update.rst
             :start-after: fota_upgrades_over_ble_nrfcdm_common_dfu_steps_start
             :end-before: fota_upgrades_over_ble_nrfcdm_common_dfu_steps_end
+
+   .. group-tab:: nRF54H DKs
+
+      1. Observe that **LED 0** is blinking at a 1 second interval, which indicates that the DFU mode is disabled.
+      #. Press the **Button 3** for 7 seconds or more to enter the DFU mode.
+      #. Observe that **LED 0** is blinking at a 0.25 second interval, which indicates that the DFU mode is enabled.
+      #. Observe that **LED 2** is blinking, which indicates that the Fast Pair advertising is enabled.
+      #. Perform DFU using the `nRF Connect Device Manager`_ mobile app:
+
+         1. Generate the SUIT envelope by building your application with the FOTA support over Bluetooth Low Energy.
+            You can find the generated :file:`root.suit` envelope in the :file:`<build_dir>/DFU` directory.
+            Alternatively, you can use the generated :file:`dfu_suit.zip` package in the :file:`<build_dir>/zephyr` directory.
+         #. Download the :file:`root.suit` envelope or the :file:`dfu_suit.zip` package to your device.
+
+            .. note::
+               `nRF Connect for Desktop`_ does not currently support the FOTA process.
+
+         #. Use the `nRF Connect Device Manager`_ mobile app to update your device with the new firmware.
+
+            a. Ensure that you can access the :file:`root.suit` envelope or the :file:`dfu_suit.zip` package from your phone or tablet.
+            #. In the mobile app, scan and select the device to update.
+            #. Switch to the :guilabel:`Image` tab.
+            #. In the **Firmware Upgrade** section, tap the :guilabel:`SELECT FILE` button and select the :file:`root.suit` envelope or the :file:`dfu_suit.zip` package.
+            #. Tap the :guilabel:`START` button.
+            #. Wait for the DFU to finish and verify that the application works properly.
+
+      .. note::
+         Support for SUIT updates is available starting from the following versions of the `nRF Connect Device Manager`_ mobile app:
+
+         * Version ``2.0`` on Android.
+         * Version ``1.7`` on iOS.
 
 Disabling the locator tag
 -------------------------
@@ -920,6 +1120,7 @@ Device Firmware Update (DFU)
 
 This sample uses following components for the DFU functionality:
 
-* :ref:`MCUboot bootloader <mcuboot:mcuboot_ncs>`
+* :ref:`MCUboot bootloader <mcuboot:mcuboot_ncs>` (for supported board targets)
+* :ref:`SUIT <ug_nrf54h20_suit_dfu>` (for supported board targets)
 * :ref:`zephyr:app-version-details`
 * :ref:`zephyr:mcu_mgr`

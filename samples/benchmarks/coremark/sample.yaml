@@ -1,11 +1,36 @@
 sample:
   name: CoreMark Benchmark
-  description: CoreMark sample for the CPU performance evaluation.
-               Sample runs the CoreMark benchmark that measures the CPU efficiency
-               performing different algorithms like state machine, CRC calculation,
-               matrix manipulation and list processing (find and sort).
+  description: CoreMark sample for the CPU performance evaluation. Sample runs the
+    CoreMark benchmark that measures the CPU efficiency performing different algorithms
+    like state machine, CRC calculation, matrix manipulation and list processing (find
+    and sort).
 tests:
   sample.benchmark.coremark:
+    sysbuild: true
+    build_only: true
+    platform_allow:
+      - nrf52840dk/nrf52840
+      - nrf52833dk/nrf52833
+      - nrf52dk/nrf52832
+      - nrf5340dk/nrf5340/cpuapp
+      - nrf54l15dk/nrf54l05/cpuapp
+      - nrf54l15dk/nrf54l10/cpuapp
+      - nrf54l15dk/nrf54l15/cpuapp
+      - nrf54h20dk/nrf54h20/cpuapp
+    integration_platforms:
+      - nrf52840dk/nrf52840
+      - nrf52833dk/nrf52833
+      - nrf52dk/nrf52832
+      - nrf5340dk/nrf5340/cpuapp
+      - nrf54l15dk/nrf54l05/cpuapp
+      - nrf54l15dk/nrf54l10/cpuapp
+      - nrf54l15dk/nrf54l15/cpuapp
+      - nrf54h20dk/nrf54h20/cpuapp
+    tags:
+      - ci_build
+      - sysbuild
+      - ci_samples_benchmarks
+  sample.benchmark.coremark.flash_and_run:
     sysbuild: true
     build_only: false
     platform_allow:
@@ -13,6 +38,8 @@ tests:
       - nrf52833dk/nrf52833
       - nrf52dk/nrf52832
       - nrf5340dk/nrf5340/cpuapp
+      - nrf54l15dk/nrf54l05/cpuapp
+      - nrf54l15dk/nrf54l10/cpuapp
       - nrf54l15dk/nrf54l15/cpuapp
       - nrf54h20dk/nrf54h20/cpuapp
     integration_platforms:
@@ -20,9 +47,14 @@ tests:
       - nrf52833dk/nrf52833
       - nrf52dk/nrf52832
       - nrf5340dk/nrf5340/cpuapp
+      - nrf54l15dk/nrf54l05/cpuapp
+      - nrf54l15dk/nrf54l10/cpuapp
       - nrf54l15dk/nrf54l15/cpuapp
       - nrf54h20dk/nrf54h20/cpuapp
-    tags: ci_build sysbuild ci_samples_benchmarks
+    tags:
+      - ci_build
+      - sysbuild
+      - ci_samples_benchmarks
     harness: console
     harness_config:
       ordered: false
@@ -30,20 +62,8 @@ tests:
         - "CoreMark started!"
         - "Correct operation validated."
       type: multi_line
-    extra_args: CONFIG_APP_MODE_FLASH_AND_RUN=y
-  sample.benchmark.coremark_heap:
-    sysbuild: true
-    build_only: true
-    platform_allow:
-      - nrf5340dk/nrf5340/cpuapp
-      - nrf54h20dk/nrf54h20/cpuapp
-    integration_platforms:
-      - nrf5340dk/nrf5340/cpuapp
-      - nrf54h20dk/nrf54h20/cpuapp
-    tags: ci_build sysbuild ci_samples_benchmarks
-    extra_args: EXTRA_CONF_FILE="prj_heap_memory.conf"
-                coremark_image_2_board_EXTRA_CONF_FILE="prj_heap_memory.conf"
-  sample.benchmark.coremark_static:
+    extra_args: FILE_SUFFIX=flash_and_run
+  sample.benchmark.coremark.heap_memory:
     sysbuild: true
     build_only: true
     platform_allow:
@@ -51,6 +71,8 @@ tests:
       - nrf52833dk/nrf52833
       - nrf52dk/nrf52832
       - nrf5340dk/nrf5340/cpuapp
+      - nrf54l15dk/nrf54l05/cpuapp
+      - nrf54l15dk/nrf54l10/cpuapp
       - nrf54l15dk/nrf54l15/cpuapp
       - nrf54h20dk/nrf54h20/cpuapp
     integration_platforms:
@@ -58,11 +80,16 @@ tests:
       - nrf52833dk/nrf52833
       - nrf52dk/nrf52832
       - nrf5340dk/nrf5340/cpuapp
+      - nrf54l15dk/nrf54l05/cpuapp
+      - nrf54l15dk/nrf54l10/cpuapp
       - nrf54l15dk/nrf54l15/cpuapp
       - nrf54h20dk/nrf54h20/cpuapp
-    tags: ci_build sysbuild ci_samples_benchmarks
-    extra_args: EXTRA_CONF_FILE="prj_static_memory.conf"
-  sample.benchmark.coremark_multithread:
+    tags:
+      - ci_build
+      - sysbuild
+      - ci_samples_benchmarks
+    extra_args: FILE_SUFFIX=heap_memory
+  sample.benchmark.coremark.static_memory:
     sysbuild: true
     build_only: true
     platform_allow:
@@ -70,6 +97,8 @@ tests:
       - nrf52833dk/nrf52833
       - nrf52dk/nrf52832
       - nrf5340dk/nrf5340/cpuapp
+      - nrf54l15dk/nrf54l05/cpuapp
+      - nrf54l15dk/nrf54l10/cpuapp
       - nrf54l15dk/nrf54l15/cpuapp
       - nrf54h20dk/nrf54h20/cpuapp
     integration_platforms:
@@ -77,19 +106,38 @@ tests:
       - nrf52833dk/nrf52833
       - nrf52dk/nrf52832
       - nrf5340dk/nrf5340/cpuapp
+      - nrf54l15dk/nrf54l05/cpuapp
+      - nrf54l15dk/nrf54l10/cpuapp
       - nrf54l15dk/nrf54l15/cpuapp
       - nrf54h20dk/nrf54h20/cpuapp
-    tags: ci_build sysbuild ci_samples_benchmarks
-    extra_args: EXTRA_CONF_FILE="prj_multiple_threads.conf"
-  sample.benchmark.coremark_ppr:
+    tags:
+      - ci_build
+      - sysbuild
+      - ci_samples_benchmarks
+    extra_args: FILE_SUFFIX=static_memory
+  sample.benchmark.coremark.multiple_threads:
     sysbuild: true
     build_only: true
     platform_allow:
+      - nrf52840dk/nrf52840
+      - nrf52833dk/nrf52833
+      - nrf52dk/nrf52832
+      - nrf5340dk/nrf5340/cpuapp
+      - nrf54l15dk/nrf54l05/cpuapp
+      - nrf54l15dk/nrf54l10/cpuapp
+      - nrf54l15dk/nrf54l15/cpuapp
       - nrf54h20dk/nrf54h20/cpuapp
     integration_platforms:
+      - nrf52840dk/nrf52840
+      - nrf52833dk/nrf52833
+      - nrf52dk/nrf52832
+      - nrf5340dk/nrf5340/cpuapp
+      - nrf54l15dk/nrf54l05/cpuapp
+      - nrf54l15dk/nrf54l10/cpuapp
+      - nrf54l15dk/nrf54l15/cpuapp
       - nrf54h20dk/nrf54h20/cpuapp
-    tags: ci_build sysbuild ci_samples_benchmarks
-    extra_args:
-      SB_CONFIG_APP_CPUNET_RUN=n
-      SB_CONFIG_APP_CPUPPR_RUN=y
-      coremark_SNIPPET=nordic-ppr
+    tags:
+      - ci_build
+      - sysbuild
+      - ci_samples_benchmarks
+    extra_args: FILE_SUFFIX=multiple_threads

@@ -16,6 +16,7 @@ The following Matter samples and applications use the low power configuration by
 
 * :ref:`Matter door lock sample <matter_lock_sample>`
 * :ref:`Matter light switch sample <matter_light_switch_sample>`
+* :ref:`Matter smoke CO alarm <matter_smoke_co_alarm_sample>`
 * :ref:`Matter window covering sample <matter_window_covering_sample>`
 * :ref:`Matter weather station application <matter_weather_station_app>`
 
@@ -90,10 +91,19 @@ The typical use case for a SIT device are actuators, meaning devices such as doo
 Conversely, LIT devices are designed to be used for sensors or light switches, devices that only report data and are not controllable.
 In such scenarios, the LIT device initiates communication and it is not able to answer with a small latency, but it can sleep for extended periods of time and achieve much lower power consumption than an SIT.
 
+The LIT device starts operation in the SIT mode and remains in this state until the first ICD client registers to it.
+This is necessary because the device is not responsive in the LIT mode, so client registration would be difficult.
+Once the ICD client is registered, the ICD device switches to LIT mode in order to save energy.
+
 The LIT device implementation requires multiple new features, such as Check-In protocol (CIP) support, ICD client registration, and User Active Mode Trigger (UAT).
 These features are not required for SIT device implementation, but can be optionally enabled.
 
-To configure the LIT, CIP or UAT, use the following Kconfig options:
+You can enable optional Dynamic SIT LIT switching (DSLS) support for the LIT device.
+When enabled, the device can dynamically switch between SIT and LIT modes, even if it has an ICD client registered.
+The primary use case for this feature is device types like Smoke/CO Alarm, allowing the device to work as SIT when using a wired power source and switch to LIT and using a battery power source in case of a power outage.
+This feature is not available for the SIT device.
+
+To configure the LIT, CIP, UAT or DSLS, use the following Kconfig options:
 
 * :kconfig:option:`CONFIG_CHIP_ICD_LIT_SUPPORT` to enable the Long Idle Time device support.
 * :kconfig:option:`CONFIG_CHIP_ICD_CHECK_IN_SUPPORT` to enable the Check-In protocol support.
@@ -103,14 +113,21 @@ To configure the LIT, CIP or UAT, use the following Kconfig options:
 * :kconfig:option:`CONFIG_CHIP_ICD_UAT_SUPPORT` to enable the User Active Mode Trigger support.
   The User Active Mode Trigger allows triggering the ICD device to move from the idle to active state and make it immediately responsive, for example to change its configuration.
   This option is by default enabled for the LIT device.
+* :kconfig:option:`CONFIG_CHIP_ICD_SIT_SLOW_POLL_LIMIT` to limit the slow polling interval value while the device is in the SIT mode.
+  This option can be used to limit the slow poll interval of an LIT device while temporarily working in the SIT mode.
+* :kconfig:option:`CONFIG_CHIP_ICD_DSLS_SUPPORT` to enable Dynamic SIT LIT switching (DSLS) support.
+  The DSLS support allows the application to dynamically switch between SIT and LIT modes, as long as the requirements for these modes are met.
+  This option is by default disabled for the LIT device.
 
-The LIT, CIP and UAT features were not finalized for Matter v1.3 and they are marked as provisional, so it is not recommended to use them, though you can find some of the LIT implementation in the Matter SDK and Matter specification.
-You can still enable them for testing purposes.
+You can enable optional reporting on entering the active mode.
+When enabled, the device sends a data report to the subscribed devices.
+This could be useful especially in the combination with the User Active Mode Trigger (UAT) feature, to inform the subscribed Matter controller that the user triggered an ICD to enter the active mode.
+To enable this functionality, set the :kconfig:option:`CONFIG_CHIP_ICD_REPORT_ON_ACTIVE_MODE` Kconfig option to ``y``.
 
 Enable low power mode for the selected networking technology
 ************************************************************
 
-The Matter supports using Thread and Wi-Fi as the IPv6-based networking technologies.
+The Matter supports using Thread and Wi-Fi® as the IPv6-based networking technologies.
 Both of the technologies come with their own solutions for optimizing the protocol behavior in terms of power consumption.
 However, the general goal of the optimization for both is to reduce the time spent in the active state and put the device in the inactive (sleep) state whenever possible.
 Reducing the device activity time usually comes with a higher response time and a lower performance.
@@ -152,6 +169,18 @@ The SSED uses the Coordinated Sampled Listening (CSL) protocol, which requires e
 Switching the Matter :ref:`ug_matter_device_low_power_icd_modes` and frequently updating polling intervals may result in increasing the device power consumption due to additional exchanges on the Thread protocol layer.
 To avoid this issue, set the :kconfig:option:`CONFIG_CHIP_ICD_SLOW_POLL_INTERVAL` and :kconfig:option:`CONFIG_CHIP_ICD_FAST_POLLING_INTERVAL` Kconfig options to the same value (for example, ``500``).
 The typical use case that the SSED is best suited for is battery-powered devices that require short response time, such as door locks or window blinds.
+
+Child timeouts configuration
+----------------------------
+
+The device working in a Thread child role uses additional mechanisms for periodically ensuring that the communication with the parent is still possible.
+These mechanisms lead to waking up the device and exchanging the messages with the parent, if the related timeout expires.
+In case of using the SED poll period value greater than any of these timeouts, the device wakes up more often than what is defined by the poll period.
+To ensure that the SED device wakes up exactly at every poll period, set the following Kconfig options to the value greater than the poll period value (for Matter ICD :kconfig:option:`CONFIG_CHIP_ICD_SLOW_POLL_INTERVAL`):
+
+* :kconfig:option:`CONFIG_OPENTHREAD_MLE_CHILD_TIMEOUT`
+* :kconfig:option:`CONFIG_OPENTHREAD_CHILD_SUPERVISION_CHECK_TIMEOUT`
+* :kconfig:option:`CONFIG_OPENTHREAD_CHILD_SUPERVISION_INTERVAL`
 
 Matter over Wi-Fi
 =================
@@ -202,6 +231,18 @@ Disable unused pins and peripherals
    :start-after: disable_unused_pins_start
    :end-before: disable_unused_pins_end
 
+Disable LEDs module
+===================
+
+When performing the power measurements on various development kits, the LEDs can either be included in the measurement circuit or not:
+
+* For the nRF52840 DK and nRF5340 DK, the LEDs are excluded from the measurement circuit, so they can be enabled for the low power configuration and it is not going to impact the measurement results.
+* For the nRF54L15 DK, the MOSFET transistors controlling the LEDs are included in the measurement circuit.
+  This results in measurement results being increased by an additional, small leakage current that appears if an LED is turned on.
+  To measure the current consumption of the nRF54L15 SoC without including development kit components, such as LEDs, it is recommended to disable them.
+
+To disable LEDs in the Matter samples and applications, set the :ref:`CONFIG_NCS_SAMPLE_MATTER_LEDS <CONFIG_NCS_SAMPLE_MATTER_LEDS>` Kconfig option to ``n``.
+
 .. _ug_matter_enable_pm_module:
 
 Enable Device Power Management module
@@ -246,3 +287,12 @@ Configure radio transmitter power
    :end-before: radio_power_end
 
 See :ref:`ug_matter_gs_transmission_power` for more information.
+
+Disable unused RAM sections
+***************************
+
+The :ref:`lib_ram_pwrdn` library allows you to disable unused sections of RAM and save power in low-power applications.
+Unused sections of RAM depend on the SoC architecture and the total amount of used static RAM.
+In Matter, you can use this feature by setting the :kconfig:option:`CONFIG_RAM_POWER_DOWN_LIBRARY` Kconfig option to ``y``.
+
+Once the feature is enabled, the :c:func:`power_down_unused_ram` function is called automatically in the :file:`matter_init.cpp` file during the initialization process.

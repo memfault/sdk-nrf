@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <zephyr/kernel.h>
 #include <zephyr/sys/poweroff.h>
+#include <zephyr/pm/device.h>
 
 #include <nrfx.h>
 #include <hal/nrf_power.h>
@@ -20,7 +21,6 @@
 
 #include <dk_buttons_and_leds.h>
 
-
 #define SYSTEM_OFF_DELAY_S	3
 
 #define MAX_REC_COUNT		1
@@ -32,7 +32,6 @@
 
 /* Delayed work that enters system off. */
 static struct k_work_delayable system_off_work;
-
 
 /**
  * @brief Function that receives events from NFC.
@@ -135,6 +134,18 @@ static void system_off(struct k_work *work)
 	printk("Powering off.\nApproach a NFC reader to restart.\n");
 
 	dk_set_led_off(SYSTEM_ON_LED);
+
+	if (IS_ENABLED(CONFIG_PM_DEVICE) && IS_ENABLED(CONFIG_SERIAL)) {
+		static const struct device *dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_console));
+		int err;
+		enum pm_device_state state;
+
+		if (dev) {
+			do {
+				err = pm_device_state_get(dev, &state);
+			} while ((err == 0) && (state == PM_DEVICE_STATE_ACTIVE));
+		}
+	}
 
 	sys_poweroff();
 }

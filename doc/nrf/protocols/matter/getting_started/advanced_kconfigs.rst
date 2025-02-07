@@ -17,10 +17,10 @@ These macros cannot be altered using dedicated Kconfig options.
 
 .. _ug_matter_configuring_optional_ble_advertising:
 
-Bluetooth LE advertising
-========================
+Bluetooth® LE advertising
+=========================
 
-The Matter specification requires the accessory device to advertise Matter service over Bluetooth® Low Energy (LE) for commissioning purposes.
+The Matter specification requires the accessory device to advertise Matter service over Bluetooth Low Energy (LE) for commissioning purposes.
 By default, the Bluetooth LE advertising start has to be requested by the application (for example, as a result of a button press) and lasts for a maximum duration of 15 minutes.
 This is appropriate for a device with high security requirements that should not advertise its service without a direct trigger, for example a door lock.
 
@@ -101,7 +101,7 @@ Matter Settings shell commands
 You can enable the Matter Settings shell commands to monitor the current usage of the Zephyr Settings using :ref:`NVS (Non-Volatile Storage) <zephyr:nvs_api>` or :ref:`ZMS (Zephyr Memory Storage) <zephyr:zms_api>` backends.
 These commands are useful for verifying that the ``settings`` partition has the proper size and meets the application requirements.
 
-To enable the Matter Settings shell module, set the :kconfig:option:`CONFIG_NCS_SAMPLE_MATTER_SETTINGS_SHELL` Kconfig option to ``y``.
+To enable the Matter Settings shell module, set the :ref:`CONFIG_NCS_SAMPLE_MATTER_SETTINGS_SHELL<CONFIG_NCS_SAMPLE_MATTER_SETTINGS_SHELL>` Kconfig option to ``y``.
 
 You can use the following shell commands:
 
@@ -155,7 +155,7 @@ For more information about the factory data generation, see the :ref:`Matter Dev
 
 To read more about the FFS technology and its compatibility with Matter, see the following pages in the Amazon developer documentation:
 
-* `Matter Simple Setup for Wi-Fi Overview`_
+* `Matter Simple Setup for Wi-Fi® Overview <Matter Simple Setup for Wi-Fi Overview_>`_
 * `Matter Simple Setup for Thread Overview`_
 
 Reaction to the last Matter fabric removal
@@ -204,7 +204,7 @@ Persistent storage
 ==================
 
 The persistent storage module allows for the application data and configuration to survive a device reboot.
-|NCS| Matter applications use one generic Persistent Storage API that can be enabled by the :kconfig:option:`CONFIG_NCS_SAMPLE_MATTER_PERSISTENT_STORAGE` Kconfig option.
+|NCS| Matter applications use one generic Persistent Storage API that can be enabled by the :ref:`CONFIG_NCS_SAMPLE_MATTER_PERSISTENT_STORAGE<CONFIG_NCS_SAMPLE_MATTER_PERSISTENT_STORAGE>` Kconfig option.
 This API consists of methods with ``Secure`` and ``NonSecure`` prefixes, which handle secure (ARM Platform Security Architecture Persistent Storage) and non-secure (raw Zephyr settings) storage operations, respectively.
 
 You can learn more details about the Persistent Storage API from the :file:`ncs/nrf/samples/matter/common/src/persistent_storage/persistent_storage.h` header file.
@@ -212,21 +212,21 @@ You can learn more details about the Persistent Storage API from the :file:`ncs/
 The interface is implemented by two available backends.
 Both can be used simultaneously by controlling the following Kconfig options:
 
-* :kconfig:option:`CONFIG_NCS_SAMPLE_MATTER_SETTINGS_STORAGE_BACKEND` - Activates the implementation that takes advantage of the raw :ref:`Zephyr settings<zephyr:settings_api>`.
+* :ref:`CONFIG_NCS_SAMPLE_MATTER_SETTINGS_STORAGE_BACKEND<CONFIG_NCS_SAMPLE_MATTER_SETTINGS_STORAGE_BACKEND>` - Activates the implementation that takes advantage of the raw :ref:`Zephyr settings<zephyr:settings_api>`.
   This backend implements ``NonSecure`` methods of the Persistent Storage API and returns ``PSErrorCode::NotSupported`` for ``Secure`` methods.
-* :kconfig:option:`CONFIG_NCS_SAMPLE_MATTER_SECURE_STORAGE_BACKEND` - Activates the module based on the ARM PSA Protected Storage API implementation from the :ref:`trusted_storage_readme` |NCS| library.
+* :ref:`CONFIG_NCS_SAMPLE_MATTER_SECURE_STORAGE_BACKEND<CONFIG_NCS_SAMPLE_MATTER_SECURE_STORAGE_BACKEND>` - Activates the module based on the ARM PSA Protected Storage API implementation from the :ref:`trusted_storage_readme` |NCS| library.
   This backend implements ``Secure`` methods of the Persistent Storage API and returns ``PSErrorCode::NotSupported`` for ``NonSecure`` methods.
 
 Both backends allow you to control the maximum length of a string-type key under which an asset can be stored.
-You can do this using the :kconfig:option:`CONFIG_NCS_SAMPLE_MATTER_STORAGE_MAX_KEY_LEN` Kconfig option.
+You can do this using the :ref:`CONFIG_NCS_SAMPLE_MATTER_STORAGE_MAX_KEY_LEN<CONFIG_NCS_SAMPLE_MATTER_STORAGE_MAX_KEY_LEN>` Kconfig option.
 
-If both backends are activated at the same time (:kconfig:option:`CONFIG_NCS_SAMPLE_MATTER_SETTINGS_STORAGE_BACKEND` and :kconfig:option:`CONFIG_NCS_SAMPLE_MATTER_SECURE_STORAGE_BACKEND` enabled) all methods of the generic interface are supported.
+If both backends are activated at the same time (:ref:`CONFIG_NCS_SAMPLE_MATTER_SETTINGS_STORAGE_BACKEND<CONFIG_NCS_SAMPLE_MATTER_SETTINGS_STORAGE_BACKEND>` and :ref:`CONFIG_NCS_SAMPLE_MATTER_SECURE_STORAGE_BACKEND<CONFIG_NCS_SAMPLE_MATTER_SECURE_STORAGE_BACKEND>` enabled), all methods of the generic interface are supported.
 
 Similarly to the non-secure backend, the secure backend leverages the Zephyr Settings to interface with the FLASH memory.
 
 Additionally, in case of the secure storage backend, the following Kconfig options control the storage limits:
 
-* :kconfig:option:`CONFIG_NCS_SAMPLE_MATTER_SECURE_STORAGE_MAX_ENTRY_NUMBER` - Defines the maximum number or assets that can be stored in the secure storage.
+* :ref:`CONFIG_NCS_SAMPLE_MATTER_SECURE_STORAGE_MAX_ENTRY_NUMBER<CONFIG_NCS_SAMPLE_MATTER_SECURE_STORAGE_MAX_ENTRY_NUMBER>` - Defines the maximum number or assets that can be stored in the secure storage.
 * :kconfig:option:`CONFIG_TRUSTED_STORAGE_BACKEND_AEAD_MAX_DATA_SIZE` - Defines the maximum length of the secret that is stored.
 
 .. _ug_matter_configuration_diagnostic_logs:
@@ -260,26 +260,26 @@ After receiving the read request from the Matter controller, the device reads th
 The device sends converted logs to the Matter controller as a response.
 
 After the crash data is successfully read, it will be removed and further read attempts will notify the user that there is no available data to read.
-To keep the crash log in the memory after reading it, set the :kconfig:option:`CONFIG_NCS_SAMPLE_MATTER_DIAGNOSTIC_LOGS_REMOVE_CRASH_AFTER_READ` Kconfig option to ``n``.
+To keep the crash log in the memory after reading it, set the :ref:`CONFIG_NCS_SAMPLE_MATTER_DIAGNOSTIC_LOGS_REMOVE_CRASH_AFTER_READ<CONFIG_NCS_SAMPLE_MATTER_DIAGNOSTIC_LOGS_REMOVE_CRASH_AFTER_READ>` Kconfig option to ``n``.
 
-Network and end user logs
+Network and end-user logs
 -------------------------
 
-The diagnostic network and end user logs are saved in the dedicated retained RAM partitions.
+The diagnostic network and end-user logs are saved in the dedicated retained RAM partitions.
 The logs are not removed after reading, but when attempting to write new logs to an already full buffer, the oldest logs are replaced.
 
-The diagnostic network and end user logs are designed to be pushed when requested by the user.
+The diagnostic network and end-user logs are designed to be pushed when requested by the user.
 This can result in the same information being passed by multiple APIs, which is usually not desirable behavior.
-Because of this, for the network and the end user logs the :kconfig:option:`CONFIG_NCS_SAMPLE_MATTER_DIAGNOSTIC_LOGS_REDIRECT` Kconfig option is enabled by default.
+Because of this, for the network and the end-user logs the :ref:`CONFIG_NCS_SAMPLE_MATTER_DIAGNOSTIC_LOGS_REDIRECT<CONFIG_NCS_SAMPLE_MATTER_DIAGNOSTIC_LOGS_REDIRECT>` Kconfig option is enabled by default.
 
 With the Kconfig option enabled, the redirect functionality takes logs passed to the Zephyr logger and saves them in the retained RAM as Matter diagnostic logs.
 Only the following logs are redirected:
 
 * Logs from the ``chip`` module are redirected into diagnostic network logs.
-* Logs from the ``app`` module are redirected into diagnostic end user logs.
+* Logs from the ``app`` module are redirected into diagnostic end-user logs.
 
-You can disable the redirect functionality by disabling the :kconfig:option:`CONFIG_NCS_SAMPLE_MATTER_DIAGNOSTIC_LOGS_REDIRECT` Kconfig option.
-You can then push the network or end user logs using dedicated API in your application, like in the following code snippet:
+You can disable the redirect functionality by disabling the :ref:`CONFIG_NCS_SAMPLE_MATTER_DIAGNOSTIC_LOGS_REDIRECT<CONFIG_NCS_SAMPLE_MATTER_DIAGNOSTIC_LOGS_REDIRECT>` Kconfig option.
+You can then push the network or end-user logs using dedicated API in your application, like in the following code snippet:
 
 .. code-block:: C++
 
@@ -301,28 +301,61 @@ The partition sizes are configured using example values and may not be sufficien
 To change the partition sizes, you need to change the configuration in the devicetree overlay.
 You can, for example, increase the partition sizes to be able to store more logs.
 
-The snippet sets the following kconfig options:
+The snippet sets the following Kconfig options:
 
-  * :kconfig:option:`CONFIG_NCS_SAMPLE_MATTER_DIAGNOSTIC_LOGS` to ``y``.
-  * :kconfig:option:`CONFIG_NCS_SAMPLE_MATTER_DIAGNOSTIC_LOGS_CRASH_LOGS` to ``y``.
-  * :kconfig:option:`CONFIG_NCS_SAMPLE_MATTER_DIAGNOSTIC_LOGS_REMOVE_CRASH_AFTER_READ` to ``y``.
-  * :kconfig:option:`CONFIG_NCS_SAMPLE_MATTER_DIAGNOSTIC_LOGS_END_USER_LOGS` to ``y``.
-  * :kconfig:option:`CONFIG_NCS_SAMPLE_MATTER_DIAGNOSTIC_LOGS_NETWORK_LOGS` to ``y``.
+  * :ref:`CONFIG_NCS_SAMPLE_MATTER_DIAGNOSTIC_LOGS<CONFIG_NCS_SAMPLE_MATTER_DIAGNOSTIC_LOGS>` to ``y``.
+  * :ref:`CONFIG_NCS_SAMPLE_MATTER_DIAGNOSTIC_LOGS_CRASH_LOGS<CONFIG_NCS_SAMPLE_MATTER_DIAGNOSTIC_LOGS_CRASH_LOGS>` to ``y``.
+  * :ref:`CONFIG_NCS_SAMPLE_MATTER_DIAGNOSTIC_LOGS_REMOVE_CRASH_AFTER_READ<CONFIG_NCS_SAMPLE_MATTER_DIAGNOSTIC_LOGS_REMOVE_CRASH_AFTER_READ>` to ``y``.
+  * :ref:`CONFIG_NCS_SAMPLE_MATTER_DIAGNOSTIC_LOGS_END_USER_LOGS<CONFIG_NCS_SAMPLE_MATTER_DIAGNOSTIC_LOGS_END_USER_LOGS>` to ``y``.
+  * :ref:`CONFIG_NCS_SAMPLE_MATTER_DIAGNOSTIC_LOGS_NETWORK_LOGS<CONFIG_NCS_SAMPLE_MATTER_DIAGNOSTIC_LOGS_NETWORK_LOGS>` to ``y``.
   * :kconfig:option:`CONFIG_LOG_MODE_DEFERRED` to ``y``.
   * :kconfig:option:`CONFIG_LOG_RUNTIME_FILTERING` to ``n``.
 
-Deferred logs mode (:kconfig:option:`CONFIG_LOG_MODE_DEFERRED`) is enabled because it is required by the log redirection functionality (:kconfig:option:`CONFIG_NCS_SAMPLE_MATTER_DIAGNOSTIC_LOGS_REDIRECT`), which is enabled by default for diagnostic network and end user logs.
+Deferred logs mode (:kconfig:option:`CONFIG_LOG_MODE_DEFERRED`) is enabled because it is required by the log redirection functionality (:ref:`CONFIG_NCS_SAMPLE_MATTER_DIAGNOSTIC_LOGS_REDIRECT<CONFIG_NCS_SAMPLE_MATTER_DIAGNOSTIC_LOGS_REDIRECT>`), which is enabled by default for diagnostic network and end-user logs.
 
 .. note::
 
-  You cannot set the :kconfig:option:`CONFIG_NCS_SAMPLE_MATTER_DIAGNOSTIC_LOGS` Kconfig option separately without adding the devicetree overlays contained in the snippet.
+  You cannot set the :ref:`CONFIG_NCS_SAMPLE_MATTER_DIAGNOSTIC_LOGS<CONFIG_NCS_SAMPLE_MATTER_DIAGNOSTIC_LOGS>` Kconfig option separately without adding the devicetree overlays contained in the snippet.
   Instead, if you want to use just some of the diagnostic logs functionality, use the snippet and set the Kconfig options for the other functionalities to ``n``.
 
-To use the snippet when building a sample, add ``-D<project_name>_SNIPPET=diagnostic-logs`` to the west arguments list.
+To use the snippet when building a sample, add ``-D<project_name>_SNIPPET=matter-diagnostic-logs`` to the west arguments list.
 
-Example for the ``nrf52840dk_nrf52840`` target board and the :ref:`matter_lock_sample` sample:
+Example for the ``nrf52840dk/nrf52840`` board target and the :ref:`matter_lock_sample` sample:
 
 .. parsed-literal::
    :class: highlight
 
-   west build -b nrf52840dk/nrf52840 -- -Dlock_SNIPPET=diagnostic-logs
+   west build -b nrf52840dk/nrf52840 -- -Dlock_SNIPPET=matter-diagnostic-logs
+
+.. _ug_matter_debug_snippet:
+
+Debug snippet
+=============
+
+The Matter debug snippet allows you to enable additional debug features while using Matter samples.
+
+The following features are enabled when using this snippet:
+
+  * UART speed is increased to 1 Mbit/s.
+  * Log buffer size is set to high value to allow showing all logs.
+  * Deferred mode of logging.
+  * Increased verbosity of Matter logs.
+  * Openthread is built from sources.
+  * Openthread shell is enabled.
+  * Openthread logging level is set to INFO.
+  * Full shell functionalities.
+  * Logging source code location on VerifyOrDie failure that occurs in the Matter stack.
+
+To use the snippet when building a sample, add ``-D<project_name>_SNIPPET=matter-debug`` to the west arguments list.
+
+For example, for the ``nrf52840dk/nrf52840`` board target and the :ref:`matter_lock_sample` sample, use the following command:
+
+.. parsed-literal::
+   :class: highlight
+
+   west build -b nrf52840dk/nrf52840 -- -Dlock_SNIPPET=matter-debug
+
+.. note::
+
+  You can increase the UART speed using this snippet only for Nordic Development Kits.
+  If you want to use the snippet for your custom board, you need to adjust the UART speed manually.

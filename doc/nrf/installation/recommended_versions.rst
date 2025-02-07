@@ -49,7 +49,7 @@ Zephyr features only available on Linux
 
   * BlueZ integration
   * net-tools integration
-  * Native Port (native_posix)
+  * Native Port (native_sim)
   * BabbleSim
 
 .. _requirements_toolchain:
@@ -287,6 +287,9 @@ Among others, this package includes the J-Link RTT Viewer, which can be used for
 
 It is recommended to use the |jlink_ver| of the package when you :ref:`installing_vsc`.
 
+On Windows, you also need to install SEGGER USB Driver for J-Link, which is required for support of older Nordic Semiconductor devices in :ref:`requirements_nrf_util`.
+For information on how to install the USB Driver, see the `nRF Util prerequisites`_ documentation.
+
 .. _toolchain_management_tools:
 .. _additional_nordic_sw_tools:
 
@@ -375,10 +378,13 @@ nRF Command Line Tools
 Among others, this package includes the nrfjprog executable and library, which the west command uses by default to program the development kits.
 For more information on nrfjprog, see `Programming SoCs with nrfjprog`_.
 
+.. note::
+    |nrf_CLT_deprecation_note|
+
 It is recommended to use the latest version of the package when you :ref:`installing_vsc`.
 
-|nRFVSC|
-========
+nRF Connect for Visual Studio Code
+==================================
 
 |vsc_extension_description|
 

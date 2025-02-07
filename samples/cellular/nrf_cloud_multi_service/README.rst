@@ -42,7 +42,7 @@ This sample implements or demonstrates the following features:
 * Support for the `nRF Cloud Provisioning Service`_ using the :ref:`lib_nrf_provisioning` library.
   For compatibility with auto-onboarding, the device ID uses the 128 bit UUID format rather than the older nrf-<IMEI> format.
 * Support for remote execution of modem AT commands using application-specific device messages.
-* Periodic cellular, Wi-Fi, and GNSS location tracking using the :ref:`lib_location` library.
+* Periodic cellular, Wi-Fi®, and GNSS location tracking using the :ref:`lib_location` library.
 * Periodic temperature sensor sampling on your `Nordic Thingy:91`_, or fake temperature  measurements on your `nRF9151 DK <Nordic nRF9151 DK_>`_ , `nRF9161 DK <Nordic nRF9161 DK_>`_, or `nRF9160 DK <Nordic nRF9160 DK_>`_.
 * Transmission of sensor and GNSS location samples to the nRF Cloud portal as `nRF Cloud device messages <nRF Cloud Device Messages_>`_.
 * Construction of valid `nRF Cloud device messages <nRF Cloud Device Messages_>`_.
@@ -127,6 +127,7 @@ When it starts, it logs the `reset reason code <nRF9160 RESETREAS_>`_.
 If the :kconfig:option:`CONFIG_SEND_ONLINE_ALERT` Kconfig option is enabled, it sends an alert to nRF Cloud containing the reset reason as the value field.
 
 It performs the following major tasks:
+
 * Establishes periodic position tracking (which the :ref:`lib_location` library performs).
 * Periodically samples temperature data (using the :file:`src/temperature.c` file).
 * Constructs timestamped sensor sample and location `device messages <nRF Cloud Device Messages_>`_.
@@ -1001,7 +1002,7 @@ Once your device has been flashed with this sample, you can add a credential by 
 .. parsed-literal::
    :class: highlight
 
-   wifi_cred add *NetworkSSID* WPA2-PSK *NetworkPassword*
+   wifi_cred add -s *NetworkSSID* -k 1 -p *NetworkPassword*
 
 Where *NetworkSSID* is replaced with the SSID of the Wi-Fi access point you want your device to connect to, and *NetworkPassword* is its password.
 Then either reboot the device or use the ``wifi_cred auto_connect`` command to manually trigger a connection attempt.
@@ -1083,7 +1084,7 @@ If you have :ref:`enabled support <nrf_cloud_multi_service_building_provisioning
 
    The nRF Cloud Provisioning Service auto-onboarding is compatible with CoAP, REST and MQTT connectivity with nRF Cloud.
 
-   With this method, use the nRF Connect Serial Terminal program and the nRF Cloud portal.
+   With this method, use the `Serial Terminal app`_ and the nRF Cloud portal.
    The device ID used in nRF Cloud portal requires the UUID format and not the 'nrf-\ *IMEI*\ ' format.
    See `device claiming <nRF Cloud device claiming_>`_ for more information.
 

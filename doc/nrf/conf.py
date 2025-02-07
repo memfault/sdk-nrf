@@ -48,6 +48,7 @@ extensions = [
     "zephyr.link-roles",
     "zephyr.dtcompatible-role",
     "zephyr.domain",
+    "zephyr.gh_utils",
     "sphinx_tabs.tabs",
     "software_maturity_table",
     "sphinx_togglebutton",
@@ -58,8 +59,8 @@ extensions = [
 ]
 
 linkcheck_ignore = [
-    # intersphinx links
-    r"(\.\.(\\|/))+(zephyr|kconfig|nrfxlib|mcuboot)",
+    # relative links (intersphinx, doxygen)
+    r"\.\.(\\|/)",
     # redirecting and used in release notes
     "https://github.com/nrfconnect/nrfxlib",
     # link to access local documentation
@@ -133,7 +134,7 @@ doxyrunner_fmt_vars = {
 }
 
 # create mbedtls config header (needed for Doxygen)
-doxyrunner_outdir.mkdir(exist_ok=True)
+doxyrunner_outdir.mkdir(exist_ok=True, parents=True)
 
 fin_path = NRF_BASE / "subsys" / "nrf_security" / "configs" / "legacy_crypto_config.h.template"
 fout_path = doxyrunner_outdir / "mbedtls_doxygen_config.h"
@@ -213,6 +214,19 @@ manifest_revisions_table_manifest = NRF_BASE / "west.yml"
 notfound_urls_prefix = "/nRF_Connect_SDK/doc/{}/nrf/".format(
     "latest" if version.endswith("99") else version
 )
+
+# -- Options for zephyr.gh_utils -----------------------------------------------
+
+gh_link_version = "main" if version.endswith("99") else f"v{version}"
+gh_link_base_url = f"https://github.com/nrfconnect/sdk-nrf"
+gh_link_prefixes = {
+    "applications/.*": "",
+    "samples/.*": "",
+    "scripts/.*": "",
+    "tests/.*": "",
+    ".*": "doc/nrf",
+}
+
 
 def setup(app):
     app.add_css_file("css/nrf.css")

@@ -10,7 +10,7 @@
 
 class GenericSwitchDevice : public Nrf::MatterBridgedDevice {
 public:
-	GenericSwitchDevice(const char *nodeLabel);
+	GenericSwitchDevice(const char *uniqueID, const char *nodeLabel);
 
 	uint16_t GetDeviceType() const override { return Nrf::MatterBridgedDevice::DeviceType::GenericSwitch; }
 	CHIP_ERROR HandleRead(chip::ClusterId clusterId, chip::AttributeId attributeId, uint8_t *buffer,
@@ -36,7 +36,7 @@ public:
 private:
 	CHIP_ERROR HandleReadSwitch(chip::AttributeId attributeId, uint8_t *buffer, uint16_t maxReadLength);
 
-	static constexpr uint16_t GetSwitchClusterRevision() { return 1; }
+	static constexpr uint16_t GetSwitchClusterRevision() { return 2; }
 	/* According to the Matter 1.2 specification: Bit 1 -> MomentarySwitch in the Switch Cluster section. */
 	static constexpr uint32_t GetSwitchClusterFeatureMap() { return 2; }
 	static constexpr uint32_t GetSwitchClusterNumberOfPositions() { return 2; }

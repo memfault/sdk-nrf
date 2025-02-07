@@ -10,13 +10,12 @@ Features of nRF53 Series
 The nRF53 Series System-on-Chips (SoC) integrate a high-performance Arm® Cortex®-M33 dual-core processor with a 2.4 GHz RF transceiver, in addition to advanced security features.
 All nRF53 Series SoC support Bluetooth® 5.1 and Bluetooth Mesh, in addition to multiprotocol capabilities.
 
-To get started with the nRF5340 DK, download and run the `Quick Start`_ application from `nRF Connect for Desktop`_.
+To get started with the nRF5340 DK, download and run the `Quick Start app`_ in `nRF Connect for Desktop`_.
 
 For additional information, refer to the following resources:
 
 * `nRF53 Series`_ for the technical documentation on the nRF53 Series chips and associated kits.
 * :ref:`installation` and :ref:`configuration_and_build` documentation to install the |NCS| and learn more about its development environment.
-* :ref:`ug_thingy53_gs` for getting started with the Thingy:53.
 
 Dual-core architecture
 **********************
@@ -33,7 +32,6 @@ With one core dedicated to application tasks and the other to connectivity, devi
 The separation of application and network functionalities simplifies firmware updates, allowing modifications on one processor without affecting the other.
 
 This architecture is ideal for devices requiring significant data processing alongside continuous wireless connectivity.
-
 
 .. _ug_nrf5340_intro_net_core:
 
@@ -130,7 +128,7 @@ Bluetooth Low Energy
      - Application core
    * - :zephyr:code-sample:`bluetooth_hci_ipc`
      - | :ref:`Bluetooth Low Energy samples <ble_samples>`
-       | :ref:`Bluetooth samples in Zephyr <zephyr:bluetooth-samples>`
+       | :zephyr:code-sample-category:`bluetooth`
    * - :ref:`ble_rpc_host` (supported for development)
      - Some Bluetooth Low Energy samples, for example, :ref:`peripheral_hids_mouse`, :ref:`peripheral_uart` or :ref:`central_uart`
 
@@ -151,7 +149,7 @@ The sample implements the RPMsg transport using the `OpenAMP`_ library to commun
 You can use either the SoftDevice Controller or the Zephyr Bluetooth LE Controller for this sample.
 See :ref:`ug_ble_controller` for more information.
 
-For the application core, the |NCS| provides a series of :ref:`Bluetooth Low Energy samples <ble_samples>`, in addition to the :ref:`Bluetooth samples in Zephyr <zephyr:bluetooth-samples>`.
+For the application core, the |NCS| provides a series of :ref:`Bluetooth Low Energy samples <ble_samples>`, in addition to the :zephyr:code-sample-category:`bluetooth` samples.
 |multi_image|
 
 .. note::
@@ -173,7 +171,7 @@ Bluetooth Mesh
 
 Bluetooth Mesh operates on Bluetooth Low Energy (LE), and is implemented according to Bluetooth Mesh Profile Specification v1.0.1 and Bluetooth Mesh Model Specification v1.0.1.
 For the application core, the |NCS| provides several :ref:`bt_mesh_samples`.
-In addition, you can find Bluetooth Mesh samples with :ref:`Bluetooth samples in Zephyr <zephyr:bluetooth-samples>`.
+In addition, you can find Bluetooth Mesh samples with :zephyr:code-sample-category:`bluetooth` samples.
 
 IEEE 802.15.4 (Thread and Zigbee)
 ---------------------------------
@@ -217,7 +215,7 @@ Multiprotocol support for the nRF5340 DK
 
    * - Network core
      - Application core
-   * - :ref:`multiprotocol-rpmsg-sample`
+   * - :ref:`ipc_radio`
      - | :ref:`Thread samples <openthread_samples>`
        | :ref:`Zigbee samples <zigbee_samples>`
 
@@ -229,10 +227,8 @@ When using Thread or Zigbee in parallel with Bluetooth LE, run the low-level rad
 
    Bluetooth LE and IEEE 802.15.4 multiprotocol architecture in multicore SoC
 
-For the network core, the |NCS| provides the :ref:`multiprotocol-rpmsg-sample` sample.
-It is a combination of the :zephyr:code-sample:`bluetooth_hci_ipc` sample (for Bluetooth LE) and the :zephyr:code-sample:`nrf_ieee802154_rpmsg` sample (for IEEE 802.15.4).
-This means that it enables both the Bluetooth LE Controller and the nRF IEEE 802.15.4 radio driver and simultaneously exposes the functionality of both stacks to the application core using the `RPMsg Messaging Protocol`_.
-Separate RPMsg endpoints are used to obtain independent inter-core connections for each stack.
+For the network core, the |NCS| provides the :ref:`ipc_radio`.
+The :ref:`ipc_radio` enables both the Bluetooth LE Controller and the nRF IEEE 802.15.4 radio driver and simultaneously exposes the functionality of both stacks to the application.
 
 For the application core, the |NCS| provides a series of samples for the :ref:`Thread <ug_thread>` and :ref:`Zigbee <ug_zigbee>` protocols.
 |multi_image|

@@ -1,7 +1,10 @@
 tests:
   net.lib.azure_iot_hub_dps:
     sysbuild: true
-    platform_allow: native_posix
+    platform_allow: native_sim
     integration_platforms:
-      - native_posix
-    tags: azure_iot_hub_dps sysbuild ci_tests_subsys_net
+      - native_sim
+    tags:
+      - azure_iot_hub_dps
+      - sysbuild
+      - ci_tests_subsys_net

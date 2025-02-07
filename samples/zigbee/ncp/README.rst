@@ -7,6 +7,8 @@ Zigbee: NCP
    :local:
    :depth: 2
 
+.. include:: /includes/zigbee_deprecation.txt
+
 The :ref:`Zigbee <ug_zigbee>` NCP sample demonstrates the usage of Zigbee's :ref:`ug_zigbee_platform_design_ncp_details` architecture.
 
 Together with the source code from :ref:`ug_zigbee_tools_ncp_host`, you can use this sample to create a complete and functional Zigbee device.
@@ -209,11 +211,11 @@ nRF5 SDK Bootloader
 When the sample is built for ``nrf52840dongle/nrf52840``, the build system does not produce an upgrade image.
 To upgrade the dongle, you can use one of the following options:
 
-* nRF Connect Programmer application (part of `nRF Connect for Desktop`_).
+* `Programmer app`_ (part of `nRF Connect for Desktop`_).
 
-  For more details, see `Programming the nRF52840 Dongle`_ in the nRF Connect Programmer user guide.
+  For more details, see `Programming the nRF52840 Dongle`_ in the Programmer app documentation.
 
-* `nRF Util`_ tool, if you do not want to use the nRF Connect Programmer application.
+* `nRF Util`_ tool, if you do not want to use the Programmer app.
 
   To generate a DFU package, see `Generating DFU packages`_ in the nRF Util user guide.
   Upgrading the dongle using this method requires putting the dongle into the DFU mode.

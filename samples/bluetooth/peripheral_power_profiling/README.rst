@@ -39,6 +39,9 @@ This is the deepest power saving mode the system can enter.
 In this mode, all core functionalities are powered down, and most peripherals are non-functional or non-responsive.
 The only mechanisms that are functional in this mode are reset and wake-up.
 
+.. note::
+   Currently, the **System off** mode is not supported by this sample for the nRF54H20 platform.
+
 To wake up your development kit from the system off state, you have the following options:
 
 .. tabs::
@@ -81,7 +84,7 @@ The following parameters have an impact on power consumption:
    * Notifications data size and interval
 
 You can configure these parameters with the Kconfig options.
-If your central device is the Bluetooth Low Energy app from `nRF Connect for Desktop`_, you can use it to change the current connection parameters.
+If your central device is the `Bluetooth Low Energy app`_ from `nRF Connect for Desktop`_, you can use it to change the current connection parameters.
 
 Example measurements:
 
@@ -218,6 +221,11 @@ CONFIG_BT_POWER_PROFILING_NON_CONNECTABLE_ADV_INTERVAL_MIN - Non-connectable adv
 CONFIG_BT_POWER_PROFILING_NON_CONNECTABLE_ADV_INTERVAL_MAX - Non-connectable advertising maximum interval
    Sets the non-connectable advertising maximum interval in 0.625 milliseconds unit.
 
+.. _CONFIG_BT_POWER_PROFILING_LED_DISABLED:
+
+CONFIG_BT_POWER_PROFILING_LED_DISABLED - Disable LEDs
+   Disables the LEDs to reduce power consumption.
+
 Building and running
 ********************
 
@@ -232,11 +240,11 @@ This testing procedure assumes that you are using `nRF Connect for Mobile`_ or `
 After programming the sample to your development kit, you need another device for measuring the power consumption.
 `Power Profiler Kit II (PPK2)`_ is the recommended device for the measurement.
 
-Testing with nRF Connect for Desktop and Power Profiler Kit II (PPK2)
----------------------------------------------------------------------
+Testing with Bluetooth Low Energy app and Power Profiler Kit II (PPK2)
+----------------------------------------------------------------------
 
 1. Set up `Power Profiler Kit II (PPK2)`_ and prepare your development kit for current measurement.
-#. Run the Power Profiler app from nRF Connect for Desktop.
+#. Run the `Power Profiler app`_ from nRF Connect for Desktop.
 #. |connect_terminal_ANSI|
 #. Reset your development kit.
 #. Observe that the sample starts.
@@ -247,7 +255,7 @@ Testing with nRF Connect for Desktop and Power Profiler Kit II (PPK2)
 
    You can measure power consumption during advertising with different intervals.
    Use the Kconfig options to change the interval or other parameters.
-#. Connect to the device through the Bluetooth Low Energy app.
+#. Connect to the device through the `Bluetooth Low Energy app`_.
 
    Observe the power consumption on the current connection interval.
 #. Set different connection parameters:

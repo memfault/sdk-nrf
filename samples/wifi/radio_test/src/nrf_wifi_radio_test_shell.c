@@ -1617,25 +1617,10 @@ static int nrf_wifi_radio_get_temperature(const struct shell *shell,
 					  const char *argv[])
 {
 	enum nrf_wifi_status status = NRF_WIFI_STATUS_FAIL;
-	char *ptr = NULL;
-	unsigned long val = 0;
 	int ret = -ENOEXEC;
 
-	val = strtoul(argv[1], &ptr, 10);
-
-	if (val > 1) {
-		shell_fprintf(shell,
-			      SHELL_ERROR,
-			      "Invalid value %lu\n",
-			      val);
-		shell_help(shell);
+	if (!check_test_in_prog(shell)) {
 		goto out;
-	}
-
-	if (val == 1) {
-		if (!check_test_in_prog(shell)) {
-			goto out;
-		}
 	}
 
 	ctx->rf_test_run = true;
@@ -1664,25 +1649,10 @@ static int nrf_wifi_radio_get_rf_rssi(const struct shell *shell,
 				      const char *argv[])
 {
 	enum nrf_wifi_status status = NRF_WIFI_STATUS_FAIL;
-	char *ptr = NULL;
-	unsigned long val = 0;
 	int ret = -ENOEXEC;
 
-	val = strtoul(argv[1], &ptr, 10);
-
-	if (val > 1) {
-		shell_fprintf(shell,
-			      SHELL_ERROR,
-			      "Invalid value %lu\n",
-			      val);
-		shell_help(shell);
+	if (!check_test_in_prog(shell)) {
 		goto out;
-	}
-
-	if (val == 1) {
-		if (!check_test_in_prog(shell)) {
-			goto out;
-		}
 	}
 
 	ctx->rf_test_run = true;
@@ -2430,7 +2400,7 @@ SHELL_STATIC_SUBCMD_SET_CREATE(
 		      0),
 	SHELL_CMD_ARG(tx_tone_freq,
 		      NULL,
-		      "<val> - Frequency in the range of -10MHz to 10MHz",
+		      "<val> - Frequency offset with respect to center frequency in the range of -10MHz to 10MHz (resolution 1MHz)",
 		      nrf_wifi_radio_test_set_tx_tone_freq,
 		      2,
 		      0),

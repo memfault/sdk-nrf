@@ -1,6 +1,5 @@
 #-------------------------------------------------------------------------------
-# Copyright (c) 2024, Arm Limited. All rights reserved.
-# Copyright (c) 2024, Nordic Semiconductor ASA.
+# Copyright (c) 2024, Nordic Semiconductor
 #
 # SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
 #
@@ -93,7 +92,6 @@ if(TARGET psa_crypto_library_config)
     target_compile_definitions(psa_crypto_library_config
         INTERFACE
             MBEDTLS_PSA_CRYPTO_DRIVERS
-            MBEDTLS_PSA_CRYPTO_BUILTIN_KEYS
             $<$<BOOL:${CRYPTO_TFM_BUILTIN_KEYS_DRIVER}>:PSA_CRYPTO_DRIVER_TFM_BUILTIN_KEY PSA_CRYPTO_DRIVER_TFM_BUILTIN_KEY_LOADER>
     )
 endif()
@@ -138,7 +136,10 @@ if(TARGET platform_s)
             # Required for system_nrfxx_approtect.h.
             $<$<BOOL:${CONFIG_NRF_APPROTECT_LOCK}>:ENABLE_APPROTECT>
             $<$<BOOL:${CONFIG_NRF_APPROTECT_USER_HANDLING}>:ENABLE_APPROTECT_USER_HANDLING>
+            $<$<BOOL:${CONFIG_NRF_APPROTECT_USER_HANDLING}>:ENABLE_AUTHENTICATED_APPROTECT> # nRF54L15
             $<$<BOOL:${CONFIG_NRF_SECURE_APPROTECT_LOCK}>:ENABLE_SECURE_APPROTECT>
+            $<$<BOOL:${CONFIG_NRF_SECURE_APPROTECT_LOCK}>:ENABLE_SECUREAPPROTECT> # nRF54L15
             $<$<BOOL:${CONFIG_NRF_SECURE_APPROTECT_USER_HANDLING}>:ENABLE_SECURE_APPROTECT_USER_HANDLING>
+            $<$<BOOL:${CONFIG_NRF_SECURE_APPROTECT_USER_HANDLING}>:ENABLE_AUTHENTICATED_SECUREAPPROTECT> # nRF54L15
     )
 endif()

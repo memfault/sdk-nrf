@@ -3,6 +3,10 @@
 Sysbuild images
 ###############
 
+.. contents::
+   :local:
+   :depth: 2
+
 :ref:`configuration_system_overview_sysbuild` allows you to add additional images to your builds.
 
 
@@ -42,8 +46,6 @@ These options determine whether the secure boot image is included on the network
 |               ``SB_CONFIG_NETCORE_RPC_HOST``            | |NCS| rpc_host Bluetooth image :ref:`ble_rpc_host`.                                                       |
 +---------------------------------------------------------+-----------------------------------------------------------------------------------------------------------+
 |               ``SB_CONFIG_NETCORE_802154_RPMSG``        | Zephyr 802.15.4 image :zephyr:code-sample:`nrf_ieee802154_rpmsg`.                                         |
-+---------------------------------------------------------+-----------------------------------------------------------------------------------------------------------+
-|               ``SB_CONFIG_NETCORE_MULTIPROTOCOL_RPMSG`` | |NCS| multiprotocol_rpmsg Bluetooth and 802.15.4 image :ref:`multiprotocol-rpmsg-sample`.                 |
 +---------------------------------------------------------+-----------------------------------------------------------------------------------------------------------+
 |               ``SB_CONFIG_NETCORE_IPC_RADIO``           | |NCS| ipc_radio image :ref:`ipc_radio`.                                                                   |
 +---------------------------------------------------------+-----------------------------------------------------------------------------------------------------------+
@@ -190,8 +192,8 @@ sysbuild.cmake:
 
 .. _sysbuild_images_adding_via_a_zephyr_module:
 
-Adding via a zephyr module
---------------------------
+Adding through a Zephyr module
+------------------------------
 
 To add images in a Zephyr module, create a folder within the module to hold the `Kconfig.sysbuild` and (optionally, if needed) `CMakeLists.txt` files.
 Then, add this folder to the Zephyr module file:

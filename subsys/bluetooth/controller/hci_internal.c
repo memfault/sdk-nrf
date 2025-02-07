@@ -145,6 +145,7 @@ static bool check_and_handle_is_host_using_legacy_and_extended_commands(uint8_t 
 	switch (opcode) {
 #if defined(CONFIG_BT_BROADCASTER)
 	case SDC_HCI_OPCODE_CMD_LE_SET_EXT_ADV_PARAMS:
+	case SDC_HCI_OPCODE_CMD_LE_SET_EXT_ADV_PARAMS_V2:
 	case SDC_HCI_OPCODE_CMD_LE_READ_NUMBER_OF_SUPPORTED_ADV_SETS:
 #endif /* CONFIG_BT_BROADCASTER */
 #if defined(CONFIG_BT_PER_ADV_SYNC)
@@ -467,6 +468,7 @@ void hci_internal_supported_commands(sdc_hci_ip_supported_commands_t *cmds)
 #if defined(CONFIG_BT_BROADCASTER)
 	cmds->hci_le_set_advertising_set_random_address = 1;
 	cmds->hci_le_set_extended_advertising_parameters = 1;
+	cmds->hci_le_set_extended_advertising_parameters_v2 = 1;
 	cmds->hci_le_set_extended_advertising_data = 1;
 	cmds->hci_le_set_extended_scan_response_data = 1;
 	cmds->hci_le_set_extended_advertising_enable = 1;
@@ -667,58 +669,6 @@ static void vs_zephyr_supported_commands(sdc_hci_vs_zephyr_supported_commands_t 
 	cmds->read_tx_power_level = 1;
 #endif /* CONFIG_BT_CTLR_TX_PWR_DYNAMIC_CONTROL */
 }
-
-static void vs_supported_commands(sdc_hci_vs_supported_vs_commands_t *cmds)
-{
-	memset(cmds, 0, sizeof(*cmds));
-
-	cmds->read_supported_vs_commands = 1;
-	cmds->llpm_mode_set = 1;
-	cmds->conn_update = 1;
-	cmds->conn_event_extend = 1;
-	cmds->qos_conn_event_report_enable = 1;
-	cmds->event_length_set = 1;
-#if defined(CONFIG_BT_CTLR_LE_POWER_CONTROL)
-	cmds->write_remote_tx_power = 1;
-	cmds->set_power_control_request_params = 1;
-	cmds->read_average_rssi = 1;
-#endif
-#if defined(CONFIG_BT_CENTRAL)
-	cmds->central_acl_event_spacing_set = 1;
-#endif
-
-#if defined(CONFIG_BT_CTLR_SDC_EVENT_TRIGGER)
-	cmds->set_conn_event_trigger = 1;
-	cmds->set_event_start_task = 1;
-#endif
-
-#if defined(CONFIG_BT_CONN)
-	cmds->get_next_conn_event_counter = 1;
-#endif
-
-#if defined(CONFIG_BT_CTLR_SDC_PAWR_ADV)
-	cmds->allow_parallel_connection_establishments = 1;
-#endif
-
-#if defined(CONFIG_BT_CONN)
-	cmds->min_val_of_max_acl_tx_payload_set = 1;
-#endif
-#if defined(CONFIG_BT_CTLR_ISO_TX_BUFFERS)
-	cmds->iso_read_tx_timestamp = 1;
-#endif
-#if defined(CONFIG_BT_CTLR_ADV_ISO)
-	cmds->big_reserved_time_set = 1;
-#endif
-#if defined(CONFIG_BT_CTLR_CONN_ISO)
-	cmds->cig_reserved_time_set = 1;
-	cmds->cis_subevent_length_set = 1;
-#endif
-
-#if defined(CONFIG_BT_OBSERVER)
-	cmds->scan_channel_map_set = 1;
-	cmds->scan_accept_ext_adv_packets_set = 1;
-#endif
-}
 #endif	/* CONFIG_BT_HCI_VS */
 
 static void supported_features(sdc_hci_ip_lmp_features_t *features)
@@ -761,6 +711,9 @@ void hci_internal_le_supported_features(
 
 #ifdef CONFIG_BT_CTLR_ADV_EXT
 	features->params.le_extended_advertising = 1;
+#ifdef CONFIG_BT_CTLR_PHY_CODED
+	features->params.advertising_coding_selection = 1;
+#endif
 #endif
 
 #if defined(CONFIG_BT_CTLR_ADV_PERIODIC) || defined(CONFIG_BT_CTLR_SYNC_PERIODIC)
@@ -1217,6 +1170,11 @@ static uint8_t le_controller_cmd_put(uint8_t const * const cmd,
 	case SDC_HCI_OPCODE_CMD_LE_SET_ADV_SET_RANDOM_ADDRESS:
 		return sdc_hci_cmd_le_set_adv_set_random_address((void *)cmd_params);
 
+	case SDC_HCI_OPCODE_CMD_LE_SET_EXT_ADV_PARAMS_V2:
+		*param_length_out += sizeof(sdc_hci_cmd_le_set_ext_adv_params_v2_return_t);
+		return sdc_hci_cmd_le_set_ext_adv_params_v2((void *)cmd_params,
+							    (void *)event_out_params);
+
 	case SDC_HCI_OPCODE_CMD_LE_SET_EXT_ADV_PARAMS:
 		*param_length_out += sizeof(sdc_hci_cmd_le_set_ext_adv_params_return_t);
 		return sdc_hci_cmd_le_set_ext_adv_params((void *)cmd_params,
@@ -1594,6 +1552,9 @@ static uint8_t le_controller_cmd_put(uint8_t const * const cmd,
 			(void *)event_out_params);
 	case SDC_HCI_OPCODE_CMD_LE_CS_READ_REMOTE_SUPPORTED_CAPABILITIES:
 		return sdc_hci_cmd_le_cs_read_remote_supported_capabilities((void *)cmd_params);
+	case SDC_HCI_OPCODE_CMD_LE_CS_WRITE_CACHED_REMOTE_SUPPORTED_CAPABILITIES:
+		return sdc_hci_cmd_le_cs_write_cached_remote_supported_capabilities(
+			(void *)cmd_params, (void *)event_out_params);
 	case SDC_HCI_OPCODE_CMD_LE_CS_SECURITY_ENABLE:
 		return sdc_hci_cmd_le_cs_security_enable((void *)cmd_params);
 	case SDC_HCI_OPCODE_CMD_LE_CS_SET_DEFAULT_SETTINGS:
@@ -1675,12 +1636,10 @@ static uint8_t vs_cmd_put(uint8_t const *const cmd, uint8_t *const raw_event_out
 		return sdc_hci_cmd_vs_zephyr_read_tx_power((void *)cmd_params,
 							   (void *)event_out_params);
 #endif /* CONFIG_BT_CTLR_TX_PWR_DYNAMIC_CONTROL */
-	case SDC_HCI_OPCODE_CMD_VS_READ_SUPPORTED_VS_COMMANDS:
-		*param_length_out += sizeof(sdc_hci_cmd_vs_read_supported_vs_commands_return_t);
-		vs_supported_commands((void *)event_out_params);
-		return 0;
+#if CONFIG_BT_CTLR_SDC_LLPM
 	case SDC_HCI_OPCODE_CMD_VS_LLPM_MODE_SET:
 		return sdc_hci_cmd_vs_llpm_mode_set((void *)cmd_params);
+#endif /* CONFIG_BT_CTLR_SDC_LLPM */
 	case SDC_HCI_OPCODE_CMD_VS_CONN_UPDATE:
 		return sdc_hci_cmd_vs_conn_update((void *)cmd_params);
 	case SDC_HCI_OPCODE_CMD_VS_CONN_EVENT_EXTEND:
@@ -1716,8 +1675,6 @@ static uint8_t vs_cmd_put(uint8_t const *const cmd, uint8_t *const raw_event_out
 		return sdc_hci_cmd_vs_central_acl_event_spacing_set((void *)cmd_params);
 #endif
 #if defined(CONFIG_BT_CTLR_SDC_EVENT_TRIGGER)
-	case SDC_HCI_OPCODE_CMD_VS_SET_CONN_EVENT_TRIGGER:
-		return sdc_hci_cmd_vs_set_conn_event_trigger((void *)cmd_params);
 	case SDC_HCI_OPCODE_CMD_VS_SET_EVENT_START_TASK:
 		return sdc_hci_cmd_vs_set_event_start_task((void *)cmd_params);
 #endif

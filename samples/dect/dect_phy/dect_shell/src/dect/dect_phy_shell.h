@@ -8,9 +8,10 @@
 #define DECT_PHY_SHELL_H
 
 #include <zephyr/kernel.h>
-#include "nrf_modem_dect_phy.h"
+#include <nrf_modem_dect_phy.h>
 
 #include "dect_common.h"
+#include "dect_common_settings.h"
 #include "dect_phy_common.h"
 #include "dect_app_time.h"
 
@@ -105,6 +106,8 @@ struct dect_phy_ping_params {
 	int32_t ping_count;
 	int8_t tx_power_dbm;
 	uint8_t tx_mcs;
+	uint8_t tx_lbt_period_symbols;
+	int8_t tx_lbt_rssi_busy_threshold_dbm;
 	uint8_t slot_count;
 
 	int8_t expected_rx_rssi_level;
@@ -119,6 +122,8 @@ struct dect_phy_ping_params {
 
 /******************************************************************************/
 
+#define DECT_PHY_SHELL_RSSI_SCAN_DEFAULT_DURATION_MS \
+	((DECT_PHY_SETT_DEFAULT_BEACON_TX_INTERVAL_SECS * 1000) + 10)
 struct dect_phy_rssi_scan_params {
 	bool reinit_mdm_api;
 	bool suspend_scheduler;
@@ -126,6 +131,7 @@ struct dect_phy_rssi_scan_params {
 
 	int8_t busy_rssi_limit;
 	int8_t free_rssi_limit;
+
 	uint32_t channel;
 	uint32_t scan_time_ms;
 
@@ -133,8 +139,11 @@ struct dect_phy_rssi_scan_params {
 				 * and for reporting interval RX command.
 				 */
 
+	enum dect_phy_settings_rssi_scan_result_verdict_type result_verdict_type;
+	struct dect_phy_settings_rssi_scan_verdict_type_subslot_params type_subslots_params;
+
 	/* "hidden" params */
-	bool stop_on_1st_free_channel;
+	bool stop_on_1st_free_channel; /* stop on 1st totally free channel */
 
 	uint16_t dont_stop_on_this_channel; /* Considered as BUSY */
 	bool dont_stop_on_nbr_channels;	    /* Neighbor channels considered as BUSY */
@@ -147,6 +156,7 @@ struct dect_phy_rx_cmd_params {
 	int8_t expected_rssi_level;
 	bool suspend_scheduler;
 
+	bool ch_acc_use_all_channels;
 	int8_t busy_rssi_limit;
 	int8_t free_rssi_limit;
 	uint16_t rssi_interval_secs;
@@ -166,6 +176,8 @@ struct dect_phy_common_op_event_msgq_item {
 #define DECT_PHY_COMMON_RX_CMD_HANDLE	 50
 #define DECT_PHY_COMMON_RSSI_SCAN_HANDLE 60
 
+#define DECT_PHY_MAC_BEACON_LMS_RSSI_SCAN_HANDLE 99
+
 #define DECT_PHY_MAC_BEACON_TX_HANDLE		 100
 #define DECT_PHY_MAC_BEACON_RX_RACH_HANDLE_START 101
 #define DECT_PHY_MAC_BEACON_RX_RACH_HANDLE_END	 999
@@ -175,10 +187,15 @@ struct dect_phy_common_op_event_msgq_item {
 
 #define DECT_PHY_MAC_BEACON_RA_RESP_TX_HANDLE 1000
 
-#define DECT_PHY_MAC_CLIENT_RA_TX_HANDLE	      1001
-#define DECT_PHY_MAC_CLIENT_ASSOCIATION_TX_HANDLE     1002
-#define DECT_PHY_MAC_CLIENT_ASSOCIATION_RX_HANDLE     1003
-#define DECT_PHY_MAC_CLIENT_ASSOCIATION_REL_TX_HANDLE 1004
+#define DECT_PHY_MAC_CLIENT_RA_TX_HANDLE		1001
+#define DECT_PHY_MAC_CLIENT_RA_TX_CONTINUOUS_HANDLE	1002
+#define DECT_PHY_MAC_CLIENT_ASSOCIATION_TX_HANDLE	1003
+#define DECT_PHY_MAC_CLIENT_ASSOCIATION_RX_HANDLE	1004
+#define DECT_PHY_MAC_CLIENT_ASSOCIATION_REL_TX_HANDLE	1005
+#define DECT_PHY_MAC_CLIENT_ASSOCIATED_BG_SCAN		1006
+/* Following handles from DECT_PHY_MAC_CLIENT_ASSOCIATED_BG_SCAN + 1 to DECT_PHY_MAC_MAX_NEIGBORS
+ * are reserved for associated bg scannings.
+ */
 
 #define DECT_PHY_PERF_TX_HANDLE_START 10000
 #define DECT_PHY_PERF_TX_HANDLE_END   10049

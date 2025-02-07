@@ -12,7 +12,7 @@ It abstracts and hides the details of the transport and the encoding scheme that
 The current implementation supports the following technologies:
 
 * GNSS, TEMP, and other application-specific sensor data
-* Cellular and Wi-Fi location data
+* Cellular and Wi-Fi® location data
 * TLS-secured MQTT, TLS-secured REST, or DTLS-secured CoAP as the communication protocol
 * JSON as the data format for MQTT and REST
 * CBOR and JSON as the data format for CoAP
@@ -48,8 +48,8 @@ The :c:func:`nrf_cloud_connect` function does not block and returns success if t
 When the :kconfig:option:`CONFIG_NRF_CLOUD_CONNECTION_POLL_THREAD` Kconfig option is enabled, an additional event, :c:enum:`NRF_CLOUD_EVT_TRANSPORT_CONNECTING`, is sent to the application.
 To adjust the stack size of the connection monitoring thread, set the :kconfig:option:`CONFIG_NRF_CLOUD_CONNECTION_POLL_THREAD_STACK_SIZE` Kconfig option.
 The :c:enum:`NRF_CLOUD_EVT_TRANSPORT_CONNECT_ERROR` event is sent if an error occurs while the transport connection is being established.
-The status field of the :c:struct:`nrf_cloud_evt` structure contains the reason for the error that is defined by :c:enumerator:`nrf_cloud_connect_result`.
-The :c:enumerator:`NRF_CLOUD_EVT_TRANSPORT_DISCONNECTED` event also contains additional information in the status field that is defined by :c:enumerator:`nrf_cloud_disconnect_status`.
+The status field of the :c:struct:`nrf_cloud_evt` structure contains the reason for the error that is defined by :c:enum:`nrf_cloud_connect_result`.
+The :c:enumerator:`NRF_CLOUD_EVT_TRANSPORT_DISCONNECTED` event also contains additional information in the status field that is defined by :c:enum:`nrf_cloud_disconnect_status`.
 
 First, the library tries to establish the transport for communicating with the cloud.
 This procedure involves a TLS handshake that might take up to three seconds.
@@ -127,7 +127,7 @@ Configuration options for device ID
 * :kconfig:option:`CONFIG_NRF_CLOUD_CLIENT_ID_SRC_IMEI` - If you enable this option, the ID is automatically generated using a prefix and the modem's IMEI (``<prefix><IMEI>``).
   This is the default.
   You can configure the prefix by using :kconfig:option:`CONFIG_NRF_CLOUD_CLIENT_ID_PREFIX`.
-  The default format of the prefix is ``nrf-`` and it is valid only for Nordic devices such as Thingy:91 or an nRF91 Series DK.
+  The default format of the prefix is ``nrf-`` and it is valid only for Nordic devices such as Thingy:91, Thingy:91 X, or an nRF91 Series DK.
   For custom hardware, use a prefix other than ``nrf-`` by modifying :kconfig:option:`CONFIG_NRF_CLOUD_CLIENT_ID_PREFIX`.
 
 * :kconfig:option:`CONFIG_NRF_CLOUD_CLIENT_ID_SRC_INTERNAL_UUID` - If you enable this option, the ID is automatically generated using the modem's 128-bit internal UUID, which results in a 36 character string of hexadecimal values in the 8-4-4-4-12 UUID format.
@@ -160,7 +160,7 @@ nRF Cloud FOTA enables the following additional features and libraries:
 
 * :kconfig:option:`CONFIG_FOTA_DOWNLOAD` enables :ref:`lib_fota_download`
 * :kconfig:option:`CONFIG_DFU_TARGET` enables :ref:`lib_dfu_target`
-* :kconfig:option:`CONFIG_DOWNLOAD_CLIENT` enables :ref:`lib_download_client`
+* :kconfig:option:`CONFIG_DOWNLOADER` enables :ref:`lib_downloader`
 * :kconfig:option:`CONFIG_FOTA_DOWNLOAD_PROGRESS_EVT`
 * :kconfig:option:`CONFIG_FOTA_PROGRESS_EVT_INCREMENT`
 * :kconfig:option:`CONFIG_REBOOT`

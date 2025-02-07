@@ -110,6 +110,9 @@ LOG_MODULE_REGISTER(esb, CONFIG_ESB_LOG_LEVEL);
 /* Flag for changing radio channel. */
 #define RF_CHANNEL_UPDATE_FLAG 0
 
+/* Empty trim value */
+#define TRIM_VALUE_EMPTY 0xFFFFFFFF
+
 /* Internal Enhanced ShockBurst module state. */
 enum esb_state {
 	ESB_STATE_IDLE,		/* Idle. */
@@ -445,7 +448,8 @@ static void esb_fem_for_tx_ack(void)
 
 static void esb_fem_reset(void)
 {
-	nrf_timer_task_trigger(esb_timer.p_reg, NRF_TIMER_TASK_SHUTDOWN);
+	nrf_timer_task_trigger(esb_timer.p_reg, NRF_TIMER_TASK_STOP);
+	nrf_timer_task_trigger(esb_timer.p_reg, NRF_TIMER_TASK_CLEAR);
 
 	mpsl_fem_lna_configuration_clear();
 	mpsl_fem_pa_configuration_clear();
@@ -458,7 +462,8 @@ static void esb_fem_reset(void)
 
 static void esb_fem_lna_reset(void)
 {
-	nrf_timer_task_trigger(esb_timer.p_reg, NRF_TIMER_TASK_SHUTDOWN);
+	nrf_timer_task_trigger(esb_timer.p_reg, NRF_TIMER_TASK_STOP);
+	nrf_timer_task_trigger(esb_timer.p_reg, NRF_TIMER_TASK_CLEAR);
 
 	esb_ppi_for_fem_clear();
 
@@ -470,7 +475,9 @@ static void esb_fem_pa_reset(void)
 {
 	mpsl_fem_pa_configuration_clear();
 
-	nrf_timer_task_trigger(esb_timer.p_reg, NRF_TIMER_TASK_SHUTDOWN);
+	nrf_timer_task_trigger(esb_timer.p_reg, NRF_TIMER_TASK_STOP);
+	nrf_timer_task_trigger(esb_timer.p_reg, NRF_TIMER_TASK_CLEAR);
+
 	esb_ppi_for_fem_clear();
 
 	mpsl_fem_disable();
@@ -933,11 +940,11 @@ static void initialize_fifos(void)
 	for (size_t i = 0; i < CONFIG_ESB_TX_FIFO_SIZE; i++) {
 		ack_pl_wrap[i].p_payload = &tx_payload[i];
 		ack_pl_wrap[i].in_use = false;
-		ack_pl_wrap[i].p_next = 0;
+		ack_pl_wrap[i].p_next = NULL;
 	}
 
 	for (size_t i = 0; i < CONFIG_ESB_PIPE_COUNT; i++) {
-		ack_pl_wrap_pipe[i] = 0;
+		ack_pl_wrap_pipe[i] = NULL;
 	}
 }
 
@@ -1224,6 +1231,7 @@ static void on_radio_disabled_tx(void)
 	 * received by the time defined in wait_for_ack_timeout_us
 	 */
 
+	nrf_timer_task_trigger(esb_timer.p_reg, NRF_TIMER_TASK_CLEAR);
 	nrfx_timer_compare(&esb_timer, NRF_TIMER_CC_CHANNEL0,
 			   (wait_for_ack_timeout_us + ADDR_EVENT_LATENCY_US), false);
 
@@ -1289,7 +1297,8 @@ static void on_radio_disabled_tx_wait_for_ack(void)
 		}
 	} else {
 		if (retransmits_remaining-- == 0) {
-			nrf_timer_task_trigger(esb_timer.p_reg, NRF_TIMER_TASK_SHUTDOWN);
+			nrf_timer_task_trigger(esb_timer.p_reg, NRF_TIMER_TASK_STOP);
+			nrf_timer_task_trigger(esb_timer.p_reg, NRF_TIMER_TASK_CLEAR);
 
 			/* All retransmits are expended, and the TX operation is
 			 * suspended
@@ -1390,7 +1399,7 @@ static void on_radio_disabled_rx_dpl(bool retransmit_payload,
 
 	uint32_t pipe = nrf_radio_rxmatch_get(NRF_RADIO);
 
-	if (tx_fifo.count > 0 && ack_pl_wrap_pipe[pipe] != 0) {
+	if (tx_fifo.count > 0 && ack_pl_wrap_pipe[pipe] != NULL) {
 		current_payload = ack_pl_wrap_pipe[pipe]->p_payload;
 
 		/* Pipe stays in ACK with payload until TX FIFO is empty */
@@ -1399,7 +1408,7 @@ static void on_radio_disabled_rx_dpl(bool retransmit_payload,
 			ack_pl_wrap_pipe[pipe]->in_use = false;
 			ack_pl_wrap_pipe[pipe] = ack_pl_wrap_pipe[pipe]->p_next;
 			tx_fifo.count--;
-			if (tx_fifo.count > 0 && ack_pl_wrap_pipe[pipe] != 0) {
+			if (tx_fifo.count > 0 && ack_pl_wrap_pipe[pipe] != NULL) {
 				current_payload = ack_pl_wrap_pipe[pipe]->p_payload;
 			} else {
 				current_payload = 0;
@@ -1625,7 +1634,7 @@ static void evt_dynamic_irq_handler(const void *args)
 {
 	ARG_UNUSED(args);
 	if (IS_ENABLED(ESB_EVT_USING_EGU)) {
-		nrf_egu_event_clear(ESB_EGU, ESB_EGU_EVT_TASK);
+		nrf_egu_event_clear(ESB_EGU, ESB_EGU_EVT_EVENT);
 	}
 	esb_evt_irq_handler();
 	ISR_DIRECT_PM();
@@ -1785,7 +1794,59 @@ int esb_init(const struct esb_config *config)
 	/* Apply HMPAN-102 workaround for nRF54H series */
 	*(volatile uint32_t *)0x5302C7E4 =
 				(((*((volatile uint32_t *)0x5302C7E4)) & 0xFF000FFF) | 0x0012C000);
-#endif
+
+	/* Apply HMPAN-18 workaround for nRF54H series - load trim values*/
+	if (*(volatile uint32_t *) 0x0FFFE458 != TRIM_VALUE_EMPTY) {
+		*(volatile uint32_t *) 0x5302C734 = *(volatile uint32_t *) 0x0FFFE458;
+	}
+
+	if (*(volatile uint32_t *) 0x0FFFE45C != TRIM_VALUE_EMPTY) {
+		*(volatile uint32_t *) 0x5302C738 = *(volatile uint32_t *) 0x0FFFE45C;
+	}
+
+	if (*(volatile uint32_t *) 0x0FFFE460 != TRIM_VALUE_EMPTY) {
+		*(volatile uint32_t *) 0x5302C73C = *(volatile uint32_t *) 0x0FFFE460;
+	}
+
+	if (*(volatile uint32_t *) 0x0FFFE464 != TRIM_VALUE_EMPTY) {
+		*(volatile uint32_t *) 0x5302C740 = *(volatile uint32_t *) 0x0FFFE464;
+	}
+
+	if (*(volatile uint32_t *) 0x0FFFE468 != TRIM_VALUE_EMPTY) {
+		*(volatile uint32_t *) 0x5302C74C = *(volatile uint32_t *) 0x0FFFE468;
+	}
+
+	if (*(volatile uint32_t *) 0x0FFFE46C != TRIM_VALUE_EMPTY) {
+		*(volatile uint32_t *) 0x5302C7D8 = *(volatile uint32_t *) 0x0FFFE46C;
+	}
+
+	if (*(volatile uint32_t *) 0x0FFFE470 != TRIM_VALUE_EMPTY) {
+		*(volatile uint32_t *) 0x5302C840 = *(volatile uint32_t *) 0x0FFFE470;
+	}
+
+	if (*(volatile uint32_t *) 0x0FFFE474 != TRIM_VALUE_EMPTY) {
+		*(volatile uint32_t *) 0x5302C844 = *(volatile uint32_t *) 0x0FFFE474;
+	}
+
+	if (*(volatile uint32_t *) 0x0FFFE478 != TRIM_VALUE_EMPTY) {
+		*(volatile uint32_t *) 0x5302C848 = *(volatile uint32_t *) 0x0FFFE478;
+	}
+
+	if (*(volatile uint32_t *) 0x0FFFE47C != TRIM_VALUE_EMPTY) {
+		*(volatile uint32_t *) 0x5302C84C = *(volatile uint32_t *) 0x0FFFE47C;
+	}
+
+	/* Apply HMPAN-103 workaround for nRF54H series*/
+	if ((*(volatile uint32_t *) 0x5302C8A0 == 0x80000000) ||
+		(*(volatile uint32_t *) 0x5302C8A0 == 0x0058120E)) {
+		*(volatile uint32_t *) 0x5302C8A0 = 0x0058090E;
+	}
+
+	*(volatile uint32_t *) 0x5302C8A4 = 0x00F8AA5F;
+	*(volatile uint32_t *) 0x5302C7AC = 0x8672827A;
+	*(volatile uint32_t *) 0x5302C7B0 = 0x7E768672;
+	*(volatile uint32_t *) 0x5302C7B4 = 0x0406007E;
+#endif /* (CONFIG_SOC_SERIES_NRF54HX) */
 
 	return 0;
 }
@@ -1884,18 +1945,18 @@ int esb_write_payload(const struct esb_payload *payload)
 
 		if (new_ack_payload != 0) {
 			new_ack_payload->in_use = true;
-			new_ack_payload->p_next = 0;
+			new_ack_payload->p_next = NULL;
 			memcpy(new_ack_payload->p_payload, payload, sizeof(struct esb_payload));
 
 			pids[payload->pipe] = (pids[payload->pipe] + 1) % (PID_MAX + 1);
 			new_ack_payload->p_payload->pid = pids[payload->pipe];
 
-			if (ack_pl_wrap_pipe[payload->pipe] == 0) {
+			if (ack_pl_wrap_pipe[payload->pipe] == NULL) {
 				ack_pl_wrap_pipe[payload->pipe] = new_ack_payload;
 			} else {
 				struct payload_wrap *pl = ack_pl_wrap_pipe[payload->pipe];
 
-				while (pl->p_next != 0) {
+				while (pl->p_next != NULL) {
 					pl = (struct payload_wrap *)pl->p_next;
 				}
 				pl->p_next = (struct payload_wrap *)new_ack_payload;
@@ -2048,6 +2109,15 @@ int esb_flush_tx(void)
 	tx_fifo.count = 0;
 	tx_fifo.back = 0;
 	tx_fifo.front = 0;
+
+	for (size_t i = 0; i < CONFIG_ESB_TX_FIFO_SIZE; i++) {
+		ack_pl_wrap[i].in_use = false;
+		ack_pl_wrap[i].p_next = NULL;
+	}
+
+	for (size_t i = 0; i < CONFIG_ESB_PIPE_COUNT; i++) {
+		ack_pl_wrap_pipe[i] = NULL;
+	}
 
 	irq_unlock(key);
 

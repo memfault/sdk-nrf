@@ -7,7 +7,7 @@ Getting started with nRF9160 DK
    :local:
    :depth: 2
 
-This guide lets you evaluate the |NCS|'s support for nRF9160 DK :term:`Development Kit (DK)` without the need of installing the SDK.
+This guide lets you evaluate the |NCS|'s support for nRF9160 :term:`Development Kit (DK)` without the need of installing the SDK.
 You will update the firmware (both the modem firmware and the application firmware) and the nRF Cloud certificates of the DK, and conduct some initial tests.
 
 If you want to go through a hands-on online training to familiarize yourself with cellular IoT technologies and development of cellular applications, enroll in the `Cellular IoT Fundamentals course`_ in the `Nordic Developer Academy`_.
@@ -40,13 +40,13 @@ On your computer, one of the following operating systems:
 .. _nrf9160_gs_installing_software:
 .. _nrf9160_gs_updating_fw:
 
-Getting started using Quick Start
-*********************************
+Getting started using the Quick Start app
+*****************************************
 
 To work with the nRF9160 DK firmware and certificates, complete the following steps:
 
 1. Install `nRF Connect for Desktop`_.
-#. Start nRF Connect for Desktop and install the Quick Start application, a cross-platform tool for guided setup and installation procedures.
+   This also automatically installs the `Quick Start app`_, a cross-platform tool for guided setup and installation procedures.
 #. Prepare your DK:
 
    a. Punch out the nano-SIM from the SIM card and plug it into the SIM card holder on the nRF9160 DK.

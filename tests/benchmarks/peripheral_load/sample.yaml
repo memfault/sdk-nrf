@@ -2,8 +2,18 @@ sample:
   name: Peripheral stress test
 
 common:
-  depends_on: adc gpio i2c pwm spi watchdog
-  tags: drivers spi sensors ci_tests_benchmarks_peripheral_load
+  depends_on:
+    - adc
+    - gpio
+    - i2c
+    - pwm
+    - spi
+    - watchdog
+  tags:
+    - drivers
+    - spi
+    - sensors
+    - ci_tests_benchmarks_peripheral_load
   harness: console
 
 tests:
@@ -26,6 +36,7 @@ tests:
         - ".*Timer thread has completed"
         - ".*WDT thread has completed"
         - ".*CPU load thread has completed"
+        - ".*Clock thread has completed"
         - ".*all \\d{1,} threads have completed"
     extra_args:
       - SHIELD=pca63566

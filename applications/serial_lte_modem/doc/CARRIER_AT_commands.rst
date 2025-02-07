@@ -174,7 +174,7 @@ The ``<cmd>`` command is a string, and can be used as follows:
 
 * ``AT#XCARRIER="app_data_create",<obj_inst_id>,<res_inst_id>``
 
-  Create an empty resource instance of the Data resource (ID: 0) of the Binary App Data Containet object (ID: 19).
+  Create an empty resource instance of the Data resource (ID: 0) of the Binary App Data Container object (ID: 19).
 
   ``<obj_inst_id>`` indicates the target object instance.
 
@@ -440,12 +440,6 @@ The ``<cmd>`` command is a string, and can be used as follows:
   Set a flag to automatically apply the enabled settings to the LwM2M carrier library configuration and connect to the device management network.
   This command accepts two possible input parameters: ``0`` to disable or ``1`` to enable.
   This command is not available when the :kconfig:option:`CONFIG_SLM_CARRIER_AUTO_STARTUP` Kconfig option is enabled.
-
-* ``AT#XCARRIERCFG="bootstrap_smartcard"[,<0|1>]``
-
-  Configure the LwM2M carrier library to allow bootstrap from Smartcard.
-  This command accepts two possible input parameters: ``0`` to disable or ``1`` to enable.
-  For details, see the :kconfig:option:`CONFIG_LWM2M_CARRIER_BOOTSTRAP_SMARTCARD` Kconfig option.
 
 * ``AT#XCARRIERCFG="carriers"[,"all"|<carrier1>[,<carrier2>[,...[,<carrier6>]]]]``
 

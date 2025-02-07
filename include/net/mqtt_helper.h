@@ -103,6 +103,8 @@ int mqtt_helper_init(struct mqtt_helper_cfg *cfg);
  *
  *  @retval 0 if successful.
  *  @retval -EOPNOTSUPP if operation is not supported in the current state.
+ *  @return A positive error code in case of DNS error, corresponding to ``getaddrinfo()`` return
+ *	    values.
  *  @return Otherwise a negative error code.
  */
 int mqtt_helper_connect(struct mqtt_helper_conn_params *conn_params);
@@ -130,6 +132,15 @@ int mqtt_helper_subscribe(struct mqtt_subscription_list *sub_list);
  *  @return Otherwise a negative error code.
  */
 int mqtt_helper_publish(const struct mqtt_publish_param *param);
+
+/** @brief Get a message ID.
+ *
+ *  @note Will not return 0 as it is reserved for invalid message IDs, see MQTT specification.
+ *	  Returned values increment by one for each call.
+ *
+ *  @return Message ID, positive non-zero value.
+ */
+uint16_t mqtt_helper_msg_id_get(void);
 
 /** @brief Deinitialize library. Must be called when all MQTT operations are done to
  *	   release resources and allow for a new client. The client must be in a disconnected state.

@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
 #
 
-add_subdirectory(provisioning)
+add_subdirectory(app_tools)
 add_subdirectory_ifdef(CONFIG_SUIT plat_err)
 add_subdirectory_ifdef(CONFIG_SUIT memory_layout)
 add_subdirectory_ifdef(CONFIG_SUIT_ORCHESTRATOR orchestrator)
@@ -20,3 +20,6 @@ add_subdirectory_ifdef(CONFIG_SUIT_DFU orchestrator_app)
 add_subdirectory_ifdef(CONFIG_SUIT_ENVELOPE_INFO envelope_info)
 add_subdirectory_ifdef(CONFIG_SUIT_EXECUTION_MODE execution_mode)
 add_subdirectory_ifdef(CONFIG_SUIT_VALIDATOR validator)
+add_subdirectory_ifdef(CONFIG_SUIT_EVENTS events)
+add_subdirectory_ifdef(CONFIG_SUIT_MANIFEST_VARIABLES manifest_variables)
+add_subdirectory_ifdef(CONFIG_SUIT_IPUC ipuc)

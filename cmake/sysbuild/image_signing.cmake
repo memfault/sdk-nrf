@@ -1,4 +1,4 @@
-# Copyright (c) 2020-2023 Nordic Semiconductor ASA
+# Copyright (c) 2020-2024 Nordic Semiconductor ASA
 # SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
 
 # This file includes extra build system logic that is enabled when
@@ -19,6 +19,8 @@ endfunction()
 function(zephyr_mcuboot_tasks)
   set(keyfile "${CONFIG_MCUBOOT_SIGNATURE_KEY_FILE}")
   set(keyfile_enc "${CONFIG_MCUBOOT_ENCRYPTION_KEY_FILE}")
+  string(CONFIGURE "${keyfile}" keyfile)
+  string(CONFIGURE "${keyfile_enc}" keyfile_enc)
 
   if(NOT "${CONFIG_MCUBOOT_GENERATE_UNSIGNED_IMAGE}")
     # Check for misconfiguration.
@@ -55,7 +57,9 @@ function(zephyr_mcuboot_tasks)
   # back on mcuboot/scripts/imgtool.py. We exclude the system imgtool when
   # compressed image support is enabled due to needing a version of imgtool
   # that has features not in the most recent public release.
-  if(IMGTOOL AND NOT CONFIG_MCUBOOT_COMPRESSED_IMAGE_SUPPORT_ENABLED)
+  if(IMGTOOL AND
+     (NOT CONFIG_MCUBOOT_COMPRESSED_IMAGE_SUPPORT_ENABLED AND
+      NOT (CONFIG_SOC_SERIES_NRF54LX AND CONFIG_MCUBOOT_BOOTLOADER_SIGNATURE_TYPE_ED25519)))
     set(imgtool_path "${IMGTOOL}")
   elseif(DEFINED ZEPHYR_MCUBOOT_MODULE_DIR)
     set(IMGTOOL_PY "${ZEPHYR_MCUBOOT_MODULE_DIR}/scripts/imgtool.py")
@@ -68,6 +72,17 @@ function(zephyr_mcuboot_tasks)
   if(NOT DEFINED imgtool_path)
     message(FATAL_ERROR "Can't sign images for MCUboot: can't find imgtool. To fix, install imgtool with pip3, or add the mcuboot repository to the west manifest and ensure it has a scripts/imgtool.py file.")
     return()
+  endif()
+
+  # Fetch devicetree details for flash and slot information
+  dt_chosen(flash_node PROPERTY "zephyr,flash")
+  dt_nodelabel(slot0_flash NODELABEL "slot0_partition" REQUIRED)
+  dt_prop(slot_size PATH "${slot0_flash}" PROPERTY "reg" INDEX 1 REQUIRED)
+  dt_prop(write_block_size PATH "${flash_node}" PROPERTY "write-block-size")
+
+  if(NOT write_block_size)
+    set(write_block_size 4)
+    message(WARNING "slot0_partition write block size devicetree parameter is missing, assuming write block size is 4")
   endif()
 
   set(imgtool_directxip_hex_command)
@@ -91,7 +106,7 @@ function(zephyr_mcuboot_tasks)
   # TODO: NCSDK-28461 sysbuild PM fields cannot be updated without a pristine build, will become
   # invalid if a static PM file is updated without pristine build
   set(imgtool_sign_sysbuild --slot-size @PM_MCUBOOT_PRIMARY_SIZE@ --pad-header --header-size @PM_MCUBOOT_PAD_SIZE@ ${imgtool_rom_command} CACHE STRING "imgtool sign sysbuild replacement")
-  set(imgtool_sign ${PYTHON_EXECUTABLE} ${imgtool_path} sign --version ${CONFIG_MCUBOOT_IMGTOOL_SIGN_VERSION} --align 4 ${imgtool_sign_sysbuild})
+  set(imgtool_sign ${PYTHON_EXECUTABLE} ${imgtool_path} sign --version ${CONFIG_MCUBOOT_IMGTOOL_SIGN_VERSION} --align ${write_block_size} ${imgtool_sign_sysbuild})
 
   # Arguments to imgtool.
   if(NOT CONFIG_MCUBOOT_EXTRA_IMGTOOL_ARGS STREQUAL "")
@@ -116,6 +131,14 @@ function(zephyr_mcuboot_tasks)
     set(imgtool_hex_extra ${imgtool_bin_extra})
   else()
     set(imgtool_hex_extra)
+  endif()
+
+  if(CONFIG_SOC_SERIES_NRF54LX AND CONFIG_MCUBOOT_BOOTLOADER_SIGNATURE_TYPE_ED25519)
+    if(NOT CONFIG_MCUBOOT_BOOTLOADER_SIGNATURE_TYPE_PURE)
+      set(imgtool_extra --sha 512 ${imgtool_extra})
+    else()
+      set(imgtool_extra --pure ${imgtool_extra})
+    endif()
   endif()
 
   if(CONFIG_MCUBOOT_HARDWARE_DOWNGRADE_PREVENTION)

@@ -3,6 +3,8 @@
 Zigbee samples
 ##############
 
+.. include:: /includes/zigbee_deprecation.txt
+
 The nRF Connect SDK provides the following samples showcasing the :ref:`ug_zigbee` protocol.
 You can build the samples for various boards and configure them for different usage scenarios.
 
@@ -74,6 +76,12 @@ Read the table symbols in the following manner:
 * No symbol - The variant or extension is not available for the given sample.
 
 Some variants and extensions might also require additional hardware and software, such as mobile applications for testing purposes.
+
+.. include:: ../samples.rst
+    :start-after: samples_general_info_start
+    :end-before: samples_general_info_end
+
+|filter_samples_by_board|
 
 .. toctree::
    :maxdepth: 1

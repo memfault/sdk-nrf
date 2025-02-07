@@ -1,4 +1,4 @@
-.. _nrf_cloud_rest_cell_pos_sample:
+.. _nrf_cloud_rest_cell_location:
 
 Cellular: nRF Cloud REST cellular location
 ##########################################
@@ -69,7 +69,7 @@ Check and configure the following Kconfig options for the sample:
 
 .. _CONFIG_REST_CELL_LOCATION_DO_JITP:
 
-CONFIG_REST_CELL_LOCATION_DO_JITP - Enable prompt to perform JITP via REST
+CONFIG_REST_CELL_LOCATION_DO_JITP - Enable prompt to perform JITP using REST
    This configuration option defines whether the application prompts the user for just-in-time provisioning on startup.
 
 .. _CONFIG_REST_CELL_CHANGE_CONFIG:
@@ -85,7 +85,7 @@ CONFIG_REST_CELL_DEFAULT_DOREPLY_VAL - Enable return of location from cloud
 .. _CONFIG_REST_CELL_DEFAULT_FALLBACK_VAL:
 
 CONFIG_REST_CELL_DEFAULT_FALLBACK_VAL - Enable fallback to coarse location
-   If enabled and the location of the cell tower or Wi-Fi access points cannot be found, return area-level location based on the cellular tracking area code.
+   If enabled and the location of the cell tower or Wi-Fi® access points cannot be found, return area-level location based on the cellular tracking area code.
    Otherwise an error will be returned indicating location is not known.
 
 .. _CONFIG_REST_CELL_DEFAULT_HICONF_VAL:

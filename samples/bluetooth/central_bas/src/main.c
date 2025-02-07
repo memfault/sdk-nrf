@@ -68,7 +68,7 @@ static void scan_filter_no_match(struct bt_scan_device_info *device_info,
 				 bool connectable)
 {
 	int err;
-	struct bt_conn *conn;
+	struct bt_conn *conn = NULL;
 	char addr[BT_ADDR_LE_STR_LEN];
 
 	if (device_info->recv_info->adv_type == BT_GAP_ADV_TYPE_ADV_DIRECT_IND) {
@@ -366,7 +366,7 @@ int main(void)
 {
 	int err;
 
-	printk("Starting Bluetooth Central BAS example\n");
+	printk("Starting Bluetooth Central BAS sample\n");
 
 	bt_bas_client_init(&bas);
 

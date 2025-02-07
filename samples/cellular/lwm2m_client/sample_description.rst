@@ -119,7 +119,7 @@ The sample implements the following LwM2M objects:
       - 33626
       - Yes
       - Yes
-   *  - Visible Wi-Fi Access Point
+   *  - Visible Wi-Fi® Access Point
       - 33627
       - Yes
       - Yes
@@ -290,7 +290,7 @@ Avoiding re-writing credentials to modem
 Every time the sample starts, it provisions the keys to the modem and this is only needed once.
 To speed up the start up, you can prevent the provisioning by completing the following steps using |VSC|:
 
-1. In |nRFVSC|, `build the sample <How to build an application_>`_.
+1. In the |nRFVSC|, `build the sample <How to build an application_>`_.
 #. Under **Actions**, click :guilabel:`Kconfig`.
 #. Click :guilabel:`Application sample`.
 #. Under **LwM2M objects**, remove the key value next to :guilabel:`LwM2M pre-shared key for communication`.
@@ -834,7 +834,7 @@ This sample application uses the following |NCS| libraries and drivers:
 * :ref:`lib_dfu_target`
 * :ref:`lib_fmfu_fdev`
 * :ref:`lib_fota_download`
-* :ref:`lib_download_client`
+* :ref:`lib_downloader`
 
 It uses the following `sdk-nrfxlib`_ library:
 

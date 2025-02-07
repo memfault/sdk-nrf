@@ -29,7 +29,7 @@
 
 #define SECONDARY_SLOT_METADATA_VALUE UINT32_MAX
 
-extern mbedtls_threading_mutex_t cracen_mutex_symmetric;
+extern nrf_security_mutex_t cracen_mutex_symmetric;
 
 /* The section .nrf_kmu_reserved_push_area is placed at the top RAM address
  * by the linker scripts. We do that for both the secure and non-secure builds.
@@ -61,8 +61,8 @@ enum kmu_metadata_algorithm {
 	METADATA_ALG_CMAC = 9,
 	METADATA_ALG_ED25519 = 10,
 	METADATA_ALG_ECDSA = 11,
-	METADATA_ALG_RESERVED2 = 12,
-	METADATA_ALG_RESERVED3 = 13,
+	METADATA_ALG_ED25519PH = 12,
+	METADATA_ALG_HMAC = 13,
 	METADATA_ALG_RESERVED4 = 14,
 	METADATA_ALG_RESERVED5 = 15,
 };
@@ -199,6 +199,7 @@ int cracen_kmu_prepare_key(const uint8_t *user_data)
 			}
 		}
 		return SX_OK;
+#ifdef PSA_NEED_CRACEN_KMU_ENCRYPTED_KEYS
 	case CRACEN_KMU_KEY_USAGE_SCHEME_ENCRYPTED: {
 		kmu_metadata metadata;
 
@@ -219,6 +220,7 @@ int cracen_kmu_prepare_key(const uint8_t *user_data)
 
 		return SX_OK;
 	}
+#endif /* PSA_NEED_CRACEN_KMU_ENCRYPTED_KEYS */
 	default:
 		return SX_ERR_INVALID_KEYREF;
 	}
@@ -461,12 +463,25 @@ static psa_status_t convert_to_psa_attributes(kmu_metadata *metadata,
 				: PSA_KEY_TYPE_ECC_PUBLIC_KEY(PSA_ECC_FAMILY_TWISTED_EDWARDS));
 		psa_set_key_algorithm(key_attr, PSA_ALG_PURE_EDDSA);
 		break;
+	case METADATA_ALG_ED25519PH:
+		/* If the key can sign it is assumed it is a private key */
+		psa_set_key_type(
+			key_attr,
+			can_sign(key_attr)
+				? PSA_KEY_TYPE_ECC_KEY_PAIR(PSA_ECC_FAMILY_TWISTED_EDWARDS)
+				: PSA_KEY_TYPE_ECC_PUBLIC_KEY(PSA_ECC_FAMILY_TWISTED_EDWARDS));
+		psa_set_key_algorithm(key_attr, PSA_ALG_ED25519PH);
+		break;
 	case METADATA_ALG_ECDSA:
 		psa_set_key_type(key_attr,
 				 can_sign(key_attr)
 					 ? PSA_KEY_TYPE_ECC_KEY_PAIR(PSA_ECC_FAMILY_SECP_R1)
 					 : PSA_KEY_TYPE_ECC_PUBLIC_KEY(PSA_ECC_FAMILY_SECP_R1));
 		psa_set_key_algorithm(key_attr, PSA_ALG_ECDSA(PSA_ALG_ANY_HASH));
+		break;
+	case METADATA_ALG_HMAC:
+		psa_set_key_type(key_attr, PSA_KEY_TYPE_HMAC);
+		psa_set_key_algorithm(key_attr, PSA_ALG_HMAC(PSA_ALG_SHA_256));
 		break;
 	default:
 		return PSA_ERROR_HARDWARE_FAILURE;
@@ -612,6 +627,19 @@ psa_status_t convert_from_psa_attributes(const psa_key_attributes_t *key_attr,
 		metadata->algorithm = METADATA_ALG_ED25519;
 		break;
 
+	case PSA_ALG_ED25519PH:
+		if (PSA_KEY_TYPE_ECC_GET_FAMILY(psa_get_key_type(key_attr)) !=
+		PSA_ECC_FAMILY_TWISTED_EDWARDS) {
+			return PSA_ERROR_NOT_SUPPORTED;
+		}
+		/* Don't support private keys that are only used for verify */
+		if (!can_sign(key_attr) &&
+			PSA_KEY_TYPE_IS_ECC_KEY_PAIR(psa_get_key_type(key_attr))) {
+			return PSA_ERROR_NOT_SUPPORTED;
+		}
+		metadata->algorithm = METADATA_ALG_ED25519PH;
+	break;
+
 	case PSA_ALG_ECDSA(PSA_ALG_ANY_HASH):
 		if (PSA_KEY_TYPE_ECC_GET_FAMILY(psa_get_key_type(key_attr)) !=
 		    PSA_ECC_FAMILY_SECP_R1) {
@@ -624,6 +652,12 @@ psa_status_t convert_from_psa_attributes(const psa_key_attributes_t *key_attr,
 			return PSA_ERROR_NOT_SUPPORTED;
 		}
 		metadata->algorithm = METADATA_ALG_ECDSA;
+		break;
+	case PSA_ALG_HMAC(PSA_ALG_SHA_256):
+		if (!can_sign(key_attr) && PSA_ALG_IS_HMAC(psa_get_key_type(key_attr))) {
+			return PSA_ERROR_NOT_SUPPORTED;
+		}
+		metadata->algorithm = METADATA_ALG_HMAC;
 		break;
 	default:
 		return PSA_ERROR_NOT_SUPPORTED;
@@ -694,6 +728,7 @@ psa_status_t cracen_kmu_provision(const psa_key_attributes_t *key_attr, int slot
 	kmu_metadata metadata;
 	uint8_t *push_address;
 
+#ifdef PSA_NEED_CRACEN_KMU_ENCRYPTED_KEYS
 	/* Provisioning data for encrypted keys:
 	 *     - Nonce
 	 *     - Key material (first 128 bits)
@@ -701,6 +736,7 @@ psa_status_t cracen_kmu_provision(const psa_key_attributes_t *key_attr, int slot
 	 *     - Tag
 	 */
 	uint8_t encrypted_workmem[CRACEN_KMU_SLOT_KEY_SIZE * 4] = {};
+#endif
 	size_t encrypted_outlen = 0;
 
 	psa_status_t status = clean_up_unfinished_provisioning();
@@ -726,7 +762,9 @@ psa_status_t cracen_kmu_provision(const psa_key_attributes_t *key_attr, int slot
 			return PSA_ERROR_INVALID_ARGUMENT;
 		}
 		break;
+#ifdef PSA_NEED_CRACEN_KMU_ENCRYPTED_KEYS
 	case CRACEN_KMU_KEY_USAGE_SCHEME_ENCRYPTED:
+#endif /* PSA_NEED_CRACEN_KMU_ENCRYPTED_KEYS */
 	case CRACEN_KMU_KEY_USAGE_SCHEME_RAW:
 		push_address = (uint8_t *)kmu_push_area;
 		if (key_buffer_size != 16 && key_buffer_size != 24 && key_buffer_size != 32) {
@@ -743,6 +781,7 @@ psa_status_t cracen_kmu_provision(const psa_key_attributes_t *key_attr, int slot
 		return PSA_ERROR_INVALID_ARGUMENT;
 	}
 
+#ifdef PSA_NEED_CRACEN_KMU_ENCRYPTED_KEYS
 	if (metadata.key_usage_scheme == CRACEN_KMU_KEY_USAGE_SCHEME_ENCRYPTED) {
 		/* Copy key material to workbuffer, zero-pad key and align to key slot size. */
 		memcpy(encrypted_workmem + CRACEN_KMU_SLOT_KEY_SIZE, key_buffer, key_buffer_size);
@@ -757,6 +796,7 @@ psa_status_t cracen_kmu_provision(const psa_key_attributes_t *key_attr, int slot
 		key_buffer = encrypted_workmem;
 		key_buffer_size = encrypted_outlen;
 	}
+#endif /* PSA_NEED_CRACEN_KMU_ENCRYPTED_KEYS */
 
 	/* Verify that required slots are empty */
 	const size_t num_slots =  DIV_ROUND_UP(MAX(encrypted_outlen, key_buffer_size),
@@ -844,13 +884,13 @@ static psa_status_t push_kmu_key_to_ram(uint8_t *key_buffer, size_t key_buffer_s
 	 * Here the decision was to avoid defining another mutex to handle the push buffer for the
 	 * rest of the use cases.
 	 */
-	nrf_security_mutex_lock(&cracen_mutex_symmetric);
+	nrf_security_mutex_lock(cracen_mutex_symmetric);
 	status = silex_statuscodes_to_psa(cracen_kmu_prepare_key(key_buffer));
 	if (status == PSA_SUCCESS) {
 		memcpy(key_buffer, kmu_push_area, key_buffer_size);
 		safe_memzero(kmu_push_area, sizeof(kmu_push_area));
 	}
-	nrf_security_mutex_unlock(&cracen_mutex_symmetric);
+	nrf_security_mutex_unlock(cracen_mutex_symmetric);
 
 	return status;
 }
@@ -861,6 +901,7 @@ psa_status_t cracen_kmu_get_builtin_key(psa_drv_slot_number_t slot_number,
 {
 	kmu_metadata metadata;
 	psa_status_t status = read_primary_slot_metadata(slot_number, &metadata);
+	size_t opaque_key_size;
 
 	if (status != PSA_SUCCESS) {
 		return status;
@@ -881,8 +922,14 @@ psa_status_t cracen_kmu_get_builtin_key(psa_drv_slot_number_t slot_number,
 		return status;
 	}
 
-	if (key_buffer_size >= cracen_get_opaque_size(attributes)) {
-		*key_buffer_length = cracen_get_opaque_size(attributes);
+
+	status = cracen_get_opaque_size(attributes, &opaque_key_size);
+	if (status != PSA_SUCCESS) {
+		return status;
+	}
+
+	if (key_buffer_size >= opaque_key_size) {
+		*key_buffer_length = opaque_key_size;
 		kmu_opaque_key_buffer *key = (kmu_opaque_key_buffer *)key_buffer;
 
 		key->key_usage_scheme = metadata.key_usage_scheme;
@@ -924,6 +971,11 @@ psa_status_t cracen_kmu_get_builtin_key(psa_drv_slot_number_t slot_number,
 			key_buffer++;
 			key_buffer_size--;
 		}
+		return push_kmu_key_to_ram(key_buffer, key_buffer_size);
+	}
+
+	/* HMAC keys are getting loading into the key buffer like volatile keys */
+	if (psa_get_key_type(attributes) == PSA_KEY_TYPE_HMAC) {
 		return push_kmu_key_to_ram(key_buffer, key_buffer_size);
 	}
 

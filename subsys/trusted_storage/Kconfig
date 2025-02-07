@@ -10,8 +10,8 @@ menuconfig TRUSTED_STORAGE
 	bool "Trusted Storage"
 	depends on !BUILD_WITH_TFM
 	help
-	  The secure storage subsystem allows its users to store in a secure
-	  way data ensuring data integrity and confidentially by using AEAD
+	  The secure storage subsystem allows its users to store data in a
+	  secure way, ensuring data integrity and confidentiality by using AEAD
 	  algorithms. It supports several secure implementation back-ends to
 	  provide various levels of trust depending on the device security
 	  features.
@@ -133,7 +133,6 @@ config TRUSTED_STORAGE_BACKEND_AEAD_KEY_DERIVE_FROM_HUK
 	bool "HUK + UID"
 	select HW_UNIQUE_KEY
 	select HW_UNIQUE_KEY_RANDOM
-	select PM_SINGLE_IMAGE
 	depends on HW_UNIQUE_KEY_SUPPORTED
 	help
 	  Use the Hardware Unique Key (HUK) with the UID as label to derive a
@@ -158,7 +157,7 @@ choice TRUSTED_STORAGE_STORAGE_BACKEND
 
 config TRUSTED_STORAGE_STORAGE_BACKEND_SETTINGS
 	bool "Settings storage backend"
-	depends on SETTINGS_NVS || SETTINGS_ZMS
+	depends on SETTINGS_ZMS || (SETTINGS_NVS && !SOC_NRF54L15)
 	help
 	  Use the Settings subsystem to store the assets
 

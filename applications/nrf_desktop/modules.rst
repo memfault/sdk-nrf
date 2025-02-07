@@ -43,12 +43,14 @@ These are valid for events that have many listeners or sources, and are gathered
    doc/dfu.rst
    doc/dfu_mcumgr.rst
    doc/dfu_lock.rst
+   doc/dvfs.rst
    doc/factory_reset.rst
    doc/failsafe.rst
    doc/fast_pair_app.rst
    doc/fn_keys.rst
    doc/bas.rst
    doc/hid_forward.rst
+   doc/hid_reportq.rst
    doc/hid_state.rst
    doc/hid_state_pm.rst
    doc/hids.rst

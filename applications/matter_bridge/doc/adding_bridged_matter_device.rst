@@ -7,7 +7,7 @@ The Matter Bridge application supports bridging only a few Matter device types d
 However, you can select any of the available :ref:`Matter device types <ug_matter_device_types>` and add support to it in the application.
 
 You will need to implement the ``Matter Bridged Device`` and ``Bridged Device Data Provider`` roles based on the :ref:`Matter Bridge architecture <ug_matter_overview_bridge_ncs_implementation>` for the newly added Matter device type.
-The Matter Bridge application supports :ref:`simulated and Bluetooth LE <matter_bridge_app_bridged_support>` bridged device configurations.
+The Matter Bridge application supports :ref:`simulated and Bluetooth® LE <matter_bridge_app_bridged_support>` bridged device configurations.
 In this guide, the simulated provider example is presented, but the process is similar for the Bluetooth LE provider as well.
 
 The following steps show how to add support for a new Matter device type, using  the Pressure Sensor device type as an example.
@@ -33,7 +33,7 @@ The following steps show how to add support for a new Matter device type, using 
             class PressureSensorDevice : public Nrf::MatterBridgedDevice {
             public:
 
-            PressureSensorDevice(const char *nodeLabel);
+            PressureSensorDevice(const char *uniqueID, const char *nodeLabel);
             static constexpr uint16_t kPressureSensorDeviceTypeId = 0x0305;
 
             };
@@ -44,7 +44,8 @@ The following steps show how to add support for a new Matter device type, using 
 
             #include "pressure_sensor.h"
 
-            PressureSensorDevice::PressureSensorDevice(const char *nodeLabel) : MatterBridgedDevice(nodeLabel) {}
+            PressureSensorDevice::PressureSensorDevice(const char *uniqueID, const char *nodeLabel)
+                  : MatterBridgedDevice(uniqueID, nodeLabel) {}
 
    #. Declare all clusters that are mandatory for the Pressure Sensor device type, according to the Matter device library specification, and fill the appropriate :c:struct:`MatterBridgedDevice` class fields in the :c:struct:`PressureSensorDevice` class constructor.
 
@@ -98,7 +99,8 @@ The following steps show how to add support for a new Matter device type, using 
 
          .. code-block:: C++
 
-            PressureSensorDevice::PressureSensorDevice(const char *nodeLabel) : MatterBridgedDevice(nodeLabel)
+            PressureSensorDevice::PressureSensorDevice(const char *uniqueID, const char *nodeLabel)
+                  : MatterBridgedDevice(uniqueID, nodeLabel)
             {
                   mDataVersionSize = kPressureDataVersionSize;
                   mEp = &bridgedPressureEndpoint;
@@ -291,8 +293,6 @@ The following steps show how to add support for a new Matter device type, using 
 
          .. code-block:: C++
 
-            static void NotifyAttributeChange(intptr_t context);
-
             static constexpr uint16_t kMeasurementsIntervalMs = 10000;
             static constexpr int16_t kMinRandomPressure = 95;
             static constexpr int16_t kMaxRandomPressure = 101;
@@ -323,18 +323,20 @@ The following steps show how to add support for a new Matter device type, using 
                if (!timer || !timer->user_data) {
                   return;
                }
-               SimulatedPressureSensorDataProvider *provider = reinterpret_cast<SimulatedPressureSensorDataProvider *>(timer->user_data);
-               /* Get some random data to emulate sensor measurements. */
-               provider->mPressure = chip::Crypto::GetRandU16() % (kMaxRandomPressure - kMinRandomPressure) + kMinRandomPressure;
-               DeviceLayer::PlatformMgr().ScheduleWork(NotifyAttributeChange, reinterpret_cast<intptr_t>(provider));
-            }
 
-            void SimulatedPressureSensorDataProvider::NotifyAttributeChange(intptr_t context)
-            {
-               SimulatedPressureSensorDataProvider *provider = reinterpret_cast<SimulatedPressureSensorDataProvider *>(context);
-               provider->NotifyUpdateState(Clusters::PressureMeasurement::Id,
+               DeviceLayer::PlatformMgr().ScheduleWork(
+		            [](intptr_t p) {
+			            SimulatedPressureSensorDataProvider *provider =
+				         reinterpret_cast<SimulatedPressureSensorDataProvider *>(p);
+
+			            /* Get some random data to emulate sensor measurements. */
+			            provider->mPressure = chip::Crypto::GetRandU16() % (kMaxRandomPressure - kMinRandomPressure) + kMinRandomPressure;
+
+			            provider->NotifyUpdateState(Clusters::PressureMeasurement::Id,
                            Clusters::PressureMeasurement::Attributes::MeasuredValue::Id,
                            &provider->mPressure, sizeof(provider->mPressure));
+                  },
+		            reinterpret_cast<intptr_t>(timer->user_data));
             }
 
    #. Implement the body of the :c:func:`NotifyUpdateState` method that shall be called after every data change related to the Pressure Sensor device.
@@ -394,11 +396,11 @@ The following steps show how to add support for a new Matter device type, using 
       .. code-block:: C++
 
          { PressureSensorDevice::kPressureSensorDeviceTypeId,
-         [checkLabel](const char *nodeLabel) -> Nrf::MatterBridgedDevice * {
-            if (!checkLabel(nodeLabel)) {
+         [checkUniqueID, checkLabel](const char *nodeLabel) -> Nrf::MatterBridgedDevice * {
+            if (!checkUniqueID(uniqueID) || !checkLabel(nodeLabel)) {
                return nullptr;
             }
-            return chip::Platform::New<PressureSensorDevice>(nodeLabel);
+            return chip::Platform::New<PressureSensorDevice>(uniqueID, nodeLabel);
          } },
 
    - :file:`src/simulated_providers/simulated_bridged_device_factory.cpp`, :c:func:`GetDataProviderFactory` method

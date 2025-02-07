@@ -106,10 +106,14 @@ static void setup_erased_flash(void)
 	err = flash_erase(fdev, SUIT_STORAGE_OFFSET, SUIT_STORAGE_SIZE);
 	zassert_equal(0, err, "Unable to erase storage before test execution");
 
-	suit_plat_err_t ret = suit_storage_report_clear(0);
+	suit_plat_err_t ret = suit_storage_flags_clear(SUIT_FLAG_RECOVERY);
 
 	zassert_equal(SUIT_PLAT_SUCCESS, ret,
 		      "Unable to clear recovery flag before test execution");
+
+	ret = suit_storage_flags_clear(SUIT_FLAG_FOREGROUND_DFU);
+	zassert_equal(SUIT_PLAT_SUCCESS, ret,
+		      "Unable to clear foreground DFU flag before test execution");
 
 	/* Recover MPI area from the backup region. */
 	err = suit_storage_init();
@@ -125,27 +129,21 @@ static void setup_install_envelope(const suit_manifest_class_id_t *class_id, con
 		      "Unable to install envelope before test execution (0x%x, %d)", buf, len);
 }
 
-static void setup_boot_report(uint8_t *buf, size_t len)
+static void setup_recovery_flag(void)
 {
-	suit_plat_err_t err = suit_storage_report_save(0, buf, len);
-
-	zassert_equal(SUIT_PLAT_SUCCESS, err,
-		      "Unable to set boot report (emergency flag) before test execution (0x%x, %d)",
-		      buf, len);
+	zassert_equal(SUIT_PLAT_SUCCESS, suit_storage_flags_set(SUIT_FLAG_RECOVERY),
+		      "Unable to set recovery flag before test execution");
 }
 
 ZTEST_SUITE(orchestrator_recovery_boot_tests, NULL, setup_install_recovery_fw, NULL, NULL, NULL);
 
 ZTEST(orchestrator_recovery_boot_tests, test_rec_no_recovery_envelope)
 {
-	const uint8_t *buf;
-	size_t len;
-
 	/* GIVEN empty flash (suit storage is erased)... */
 	setup_erased_flash();
 	/* ... and update candidate flag is not set... */
 	/* ... and emergency flag is set... */
-	setup_boot_report(NULL, 0);
+	setup_recovery_flag();
 	/* ... and orchestrator is initialized... */
 	zassert_equal(0, suit_orchestrator_init(),
 		      "Orchestrator not initialized before test execution");
@@ -159,18 +157,23 @@ ZTEST(orchestrator_recovery_boot_tests, test_rec_no_recovery_envelope)
 	/* THEN orchestrator fails (hard)... */
 	zassert_equal(-ENOENT, err, "Orchestrator did not fail");
 	/* ... and the emergency flag is set... */
-	zassert_equal(SUIT_PLAT_SUCCESS, suit_storage_report_read(0, &buf, &len),
-		      "Emergency flag not set");
+	zassert_equal(SUIT_PLAT_SUCCESS, suit_storage_flags_check(SUIT_FLAG_RECOVERY),
+		      "Recovery flag not set");
+	zassert_equal(SUIT_PLAT_ERR_NOT_FOUND, suit_storage_flags_check(SUIT_FLAG_FOREGROUND_DFU),
+		      "Foreground DFU flag set");
 	/* ... and the execution mode is set to the FAIL INVOKE RECOVERY */
 	zassert_equal(EXECUTION_MODE_FAIL_INVOKE_RECOVERY, suit_execution_mode_get(),
 		      "Execution mode not changed to the FAIL INVOKE RECOVERY");
+	/* ... and execution mode indicates a failed state */
+	zassert_equal(true, suit_execution_mode_failed(), "The device does not enter failed mode");
+	/* ... and execution mode does not indicate boot mode */
+	zassert_equal(false, suit_execution_mode_booting(), "The device did not left boot mode");
+	/* ... and execution mode does not indicate update mode */
+	zassert_equal(false, suit_execution_mode_updating(), "The device entered update mode");
 }
 
 ZTEST(orchestrator_recovery_boot_tests, test_rec_invalid_recovery_envelope)
 {
-	const uint8_t *buf;
-	size_t len;
-
 	/* GIVEN empty flash (suit storage is erased)... */
 	setup_erased_flash();
 	/* ... and recovery envelope is installed... */
@@ -178,7 +181,7 @@ ZTEST(orchestrator_recovery_boot_tests, test_rec_invalid_recovery_envelope)
 			       manifest_manipulated_recovery_len);
 	/* ... and update candidate flag is not set... */
 	/* ... and emergency flag is set... */
-	setup_boot_report(NULL, 0);
+	setup_recovery_flag();
 	/* ... and orchestrator is initialized... */
 	zassert_equal(0, suit_orchestrator_init(),
 		      "Orchestrator not initialized before test execution");
@@ -192,8 +195,10 @@ ZTEST(orchestrator_recovery_boot_tests, test_rec_invalid_recovery_envelope)
 	/* THEN orchestrator fails (hard)... */
 	zassert_equal(-ENOEXEC, err, "Orchestrator did not fail");
 	/* ... and the emergency flag is set... */
-	zassert_equal(SUIT_PLAT_SUCCESS, suit_storage_report_read(0, &buf, &len),
-		      "Emergency flag not set");
+	zassert_equal(SUIT_PLAT_SUCCESS, suit_storage_flags_check(SUIT_FLAG_RECOVERY),
+		      "Recovery flag not set");
+	zassert_equal(SUIT_PLAT_ERR_NOT_FOUND, suit_storage_flags_check(SUIT_FLAG_FOREGROUND_DFU),
+		      "Foreground DFU flag set");
 	/* ... and the execution mode is set to the FAIL INVOKE RECOVERY */
 	zassert_equal(EXECUTION_MODE_FAIL_INVOKE_RECOVERY, suit_execution_mode_get(),
 		      "Execution mode not changed to the FAIL INVOKE RECOVERY");
@@ -201,9 +206,6 @@ ZTEST(orchestrator_recovery_boot_tests, test_rec_invalid_recovery_envelope)
 
 ZTEST(orchestrator_recovery_boot_tests, test_rec_valid_recovery_envelope)
 {
-	const uint8_t *buf;
-	size_t len;
-
 	/* GIVEN empty flash (suit storage is erased)... */
 	setup_erased_flash();
 	/* ... and recovery envelope is installed... */
@@ -211,7 +213,7 @@ ZTEST(orchestrator_recovery_boot_tests, test_rec_valid_recovery_envelope)
 			       manifest_valid_recovery_len);
 	/* ... and update candidate flag is not set... */
 	/* ... and emergency flag is set... */
-	setup_boot_report(NULL, 0);
+	setup_recovery_flag();
 	/* ... and orchestrator is initialized... */
 	zassert_equal(0, suit_orchestrator_init(),
 		      "Orchestrator not initialized before test execution");
@@ -222,21 +224,26 @@ ZTEST(orchestrator_recovery_boot_tests, test_rec_valid_recovery_envelope)
 	/* WHEN orchestrator is executed */
 	int err = suit_orchestrator_entry();
 
-	/* THEN orchestrator fails succeeds... */
+	/* THEN orchestrator succeeds... */
 	zassert_equal(0, err, "Orchestrator not initialized");
 	/* ... and the emergency flag is set... */
-	zassert_equal(SUIT_PLAT_SUCCESS, suit_storage_report_read(0, &buf, &len),
-		      "Emergency flag not set");
+	zassert_equal(SUIT_PLAT_SUCCESS, suit_storage_flags_check(SUIT_FLAG_RECOVERY),
+		      "Recovery flag not set");
+	zassert_equal(SUIT_PLAT_ERR_NOT_FOUND, suit_storage_flags_check(SUIT_FLAG_FOREGROUND_DFU),
+		      "Foreground DFU flag set");
 	/* ... and the execution mode is set to the POST INVOKE RECOVERY */
 	zassert_equal(EXECUTION_MODE_POST_INVOKE_RECOVERY, suit_execution_mode_get(),
 		      "Execution mode not changed to the POST INVOKE RECOVERY");
+	/* ... and execution mode does not indicate a failed state */
+	zassert_equal(false, suit_execution_mode_failed(), "The device entered failed mode");
+	/* ... and execution mode does not indicate boot mode */
+	zassert_equal(false, suit_execution_mode_booting(), "The device did not left boot mode");
+	/* ... and execution mode does not indicate update mode */
+	zassert_equal(false, suit_execution_mode_updating(), "The device entered update mode");
 }
 
 ZTEST(orchestrator_recovery_boot_tests, test_rec_seq_no_validate)
 {
-	const uint8_t *buf;
-	size_t len;
-
 	/* GIVEN empty flash (suit storage is erased)... */
 	setup_erased_flash();
 	/* ... and recovery envelope is installed... */
@@ -244,7 +251,7 @@ ZTEST(orchestrator_recovery_boot_tests, test_rec_seq_no_validate)
 			       manifest_recovery_no_validate_len);
 	/* ... and update candidate flag is not set... */
 	/* ... and emergency flag is set... */
-	setup_boot_report(NULL, 0);
+	setup_recovery_flag();
 	/* ... and orchestrator is initialized... */
 	zassert_equal(0, suit_orchestrator_init(),
 		      "Orchestrator not initialized before test execution");
@@ -255,21 +262,20 @@ ZTEST(orchestrator_recovery_boot_tests, test_rec_seq_no_validate)
 	/* WHEN orchestrator is executed */
 	int err = suit_orchestrator_entry();
 
-	/* THEN orchestrator fails (hard)... */
-	zassert_equal(-EILSEQ, err, "Orchestrator did not fail");
+	/* THEN orchestrator succeeds... */
+	zassert_equal(0, err, "Envelope without validate sequence not accepted (err: %d)", err);
 	/* ... and the emergency flag is set... */
-	zassert_equal(SUIT_PLAT_SUCCESS, suit_storage_report_read(0, &buf, &len),
-		      "Emergency flag not set");
-	/* ... and the execution mode is set to the FAIL INVOKE RECOVERY */
-	zassert_equal(EXECUTION_MODE_FAIL_INVOKE_RECOVERY, suit_execution_mode_get(),
-		      "Execution mode not changed to the FAIL INVOKE RECOVERY");
+	zassert_equal(SUIT_PLAT_SUCCESS, suit_storage_flags_check(SUIT_FLAG_RECOVERY),
+		      "Recovery flag not set");
+	zassert_equal(SUIT_PLAT_ERR_NOT_FOUND, suit_storage_flags_check(SUIT_FLAG_FOREGROUND_DFU),
+		      "Foreground DFU flag set");
+	/* ... and the execution mode is set to the POST INVOKE RECOVERY */
+	zassert_equal(EXECUTION_MODE_POST_INVOKE_RECOVERY, suit_execution_mode_get(),
+		      "Execution mode not changed to the POST INVOKE RECOVERY");
 }
 
 ZTEST(orchestrator_recovery_boot_tests, test_rec_seq_validate_fail)
 {
-	const uint8_t *buf;
-	size_t len;
-
 	/* GIVEN empty flash (suit storage is erased)... */
 	setup_erased_flash();
 	/* ... and recovery envelope with failing suit-validate sequence is installed... */
@@ -277,7 +283,7 @@ ZTEST(orchestrator_recovery_boot_tests, test_rec_seq_validate_fail)
 			       manifest_recovery_validate_fail_len);
 	/* ... and update candidate flag is not set... */
 	/* ... and emergency flag is set... */
-	setup_boot_report(NULL, 0);
+	setup_recovery_flag();
 	/* ... and orchestrator is initialized... */
 	zassert_equal(0, suit_orchestrator_init(),
 		      "Orchestrator not initialized before test execution");
@@ -291,8 +297,10 @@ ZTEST(orchestrator_recovery_boot_tests, test_rec_seq_validate_fail)
 	/* THEN orchestrator fails (hard)... */
 	zassert_equal(-EILSEQ, err, "Orchestrator did not fail");
 	/* ... and the emergency flag is set... */
-	zassert_equal(SUIT_PLAT_SUCCESS, suit_storage_report_read(0, &buf, &len),
-		      "Emergency flag not set");
+	zassert_equal(SUIT_PLAT_SUCCESS, suit_storage_flags_check(SUIT_FLAG_RECOVERY),
+		      "Recovery flag not set");
+	zassert_equal(SUIT_PLAT_ERR_NOT_FOUND, suit_storage_flags_check(SUIT_FLAG_FOREGROUND_DFU),
+		      "Foreground DFU flag set");
 	/* ... and the execution mode is set to the FAIL INVOKE RECOVERY */
 	zassert_equal(EXECUTION_MODE_FAIL_INVOKE_RECOVERY, suit_execution_mode_get(),
 		      "Execution mode not changed to the FAIL INVOKE RECOVERY");
@@ -300,9 +308,6 @@ ZTEST(orchestrator_recovery_boot_tests, test_rec_seq_validate_fail)
 
 ZTEST(orchestrator_recovery_boot_tests, test_rec_seq_validate_load_fail)
 {
-	const uint8_t *buf;
-	size_t len;
-
 	/* GIVEN empty flash (suit storage is erased)... */
 	setup_erased_flash();
 	/* ... and recovery envelope with failing suit-load sequence is installed... */
@@ -310,7 +315,7 @@ ZTEST(orchestrator_recovery_boot_tests, test_rec_seq_validate_load_fail)
 			       manifest_recovery_validate_load_fail_len);
 	/* ... and update candidate flag is not set... */
 	/* ... and emergency flag is set... */
-	setup_boot_report(NULL, 0);
+	setup_recovery_flag();
 	/* ... and orchestrator is initialized... */
 	zassert_equal(0, suit_orchestrator_init(),
 		      "Orchestrator not initialized before test execution");
@@ -324,8 +329,10 @@ ZTEST(orchestrator_recovery_boot_tests, test_rec_seq_validate_load_fail)
 	/* THEN orchestrator fails (hard)... */
 	zassert_equal(-EILSEQ, err, "Orchestrator did not fail");
 	/* ... and the emergency flag is set... */
-	zassert_equal(SUIT_PLAT_SUCCESS, suit_storage_report_read(0, &buf, &len),
-		      "Emergency flag not set");
+	zassert_equal(SUIT_PLAT_SUCCESS, suit_storage_flags_check(SUIT_FLAG_RECOVERY),
+		      "Recovery flag not set");
+	zassert_equal(SUIT_PLAT_ERR_NOT_FOUND, suit_storage_flags_check(SUIT_FLAG_FOREGROUND_DFU),
+		      "Foreground DFU flag set");
 	/* ... and the execution mode is set to the FAIL INVOKE RECOVERY */
 	zassert_equal(EXECUTION_MODE_FAIL_INVOKE_RECOVERY, suit_execution_mode_get(),
 		      "Execution mode not changed to the FAIL INVOKE RECOVERY");
@@ -333,9 +340,6 @@ ZTEST(orchestrator_recovery_boot_tests, test_rec_seq_validate_load_fail)
 
 ZTEST(orchestrator_recovery_boot_tests, test_rec_seq_validate_load_no_invoke)
 {
-	const uint8_t *buf;
-	size_t len;
-
 	/* GIVEN empty flash (suit storage is erased)... */
 	setup_erased_flash();
 	/* ... and recovery envelope without suit-invoke sequence is installed... */
@@ -343,7 +347,7 @@ ZTEST(orchestrator_recovery_boot_tests, test_rec_seq_validate_load_no_invoke)
 			       manifest_recovery_validate_load_no_invoke_len);
 	/* ... and update candidate flag is not set... */
 	/* ... and emergency flag is set... */
-	setup_boot_report(NULL, 0);
+	setup_recovery_flag();
 	/* ... and orchestrator is initialized... */
 	zassert_equal(0, suit_orchestrator_init(),
 		      "Orchestrator not initialized before test execution");
@@ -357,8 +361,10 @@ ZTEST(orchestrator_recovery_boot_tests, test_rec_seq_validate_load_no_invoke)
 	/* THEN orchestrator fails (hard)... */
 	zassert_equal(-EILSEQ, err, "Orchestrator did not fail");
 	/* ... and the emergency flag is set... */
-	zassert_equal(SUIT_PLAT_SUCCESS, suit_storage_report_read(0, &buf, &len),
-		      "Emergency flag not set");
+	zassert_equal(SUIT_PLAT_SUCCESS, suit_storage_flags_check(SUIT_FLAG_RECOVERY),
+		      "Recovery flag not set");
+	zassert_equal(SUIT_PLAT_ERR_NOT_FOUND, suit_storage_flags_check(SUIT_FLAG_FOREGROUND_DFU),
+		      "Foreground DFU flag set");
 	/* ... and the execution mode is set to the FAIL INVOKE RECOVERY */
 	zassert_equal(EXECUTION_MODE_FAIL_INVOKE_RECOVERY, suit_execution_mode_get(),
 		      "Execution mode not changed to the FAIL INVOKE RECOVERY");
@@ -366,9 +372,6 @@ ZTEST(orchestrator_recovery_boot_tests, test_rec_seq_validate_load_no_invoke)
 
 ZTEST(orchestrator_recovery_boot_tests, test_rec_seq_validate_load_invoke_fail)
 {
-	const uint8_t *buf;
-	size_t len;
-
 	/* GIVEN empty flash (suit storage is erased)... */
 	setup_erased_flash();
 	/* ... and recovery envelope with failing suit-invoke sequence is installed... */
@@ -376,7 +379,7 @@ ZTEST(orchestrator_recovery_boot_tests, test_rec_seq_validate_load_invoke_fail)
 			       manifest_recovery_validate_load_invoke_fail_len);
 	/* ... and update candidate flag is not set... */
 	/* ... and emergency flag is set... */
-	setup_boot_report(NULL, 0);
+	setup_recovery_flag();
 	/* ... and orchestrator is initialized... */
 	zassert_equal(0, suit_orchestrator_init(),
 		      "Orchestrator not initialized before test execution");
@@ -390,8 +393,10 @@ ZTEST(orchestrator_recovery_boot_tests, test_rec_seq_validate_load_invoke_fail)
 	/* THEN orchestrator fails (hard)... */
 	zassert_equal(-EILSEQ, err, "Orchestrator did not fail");
 	/* ... and the emergency flag is set... */
-	zassert_equal(SUIT_PLAT_SUCCESS, suit_storage_report_read(0, &buf, &len),
-		      "Emergency flag not set");
+	zassert_equal(SUIT_PLAT_SUCCESS, suit_storage_flags_check(SUIT_FLAG_RECOVERY),
+		      "Recovery flag not set");
+	zassert_equal(SUIT_PLAT_ERR_NOT_FOUND, suit_storage_flags_check(SUIT_FLAG_FOREGROUND_DFU),
+		      "Foreground DFU flag set");
 	/* ... and the execution mode is set to the FAIL INVOKE RECOVERY */
 	zassert_equal(EXECUTION_MODE_FAIL_INVOKE_RECOVERY, suit_execution_mode_get(),
 		      "Execution mode not changed to the FAIL INVOKE RECOVERY");
@@ -399,9 +404,6 @@ ZTEST(orchestrator_recovery_boot_tests, test_rec_seq_validate_load_invoke_fail)
 
 ZTEST(orchestrator_recovery_boot_tests, test_rec_seq_validate_load_invoke)
 {
-	const uint8_t *buf;
-	size_t len;
-
 	/* GIVEN empty flash (suit storage is erased)... */
 	setup_erased_flash();
 	/* ... and recovery envelope without dependencies is installed... */
@@ -409,7 +411,7 @@ ZTEST(orchestrator_recovery_boot_tests, test_rec_seq_validate_load_invoke)
 			       manifest_recovery_validate_load_invoke_len);
 	/* ... and update candidate flag is not set... */
 	/* ... and emergency flag is set... */
-	setup_boot_report(NULL, 0);
+	setup_recovery_flag();
 	/* ... and orchestrator is initialized... */
 	zassert_equal(0, suit_orchestrator_init(),
 		      "Orchestrator not initialized before test execution");
@@ -423,8 +425,10 @@ ZTEST(orchestrator_recovery_boot_tests, test_rec_seq_validate_load_invoke)
 	/* THEN orchestrator fails succeeds... */
 	zassert_equal(0, err, "Orchestrator not initialized");
 	/* ... and the emergency flag is set... */
-	zassert_equal(SUIT_PLAT_SUCCESS, suit_storage_report_read(0, &buf, &len),
-		      "Emergency flag not set");
+	zassert_equal(SUIT_PLAT_SUCCESS, suit_storage_flags_check(SUIT_FLAG_RECOVERY),
+		      "Recovery flag not set");
+	zassert_equal(SUIT_PLAT_ERR_NOT_FOUND, suit_storage_flags_check(SUIT_FLAG_FOREGROUND_DFU),
+		      "Foreground DFU flag set");
 	/* ... and the execution mode is set to the POST INVOKE RECOVERY */
 	zassert_equal(EXECUTION_MODE_POST_INVOKE_RECOVERY, suit_execution_mode_get(),
 		      "Execution mode not changed to the POST INVOKE RECOVERY");

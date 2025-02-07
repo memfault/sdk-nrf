@@ -12,10 +12,6 @@
 #include "lib/core/CHIPError.h"
 #include "lib/support/CodeUtils.h"
 
-#ifdef CONFIG_CHIP_OTA_REQUESTOR
-#include "dfu/ota/ota_util.h"
-#endif
-
 #include <app-common/zap-generated/attributes/Accessors.h>
 #include <app/clusters/identify-server/identify-server.h>
 #include <app/clusters/smoke-co-alarm-server/SmokeCOTestEventTriggerHandler.h>
@@ -73,7 +69,7 @@ void AppTask::ButtonEventHandler(Nrf::ButtonState state, Nrf::ButtonMask hasChan
 #ifdef CONFIG_CHIP_ICD_UAT_SUPPORT
 	if ((UAT_BUTTON_MASK & state & hasChanged)) {
 		LOG_INF("ICD UserActiveMode has been triggered.");
-		Server::GetInstance().GetICDManager().UpdateOperationState(ICDManager::OperationalState::ActiveMode);
+		Server::GetInstance().GetICDManager().OnNetworkActivity();
 	}
 #endif
 }

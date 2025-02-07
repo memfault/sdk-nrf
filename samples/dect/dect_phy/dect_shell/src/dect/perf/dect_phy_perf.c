@@ -14,9 +14,10 @@
 
 #include <dk_buttons_and_leds.h>
 
+#include <nrf_modem_dect_phy.h>
+
 #include "desh_defines.h"
 #include "desh_print.h"
-#include "nrf_modem_dect_phy.h"
 #include "dect_phy_common_rx.h"
 #include "dect_common_utils.h"
 #include "dect_phy_api_scheduler.h"
@@ -115,7 +116,7 @@ struct dect_phy_perf_server_data {
 
 static struct dect_phy_perf_data {
 	/* Common data  */
-	bool perf_on_going;
+	bool perf_ongoing;
 	int64_t time_started_ms;
 
 	struct dect_phy_perf_params cmd_params;
@@ -284,7 +285,7 @@ static int dect_phy_perf_server_rx_start(uint64_t start_time)
 	ret = dect_phy_common_rx_op(&rx_op);
 	if (ret) {
 		printk("nrf_modem_dect_phy_rx failed: ret %d, handle %d\n", ret, rx_op.handle);
-		perf_data.perf_on_going = false;
+		perf_data.perf_ongoing = false;
 	} else {
 		perf_data.rx_metrics.rx_enabled_z_ticks = k_uptime_get();
 		perf_data.rx_metrics.rx_req_count_on_going++;
@@ -464,6 +465,8 @@ static void dect_phy_perf_rx_pcc_cb(uint64_t const *time,
 
 	ctrl_pcc_op_params.pcc_status = *p_rx_status;
 	ctrl_pcc_op_params.phy_header = *p_phy_header;
+	ctrl_pcc_op_params.phy_len = header->packet_length;
+	ctrl_pcc_op_params.phy_len_type = header->packet_length_type;
 	ctrl_pcc_op_params.time = *time;
 	ctrl_pcc_op_params.stf_start_time = p_rx_status->stf_start_time;
 
@@ -595,6 +598,7 @@ static void dect_phy_perf_rx_pdc_cb(uint64_t const *time,
 
 	perf_pdc_op_params.rx_pwr_dbm = 0; /* Not needed from PDC */
 	perf_pdc_op_params.rx_rssi_level_dbm = rssi_level;
+	perf_pdc_op_params.last_rx_op_channel = perf_data.cmd_params.channel;
 
 	if (length <= sizeof(perf_pdc_op_params.data)) {
 		memcpy(perf_pdc_op_params.data, p_data, length);
@@ -661,9 +665,10 @@ static void dect_phy_perf_stf_cover_seq_control_cb(
 	printk("WARN: Unexpectedly in %s\n", (__func__));
 }
 
+extern struct k_sem dect_phy_ctrl_mdm_api_deinit_sema;
 static void dect_phy_perf_deinit_cb(const uint64_t *time, enum nrf_modem_dect_phy_err err)
 {
-	dect_phy_ctrl_msgq_non_data_op_add(DECT_PHY_CTRL_OP_PERF_CMD_DONE);
+	k_sem_give(&dect_phy_ctrl_mdm_api_deinit_sema);
 }
 
 static const struct nrf_modem_dect_phy_callbacks perf_phy_api_config = {
@@ -839,14 +844,16 @@ static void dect_phy_perf_client_tx(uint64_t first_possible_tx)
 
 static void dect_phy_perf_cmd_done(void)
 {
-	int ret = 0;
-
-	perf_data.perf_on_going = false;
-	ret = nrf_modem_dect_phy_deinit();
-	if (ret) {
-		desh_error("nrf_modem_dect_phy_deinit failed, err=%d", ret);
-		dect_phy_ctrl_msgq_non_data_op_add(DECT_PHY_CTRL_OP_PERF_CMD_DONE);
+	if (!perf_data.perf_ongoing) {
+		desh_error("%s called when perf cmd is not ongoing - caller %pS",
+			(__func__),
+			__builtin_return_address(0));
+		return;
 	}
+	perf_data.perf_ongoing = false;
+
+	/* Mdm phy api deinit is done by dect_phy_ctrl */
+	dect_phy_ctrl_msgq_non_data_op_add(DECT_PHY_CTRL_OP_PERF_CMD_DONE);
 }
 
 static int dect_phy_perf_client_start(void)
@@ -992,7 +999,7 @@ static int dect_phy_perf_start(struct dect_phy_perf_params *params,
 		dect_phy_perf_data_rx_metrics_init();
 	}
 
-	perf_data.perf_on_going = true;
+	perf_data.perf_ongoing = true;
 	perf_data.cmd_params = *params;
 	if (params->role == DECT_PHY_COMMON_ROLE_CLIENT) {
 		ret = dect_phy_perf_client_start();
@@ -1061,6 +1068,7 @@ static int dect_phy_perf_tx_request_results(void)
 	memcpy(&phy_header.type_2, &header, sizeof(phy_header.type_2));
 
 	perf_pdu.header.message_type = DECT_MAC_MESSAGE_TYPE_PERF_RESULTS_REQ;
+	perf_pdu.message.results_req.unused = 0;
 	perf_pdu.header.transmitter_id = current_settings->common.transmitter_id;
 	dect_phy_perf_pdu_encode(encoded_data_to_send, &perf_pdu);
 
@@ -1302,12 +1310,12 @@ static void dect_phy_perf_server_report_local_and_tx_results(void)
 void dect_phy_perf_mdm_op_completed(
 	struct dect_phy_common_op_completed_params *mdm_completed_params)
 {
-	if (perf_data.perf_on_going) {
+	if (perf_data.perf_ongoing) {
 		if (DECT_PHY_PERF_TX_HANDLE_IN_RANGE(mdm_completed_params->handle)) {
 			int64_t time_orig_started = perf_data.time_started_ms;
 			int64_t elapsed_time_ms = k_uptime_delta(&time_orig_started);
 
-			if (!perf_data.perf_on_going ||
+			if (!perf_data.perf_ongoing ||
 			    (elapsed_time_ms >= (perf_data.cmd_params.duration_secs * 1000))) {
 				(void)dect_phy_perf_client_report_local_results_and_req_srv_results(
 					&elapsed_time_ms);
@@ -1484,7 +1492,7 @@ static void dect_phy_perf_thread_fn(void)
 			break;
 		}
 		case DECT_PHY_PERF_EVENT_HARQ_TX_WIN_TIMER: {
-			if (!perf_data.perf_on_going) {
+			if (!perf_data.perf_ongoing) {
 				break;
 			}
 			if (!dect_phy_perf_time_secs_left()) {
@@ -1596,7 +1604,7 @@ static void dect_phy_perf_thread_fn(void)
 				(struct dect_phy_common_op_pcc_crc_fail_params *)event.data;
 			struct dect_phy_perf_params *cmd_params = &(perf_data.cmd_params);
 
-			if (perf_data.perf_on_going) {
+			if (perf_data.perf_ongoing) {
 				dect_phy_perf_rx_on_pcc_crc_failure();
 			}
 
@@ -1614,7 +1622,7 @@ static void dect_phy_perf_thread_fn(void)
 				(struct dect_phy_common_op_pdc_crc_fail_params *)event.data;
 			struct dect_phy_perf_params *cmd_params = &(perf_data.cmd_params);
 
-			if (perf_data.perf_on_going) {
+			if (perf_data.perf_ongoing) {
 				dect_phy_perf_rx_on_pdc_crc_failure();
 			}
 			if (cmd_params->debugs) {
@@ -1743,7 +1751,7 @@ rx_pcc_debug:
 				if (pdu_type == DECT_MAC_MESSAGE_TYPE_PERF_TX_DATA ||
 				    pdu_type == DECT_MAC_MESSAGE_TYPE_PERF_RESULTS_REQ ||
 				    pdu_type == DECT_MAC_MESSAGE_TYPE_PERF_RESULTS_RESP) {
-					if (perf_data.perf_on_going) {
+					if (perf_data.perf_ongoing) {
 						dect_phy_perf_rx_pdc_data_handle(&rcv_params);
 					} else {
 						desh_print("Perf command TX data received: ignored "
@@ -1852,12 +1860,15 @@ static void dect_phy_perf_phy_init(struct nrf_modem_dect_phy_init_params *init_p
 int dect_phy_perf_cmd_handle(struct dect_phy_perf_params *params)
 {
 	int ret;
+	struct dect_phy_settings *current_settings = dect_common_settings_ref_get();
 	struct nrf_modem_dect_phy_init_params perf_phy_init_params = {
 		.harq_rx_expiry_time_us = params->mdm_init_harq_expiry_time_us,
 		.harq_rx_process_count = params->mdm_init_harq_process_count,
+		.reserved = 0,
+		.band4_support = ((current_settings->common.band_nbr == 4) ? 1 : 0),
 	};
 
-	if (perf_data.perf_on_going) {
+	if (perf_data.perf_ongoing) {
 		desh_error("perf command already running");
 		return -1;
 	}
@@ -1872,14 +1883,14 @@ int dect_phy_perf_cmd_handle(struct dect_phy_perf_params *params)
 
 	ret = dect_phy_perf_start(params, START);
 	if (ret) {
-		perf_data.perf_on_going = false;
+		perf_data.perf_ongoing = false;
 	}
 	return ret;
 }
 
 void dect_phy_perf_cmd_stop(void)
 {
-	if (!perf_data.perf_on_going) {
+	if (!perf_data.perf_ongoing) {
 		desh_error("Perf command not running.");
 		return;
 	}
@@ -1906,7 +1917,7 @@ void dect_phy_perf_cmd_stop(void)
 
 void dect_phy_perf_rx_on_pcc_crc_failure(void)
 {
-	if (!perf_data.perf_on_going) {
+	if (!perf_data.perf_ongoing) {
 		desh_error("receiving perf data but perf not running.");
 		return;
 	}
@@ -1915,7 +1926,7 @@ void dect_phy_perf_rx_on_pcc_crc_failure(void)
 
 void dect_phy_perf_rx_on_pdc_crc_failure(void)
 {
-	if (!perf_data.perf_on_going) {
+	if (!perf_data.perf_ongoing) {
 		desh_error("receiving perf data but perf not running.");
 		return;
 	}
@@ -1927,7 +1938,7 @@ static int dect_phy_perf_rx_pdc_data_handle(struct dect_phy_data_rcv_common_para
 	dect_phy_perf_pdu_t pdu;
 	int ret;
 
-	if (!perf_data.perf_on_going) {
+	if (!perf_data.perf_ongoing) {
 		desh_error("receiving perf data but perf not running.");
 		return -1;
 	}

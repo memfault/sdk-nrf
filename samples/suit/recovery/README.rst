@@ -10,11 +10,10 @@ SUIT: Recovery application
 The SUIT recovery application is a minimal application that allows recovering the device firmware if the original firmware is damaged.
 It is to be used as a companion firmware to the main application that is using :ref:`Software Update for Internet of Things (SUIT) <ug_nrf54h20_suit_intro>` procedure, rather than a stand-alone application.
 
-The following limitations apply to this application:
+The following limitation applies to this application:
 
 * The recovery firmware is only able to recover from a situation where the application or radio core are damaged.
   It does not recover from Nordic Semiconductor-controlled firmware failures.
-* The recovery firmware is not compatible with a main application that uses a external flash for update.
 
 .. _suit_recovery_reqs:
 
@@ -51,8 +50,8 @@ To achieve this, the appropriate devicetree overlay files from the main applicat
 
 To do this, add the :file:`recovery.overlay` and :file:`recovery_hci_ipc.ovelay` files in the main application's :ref:`configuration_system_overview_sysbuild` directory.
 The former file will be passed automatically to the recovery application image and the latter to the recovery radio image.
-These devicetree files must define the ``cpuapp_recovery_partition`` and ``cpurad_recovery_partition`` nodes respectively.`
-For an example, see the files in the ``samples/suit/smp_transfer`` sample.
+These devicetree files must define the ``cpuapp_recovery_partition`` and ``cpurad_recovery_partition`` nodes respectively.
+For an example, see the files in the :file:`samples/suit/smp_transfer` folder.
 
 .. _suit_recovery_build_run:
 
@@ -93,9 +92,24 @@ Testing
 |test_sample|
 
 #. |connect_kit|
-#. Corrupt the currently running main application (for example by flashing a modified version of the application)
-#. Open the Device Manager or the nRF Connect application, and observe the device advertising as "SUIT Recovery"
-#. Recover the application using Device Manager in the same way as described in the ``smp_transfer`` sample documentation.
+#. Corrupt the currently running main application.
+   This can be done by overwriting the beginning of the application partition:
+
+   .. code-block:: console
+
+      nrfutil device x-write --address 0xE0B7000 --value 0xFFFF --serial-number <dk_serial_number>
+
+#. Reset the device to enter the recovery path:
+
+   .. code-block:: console
+
+      nrfutil device reset --serial-number <dk_serial_number>
+
+#. Open the nRF Device Manager app on your mobile phone, and observe the device now advertising itself as *SUIT Recovery*.
+#. Recover the application using the nRF Device Manager app to perform an update, following the process outlined in the :ref:`nrf54h_suit_sample` sample documentation.
+   Use the :file:`root.suit` file generated from the previous build.
+#. After the update completes, the device will reset and launch the application.
+#. Open the nRF Device Manager app on your mobile phone and observe that the device is now advertising as *SUIT SMP Sample*.
 
 Device firmware update for recovery firmware
 ============================================

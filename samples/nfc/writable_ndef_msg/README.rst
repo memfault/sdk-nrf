@@ -73,6 +73,9 @@ Building and running
 .. note::
    |nfc_nfct_driver_note|
 
+.. note::
+   |54H_engb_2_8|
+
 Testing
 =======
 
@@ -110,10 +113,11 @@ In addition, it uses the Type 4 Tag library from `sdk-nrfxlib`_:
 
 It uses the following Zephyr libraries:
 
-* ``include/atomic.h``
-* ``include/zephyr.h``
-* ``include/device.h``
-* ``include/nvs/nvs.h``
+* :ref:`zephyr:nvs_api`
+* :ref:`zephyr:zms_api`
+* :file:`include/zephyr/zephyr.h`
+* :file:`include/zephyr/device.h`
+
 * :ref:`GPIO Interface <zephyr:api_peripherals>`
 
 The sample also uses the following secure firmware component:

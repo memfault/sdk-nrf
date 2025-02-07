@@ -18,7 +18,7 @@ The sample supports the following development kits:
 
 .. include:: /includes/tfm.txt
 
-The sample also requires a device running a CTS Server to connect with (for example, a Bluetooth® Low Energy dongle and nRF Connect for Desktop).
+The sample also requires a device running a CTS Server to connect with (for example, a Bluetooth® Low Energy dongle and the `Bluetooth Low Energy app`_).
 
 Overview
 ********
@@ -61,12 +61,15 @@ Building and running
 
 .. include:: /includes/build_and_run_ns.txt
 
+.. note::
+   |54H_engb_2_8|
+
 .. _peripheral_cts_client_testing:
 
 Testing
 =======
 
-After programming the sample to your development kit, you can test it with `nRF Connect for Desktop`_ by performing the following steps.
+After programming the sample to your development kit, you can test it with the `Bluetooth Low Energy app`_ by performing the following steps.
 
 .. tabs::
 
@@ -75,7 +78,7 @@ After programming the sample to your development kit, you can test it with `nRF 
       1. |connect_terminal_specific|
       #. Reset the kit.
       #. Start `nRF Connect for Desktop`_
-      #. Open the Bluetooth Low Energy app and select the connected dongle that is used for communication.
+      #. Open the `Bluetooth Low Energy app`_ and select the connected dongle that is used for communication.
       #. Open the :guilabel:`SERVER SETUP` tab.
          Click the dongle configuration and select **Load setup**.
          Load the :file:`cts_central.ncs` file that is located under :file:`samples/bluetooth/peripheral_cts_client` in the |NCS| folder structure.
@@ -137,15 +140,15 @@ After programming the sample to your development kit, you can test it with `nRF 
                External update  0
                Manual update    0
 
-      #. Disconnect the device in the Bluetooth Low Energy app.
-      #. As bond information is preserved by the Bluetooth Low Energy app, you can immediately reconnect to the device by clicking the :guilabel:`Connect` button again.
+      #. Disconnect the device in the app.
+      #. As bond information is preserved by the app, you can immediately reconnect to the device by clicking the :guilabel:`Connect` button again.
 
    .. group-tab:: nRF54 DKs
 
       1. |connect_terminal_specific|
       #. Reset the kit.
       #. Start `nRF Connect for Desktop`_
-      #. Open the Bluetooth Low Energy app and select the connected dongle that is used for communication.
+      #. Open the `Bluetooth Low Energy app`_ and select the connected dongle that is used for communication.
       #. Open the :guilabel:`SERVER SETUP` tab.
          Click the dongle configuration and select **Load setup**.
          Load the :file:`cts_central.ncs` file that is located under :file:`samples/bluetooth/peripheral_cts_client` in the |NCS| folder structure.
@@ -207,8 +210,8 @@ After programming the sample to your development kit, you can test it with `nRF 
                External update  0
                Manual update    0
 
-      #. Disconnect the device in the Bluetooth Low Energy app.
-      #. As bond information is preserved by the Bluetooth Low Energy app, you can immediately reconnect to the device by clicking the :guilabel:`Connect` button again.
+      #. Disconnect the device in the app.
+      #. As bond information is preserved by the app, you can immediately reconnect to the device by clicking the :guilabel:`Connect` button again.
 
 Dependencies
 ************

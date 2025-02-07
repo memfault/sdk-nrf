@@ -458,11 +458,12 @@ psa_driver_wrapper_get_key_buffer_size_from_key_data(const psa_key_attributes_t 
 
 	*key_buffer_size = 0;
 	switch (location) {
-#if defined(PSA_NEED_CRACEN_KEY_MANAGEMENT_DRIVER)
+#if defined(PSA_CRYPTO_DRIVER_CRACEN)
 	case PSA_KEY_LOCATION_CRACEN:
+#if defined(PSA_NEED_CRACEN_KMU_DRIVER)
 	case PSA_KEY_LOCATION_CRACEN_KMU:
-		*key_buffer_size = cracen_get_opaque_size(attributes);
-		return *key_buffer_size != 0 ? PSA_SUCCESS : PSA_ERROR_INVALID_ARGUMENT;
+#endif
+		return cracen_get_opaque_size(attributes, key_buffer_size);
 #endif
 	default:
 		(void)key_type;
@@ -496,11 +497,12 @@ psa_status_t psa_driver_wrapper_get_key_buffer_size(const psa_key_attributes_t *
 
 	*key_buffer_size = 0;
 	switch (location) {
-#if defined(PSA_NEED_CRACEN_KEY_MANAGEMENT_DRIVER)
+#if defined(PSA_CRYPTO_DRIVER_CRACEN)
 	case PSA_KEY_LOCATION_CRACEN:
+#if defined(PSA_NEED_CRACEN_KMU_DRIVER)
 	case PSA_KEY_LOCATION_CRACEN_KMU:
-		*key_buffer_size = cracen_get_opaque_size(attributes);
-		return *key_buffer_size != 0 ? PSA_SUCCESS : PSA_ERROR_NOT_SUPPORTED;
+#endif
+		return cracen_get_opaque_size(attributes, key_buffer_size);
 #endif
 #if defined(PSA_CRYPTO_DRIVER_TFM_BUILTIN_KEY_LOADER)
 	case TFM_BUILTIN_KEY_LOADER_KEY_LOCATION:
@@ -736,14 +738,14 @@ psa_status_t psa_driver_wrapper_get_builtin_key(psa_drv_slot_number_t slot_numbe
 	psa_key_location_t location = PSA_KEY_LIFETIME_GET_LOCATION(attributes->lifetime);
 
 	switch (location) {
-#if defined(PSA_NEED_CRACEN_KEY_MANAGEMENT_DRIVER)
+#if defined(PSA_CRYPTO_DRIVER_CRACEN)
+	case PSA_KEY_LOCATION_CRACEN:
 #if defined(PSA_NEED_CRACEN_KMU_DRIVER)
 	case PSA_KEY_LOCATION_CRACEN_KMU:
 #endif
-	case PSA_KEY_LOCATION_CRACEN:
 		return (cracen_get_builtin_key(slot_number, attributes, key_buffer, key_buffer_size,
 					       key_buffer_length));
-#endif /* PSA_NEED_CRACEN_KEY_MANAGEMENT_DRIVER*/
+#endif /* PSA_CRYPTO_DRIVER_CRACEN */
 #if defined(PSA_CRYPTO_DRIVER_TFM_BUILTIN_KEY_LOADER)
 	case TFM_BUILTIN_KEY_LOADER_KEY_LOCATION:
 		return tfm_builtin_key_loader_get_builtin_key(slot_number, attributes, key_buffer,
@@ -900,10 +902,14 @@ psa_status_t psa_driver_wrapper_cipher_decrypt(const psa_key_attributes_t *attri
 	psa_key_location_t location = PSA_KEY_LIFETIME_GET_LOCATION(attributes->lifetime);
 
 	switch (location) {
-	case PSA_KEY_LOCATION_LOCAL_STORAGE:
+#if defined(PSA_NEED_CRACEN_CIPHER_DRIVER)
+	case PSA_KEY_LOCATION_CRACEN:
+#endif
 #if defined(PSA_CRYPTO_DRIVER_TFM_BUILTIN_KEY_LOADER)
 	case TFM_BUILTIN_KEY_LOADER_KEY_LOCATION:
-#endif		/* defined(PSA_CRYPTO_DRIVER_TFM_BUILTIN_KEY_LOADER) */
+#endif
+	case PSA_KEY_LOCATION_LOCAL_STORAGE:
+
 		/* Key is stored in the slot in export representation, so
 		 * cycle through all known transparent accelerators
 		 */
@@ -1475,13 +1481,17 @@ psa_status_t psa_driver_wrapper_aead_decrypt(const psa_key_attributes_t *attribu
 	psa_key_location_t location = PSA_KEY_LIFETIME_GET_LOCATION(attributes->lifetime);
 
 	switch (location) {
-	case PSA_KEY_LOCATION_LOCAL_STORAGE:
+#if defined(PSA_NEED_CRACEN_AEAD_DRIVER)
+	case PSA_KEY_LOCATION_CRACEN:
+#endif
 #if defined(PSA_CRYPTO_DRIVER_TFM_BUILTIN_KEY_LOADER)
 	case TFM_BUILTIN_KEY_LOADER_KEY_LOCATION:
-#endif /* defined(PSA_CRYPTO_DRIVER_TFM_BUILTIN_KEY_LOADER) */
+#endif
 #if defined(PSA_NEED_CRACEN_KMU_DRIVER)
 	case PSA_KEY_LOCATION_CRACEN_KMU:
 #endif
+	case PSA_KEY_LOCATION_LOCAL_STORAGE:
+
 		/* Key is stored in the slot in export representation, so
 		 * cycle through all known transparent accelerators
 		 */
@@ -1618,6 +1628,9 @@ psa_status_t psa_driver_wrapper_aead_decrypt_setup(psa_aead_operation_t *operati
 #if defined(PSA_CRYPTO_DRIVER_TFM_BUILTIN_KEY_LOADER)
 	case TFM_BUILTIN_KEY_LOADER_KEY_LOCATION:
 #endif /* defined(PSA_CRYPTO_DRIVER_TFM_BUILTIN_KEY_LOADER) */
+#if defined(PSA_NEED_CRACEN_PLATFORM_KEYS)
+	case PSA_KEY_LOCATION_CRACEN:
+#endif
 #if defined(PSA_NEED_CRACEN_KMU_DRIVER)
 	case PSA_KEY_LOCATION_CRACEN_KMU:
 #endif

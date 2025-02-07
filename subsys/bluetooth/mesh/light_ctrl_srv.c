@@ -562,6 +562,12 @@ static void timeout(struct k_work *work)
 	if (!is_enabled(srv)) {
 		if (srv->resume && atomic_test_and_clear_bit(&srv->flags, FLAG_RESUME_TIMER)) {
 			LOG_DBG("Resuming LC server");
+			if (IS_ENABLED(CONFIG_BT_MESH_SCENE_SRV)) {
+				/* Resuming the LC server invalidates the current scene as it takes
+				 * control over states that are stored with the scene.
+				 */
+				bt_mesh_scene_invalidate(srv->model);
+			}
 			ctrl_enable(srv);
 			store(srv, FLAG_STORE_STATE);
 		}
@@ -1535,8 +1541,10 @@ static void scene_recall(const struct bt_mesh_model *model, const uint8_t data[]
 			.transition = transition,
 		};
 
+		bool restart = is_enabled(srv);
+
 		ctrl_disable(srv);
-		if (atomic_test_bit(&srv->flags, FLAG_RESUME_TIMER)) {
+		if (restart || atomic_test_bit(&srv->flags, FLAG_RESUME_TIMER)) {
 			schedule_resume_timer(srv);
 		}
 		lightness_srv_change_lvl(srv->lightness, NULL, &set, &status, true);

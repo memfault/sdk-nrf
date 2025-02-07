@@ -180,13 +180,33 @@ Provisioning registration data onto device
 The Fast Pair standard requires provisioning the device with Model ID and Anti-Spoofing Private Key obtained during device model registration.
 In the |NCS|, the provisioning data is generated as a hexadecimal file using the :ref:`bt_fast_pair_provision_script`.
 
-When building the Fast Pair in the |NCS|, the build system automatically calls the Fast Pair provision script and includes the resulting hexadecimal file in the firmware (the :file:`merged.hex` file).
+When building Fast Pair in the |NCS|, the build system automatically calls the Fast Pair provision script.
+It then includes the resulting hexadecimal file in the final firmware that you can flash onto the device.
+The Fast Pair provisioning data is stored on the dedicated Fast Pair partition, which has to be defined.
+
+Partition definition using the Partition Manager (PM)
+-----------------------------------------------------
+
+For devices that support :ref:`partition_manager`, the system also automatically creates the ``bt_fast_pair`` partition.
+The partition is defined in the :file:`subsys/partition_manager/pm.yml.bt_fast_pair` file.
+The :ref:`fast_pair_input_device` sample follows this approach.
+Alternatively, the Fast Pair partition can be defined manually in the application's configuration file.
+To see how to do this, refer to the example in the :file:`samples/bluetooth/fast_pair/locator_tag/configuration/pm_static_nrf52840dk_nrf52840.yml` file which is a part of the :ref:`fast_pair_locator_tag` sample.
+For more information about defining Partition Manager partitions, see the :ref:`Configuration <pm_configuration>` section of the :ref:`partition_manager` page.
+
+Partition definition using the Devicetree (DTS)
+-----------------------------------------------
+
+For devices that do not support :ref:`partition_manager`, you must declare the ``bt_fast_pair_partition`` partition manually in the devicetree.
+Currently, the :ref:`zephyr:nrf54h20dk_nrf54h20` is the only device that requires manual partition definition.
+To see how to do this, refer to the example in the :file:`samples/bluetooth/fast_pair/input_device/boards/nrf54h20dk_nrf54h20_cpuapp.overlay` file.
+
 To build an application with the Fast Pair support, include the following additional CMake options:
 
 * ``FP_MODEL_ID`` - Fast Pair Model ID in format ``0xXXXXXX``,
 * ``FP_ANTI_SPOOFING_KEY`` - base64-encoded Fast Pair Anti-Spoofing Private Key.
 
-The ``bt_fast_pair`` partition address is provided automatically by the build system.
+The Fast Pair partition address is provided automatically by the build system.
 
 For example, when building an application with the |nRFVSC|, you need to add the following parameters in the **Extra CMake arguments** field on the **Add Build Configuration view**: ``-DFP_MODEL_ID=0xFFFFFF -DFP_ANTI_SPOOFING_KEY=AbAbAbAbAbAbAbAbAbAbAbAbAbAbAbAbAbAbAbAbAbA=``.
 Make sure to replace ``0xFFFFFF`` and ``AbAbAbAbAbAbAbAbAbAbAbAbAbAbAbAbAbAbAbAbAbA=`` with values obtained for your device.
@@ -284,6 +304,7 @@ You can use the following API functions only in the *unready* state of the FMDN 
   * The :c:func:`bt_fast_pair_fmdn_info_cb_register` function (optional)
   * The :c:func:`bt_fast_pair_fmdn_ring_cb_register` function (mandatory with the Kconfig configuration for at least one ringing component)
   * The :c:func:`bt_fast_pair_fmdn_read_mode_cb_register` function (optional)
+  * The :c:func:`bt_fast_pair_fmdn_motion_detector_cb_register` function (mandatory if the :kconfig:option:`CONFIG_BT_FAST_PAIR_FMDN_DULT_MOTION_DETECTOR` Kconfig option is enabled)
 
 * The :c:func:`bt_fast_pair_fmdn_id_set` API function used for assigning Bluetooth identity to FMDN activities (like advertising and connections)
 * The :c:func:`bt_fast_pair_factory_reset` API function used for performing factory reset of all Fast Pair data
@@ -303,7 +324,7 @@ The clock drift is the difference between the beacon clock value as measured by 
 The beacon clock is used to calculate the Ephemeral Identifier (EID), which is a part of the FMDN advertising payload.
 Seekers identify and track the provisioned Provider by analyzing the broadcasted EIDs in the advertising frames.
 Performing frequent system reboots or staying in the turned off state (for example, System OFF) may cause the clock drift to accumulate overtime.
-If the clock drift is too high, the Provider EID encoded in the FMDN advertising payload becomes unidentifable to Seeker devices.
+If the clock drift is too high, the Provider EID encoded in the FMDN advertising payload becomes unidentifiable to Seeker devices.
 
 When you disable the FMDN extension using the :c:func:`bt_fast_pair_disable` function, the beacon clock service also gets terminated.
 As a result, the clock information is no longer updated in the non-volatile memory.
@@ -462,12 +483,12 @@ To comply with the requirements of the FMDN extension, you must manage the Fast 
 When creating the Fast Pair advertising set with the :c:func:`bt_le_ext_adv_create` function, register the :c:struct:`bt_le_ext_adv_cb` structure with the following callbacks:
 
 * The :c:member:`bt_le_ext_adv_cb.connected` callback to track connections that are part of the application's connection pool (and were not created from the FMDN advertising set).
-* The ``bt_le_ext_adv_cb.rpa_expired`` callback to synchronize the update of the application's advertising sets' payloads together with their respective Resolvable Private Addresses (RPA).
+* The ``bt_le_ext_adv_cb.rpa_expired()`` callback to synchronize the update of the application's advertising sets' payloads together with their respective Resolvable Private Addresses (RPA).
 
 .. Important::
    You must manage application advertising sets according to the FMDN provisioning state:
 
-   * For the provisioned device, only update the Fast Pair advertising payload during the ``bt_le_ext_adv_cb.rpa_expired`` callback execution.
+   * For the provisioned device, only update the Fast Pair advertising payload during the ``bt_le_ext_adv_cb.rpa_expired()`` callback execution.
      The FMDN extension controls the RPA rotation time in this state, and no other module in your application is allowed to change the rotation time.
    * For the unprovisioned device, control the Fast Pair advertising rotation time using the :c:func:`bt_le_set_rpa_timeout` and :c:func:`bt_le_oob_get_local` functions.
      You must still comply with the requirements of the Fast Pair protocol.
@@ -504,7 +525,7 @@ Battery level indication
 ------------------------
 
 To specify the battery level broadcasted in the FMDN advertising payload, use the :c:func:`bt_fast_pair_fmdn_battery_level_set` function.
-You can update the battery level asynchronously without having to wait on the ``bt_le_ext_adv_cb.rpa_expired`` callback.
+You can update the battery level asynchronously without having to wait on the ``bt_le_ext_adv_cb.rpa_expired()`` callback.
 
 The current API accepts the battery level as a percentage value, and ranges from 0% to 100%.
 This percentage value is first translated according to the quantified battery states defined in the FMDN Accessory specification and then encoded in the FMDN advertising set according to the following rules:
@@ -632,6 +653,25 @@ In the Fast Pair not discoverable advertising mode, the Provider informs the lis
 You can also use the :c:func:`bt_fast_pair_has_account_key` function to check whether your Provider has any Account Keys.
 This API is especially useful after a system reboot when some Account Keys may already be stored in non-volatile memory.
 
+.. _ug_bt_fast_pair_gatt_service_bond_management:
+
+Fast Pair bond management functionality
+=======================================
+
+To enable the Fast Pair bond management functionality, use the :kconfig:option:`CONFIG_BT_FAST_PAIR_BOND_MANAGER` Kconfig option.
+When this functionality is enabled, the Fast Pair subsystem tracks the Bluetooth bonds created through the Fast Pair Procedure and unpairs them if the procedure is incomplete or the Account Key associated with the bonds is removed.
+It also unpairs the Fast Pair Bluetooth bonds on Fast Pair factory reset, because the factory reset removes all Account Keys stored on device.
+Enabling the functionality imposes additional limitations related to enabling Fast Pair in runtime (:c:func:`bt_fast_pair_enable`).
+See the :kconfig:option:`CONFIG_BT_FAST_PAIR_BOND_MANAGER` Kconfig option help for more details about using the functionality.
+
+The Fast Pair bond management functionality is disabled by default.
+Make sure that it is enabled for the following use cases of the Google Fast Pair application as it is highly recommended:
+
+* Input device
+* Mouse
+
+See :ref:`ug_bt_fast_pair_use_case` for more details about the use cases of the Google Fast Pair application.
+
 FMDN extension
 ==============
 
@@ -749,6 +789,8 @@ The following sources of ringing activity are supported:
 * :c:enum:`BT_FAST_PAIR_FMDN_RING_SRC_FMDN_BT_GATT` - This ringing source originates from the Bluetooth Fast Pair service and its Beacon Actions characteristic that is defined in the FMDN Accessory specification.
 * :c:enum:`BT_FAST_PAIR_FMDN_RING_SRC_DULT_BT_GATT` - This ringing source originates from the Bluetooth Accessory Non-owner service and its characteristic that are defined in the DULT specification.
   This source is available only when the :kconfig:option:`CONFIG_BT_FAST_PAIR_FMDN_DULT` Kconfig option is enabled.
+* :c:enum:`BT_FAST_PAIR_FMDN_RING_SRC_DULT_MOTION_DETECTOR` - This ringing source originates from the DULT motion detector module.
+  This source is available only when the :kconfig:option:`CONFIG_BT_FAST_PAIR_FMDN_DULT_MOTION_DETECTOR` Kconfig option is enabled.
 
 The following callbacks are defined in the :c:struct:`bt_fast_pair_fmdn_ring_cb` structure:
 
@@ -761,6 +803,8 @@ The following callbacks are defined in the :c:struct:`bt_fast_pair_fmdn_ring_cb`
     * Ringing timeout in deciseconds.
       The timeout value of the :kconfig:option:`CONFIG_BT_FAST_PAIR_FMDN_RING_REQ_TIMEOUT_DULT_BT_GATT` Kconfig option is used for the :c:enum:`BT_FAST_PAIR_FMDN_RING_SRC_DULT_BT_GATT` DULT source.
       The default value of this Kconfig is in line with the `Fast Pair Unwanted Tracking Prevention Guidelines`_ documentation.
+      The timeout value of the :kconfig:option:`CONFIG_BT_FAST_PAIR_FMDN_RING_REQ_TIMEOUT_DULT_MOTION_DETECTOR` Kconfig option is used for the :c:enum:`BT_FAST_PAIR_FMDN_RING_SRC_DULT_MOTION_DETECTOR` DULT source.
+      There are no specific requirements for this Kconfig value in neither the FMDN nor the DULT specification.
     * Ringing volume level.
 
   The :c:member:`bt_fast_pair_fmdn_ring_cb.start_request` callback can be called again when the ringing action has already started.
@@ -785,7 +829,7 @@ A call to the :c:func:`bt_fast_pair_fmdn_ring_state_update` function sends a mes
 The message is sent over the ringing source that is used by the connected peer.
 
 You must select the ringing source that is passed to the :c:func:`bt_fast_pair_fmdn_ring_state_update` function as a first parameter.
-Typically, you pass the ringing source that is used in the last ringing callback that triggerred the ringing state update.
+Typically, you pass the ringing source that is used in the last ringing callback that triggered the ringing state update.
 In certain edge cases, you can get two simultaneous requests to start ringing with two different sources before you are able to indicate the start of ringing with the :c:func:`bt_fast_pair_fmdn_ring_state_update` function.
 In this situation, you need to select the preferred ringing source.
 
@@ -815,6 +859,38 @@ This update policy applies to all listed stop trigger types.
 
 To satisfy the requirements from the DULT specification when the :kconfig:option:`CONFIG_BT_FAST_PAIR_FMDN_DULT` Kconfig option is enabled, the FMDN extension communicates with the DULT module to receive ringing requests from the DULT peers and to send updates regarding the ringing state.
 For more details on the ringing mechanism in the DULT module, see the :ref:`ug_dult_sound` documentation.
+
+.. _ug_bt_fast_pair_gatt_service_fmdn_dult_motion_detector:
+
+Interacting with the motion detector from DULT
+----------------------------------------------
+
+The motion detector is an optional feature of the DULT subsystem that can be integrated into the FMDN extension.
+For more details about the feature, see the `DULT motion detector`_ section of the DULT specification.
+To activate the DULT motion detector functionality in the FMDN extension, enable the :kconfig:option:`CONFIG_BT_FAST_PAIR_FMDN_DULT_MOTION_DETECTOR` Kconfig option.
+The FMDN extension implementation acts as a thin wrapper for the DULT motion detector module callbacks.
+It passes callbacks from the DULT motion detector module to the user application.
+
+To register the motion detector callbacks, use the :c:func:`bt_fast_pair_fmdn_motion_detector_cb_register` function.
+You must register all motion detector callbacks defined in the :c:struct:`bt_fast_pair_fmdn_motion_detector_cb` structure:
+
+* The motion detector start request is indicated by the :c:member:`bt_fast_pair_fmdn_motion_detector_cb.start` callback.
+  After this callback is called, the motion detector events are polled periodically with the :c:member:`bt_fast_pair_fmdn_motion_detector_cb.period_expired` callback.
+  A typical action after the motion detector start request is to power up the accelerometer and start collecting motion data.
+* The motion detector period expired event is indicated by the :c:member:`bt_fast_pair_fmdn_motion_detector_cb.period_expired` callback.
+  This callback is called at the end of each motion detector period.
+  The :c:member:`bt_fast_pair_fmdn_motion_detector_cb.start` callback indicates the beginning of the first motion detector period.
+  The next period is started as soon as the previous period expires.
+  You need to notify the DULT module if motion was detected in the previous period.
+  The return value of this callback is used to pass this information.
+  The motion must be considered as detected if it fulfills the requirements defined in the `DULT motion detector`_ section of the DULT documentation.
+* The motion detector stop request is indicated by the :c:member:`bt_fast_pair_fmdn_motion_detector_cb.stop` callback.
+  It concludes the motion detector activity that was started by the :c:member:`bt_fast_pair_fmdn_motion_detector_cb.start` callback.
+  A typical action after the motion detector stop request is to power down the accelerometer.
+
+The motion detector is started by the DULT subsystem when the accessory is in the separated state for an amount of time controlled by the :kconfig:option:`CONFIG_DULT_MOTION_DETECTOR_SEPARATED_UT_TIMEOUT_PERIOD_MIN` and :kconfig:option:`CONFIG_DULT_MOTION_DETECTOR_SEPARATED_UT_TIMEOUT_PERIOD_MAX` Kconfig options.
+When the motion is detected during the motion detector active period, the :c:member:`bt_fast_pair_fmdn_ring_cb.start_request` callback is called to request the ringing action with the :c:enum:`BT_FAST_PAIR_FMDN_RING_SRC_DULT_MOTION_DETECTOR` parameter as the ringing source.
+Emitted sounds help to alert the non-owner that they are carrying an accessory that does not belong to them and might be used by the original owner to track their location.
 
 .. _ug_bt_fast_pair_gatt_service_fmdn_battery_dult:
 
@@ -849,7 +925,7 @@ Custom user reset action
 ========================
 
 Use the :kconfig:option:`CONFIG_BT_FAST_PAIR_STORAGE_USER_RESET_ACTION` Kconfig option to enable a custom user reset action that executes together with the factory reset operation.
-To define the custom user reset action, you need to implement the ``bt_fast_pair_factory_reset_user_action_perform`` function in your application code.
+To define the custom user reset action, you need to implement the ``bt_fast_pair_factory_reset_user_action_perform()`` function in your application code.
 The function is defined as a weak, no-op function.
 Ensure that your reset action implementation executes correctly in the following execution contexts:
 
@@ -1014,5 +1090,5 @@ The following are the required dependencies for the Fast Pair integration:
 * :ref:`nrfxlib:crypto`
 * :ref:`zephyr:bluetooth`
 * :ref:`zephyr:settings_api`
-* :ref:`partition_manager`
+* :ref:`partition_manager` (only for supported board targets)
 * :ref:`dult_readme`

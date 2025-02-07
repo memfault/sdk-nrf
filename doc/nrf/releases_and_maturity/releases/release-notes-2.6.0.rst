@@ -195,7 +195,7 @@ Working with nRF91 Series
 
   * The :ref:`ug_nrf9160_gs` and :ref:`ug_thingy91_gsg` pages so that instructions in the :ref:`nrf9160_gs_connecting_dk_to_cloud` and :ref:`thingy91_connect_to_cloud` sections, respectively, match the updated nRF Cloud workflow.
   * The :ref:`ug_nrf9160_gs` by replacing the Updating the DK firmware section with a new :ref:`nrf9160_gs_installing_software` section.
-    This new section includes steps for using Quick Start, a new application in `nRF Connect for Desktop`_ that streamlines the getting started process with the nRF91 Series DKs.
+    This new section includes steps for using the `Quick Start app`_, a new application in `nRF Connect for Desktop`_ that streamlines the getting started process with the nRF91 Series DKs.
   * :ref:`ug_nrf9160` user guide by separating the information about snippets into its own page, :ref:`ug_nrf91_snippet`.
 
 Working with nRF70 Series
@@ -308,10 +308,10 @@ Matter
   * Migration of the Node Operational Key Pair (NOK) from the generic Matter persistent storage to the PSA ITS secure storage.
     All existing NOKs for all Matter fabrics will be migrated to the PSA ITS secure storage at boot.
     After the migration, generic Matter persistent storage entries in the settings storage will be removed and are no longer available.
-    To enable operational keys migration, set the :kconfig:option:`CONFIG_NCS_SAMPLE_MATTER_OPERATIONAL_KEYS_MIGRATION_TO_ITS` Kconfig option to ``y``.
+    To enable operational keys migration, set the :ref:`CONFIG_NCS_SAMPLE_MATTER_OPERATIONAL_KEYS_MIGRATION_TO_ITS<CONFIG_NCS_SAMPLE_MATTER_OPERATIONAL_KEYS_MIGRATION_TO_ITS>` Kconfig option to ``y``.
 
     In |NCS| Matter samples, the default reaction to migration failure is a factory reset of the device.
-    To change the default reaction, set the :kconfig:option:`CONFIG_NCS_SAMPLE_MATTER_FACTORY_RESET_ON_KEY_MIGRATION_FAILURE` Kconfig option to ``n``.
+    To change the default reaction, set the :ref:`CONFIG_NCS_SAMPLE_MATTER_FACTORY_RESET_ON_KEY_MIGRATION_FAILURE<CONFIG_NCS_SAMPLE_MATTER_FACTORY_RESET_ON_KEY_MIGRATION_FAILURE>` Kconfig option to ``n``.
   * Experimental support for building Matter samples and applications with Link Time Optimization (LTO).
     To enable it, set the :kconfig:option:`CONFIG_LTO` and :kconfig:option:`CONFIG_ISR_TABLES_LOCAL_DECLARATION` Kconfig options to ``y``.
   * Documentation page about :ref:`ug_matter_gs_matter_api`.
@@ -765,7 +765,7 @@ Cellular samples
     * The sample now uses the functions in the :file:`nrf_cloud_fota_poll.c` and :file:`nrf_cloud_fota_common.c` files.
     * The :kconfig:option:`CONFIG_AT_HOST_STACK_SIZE` Kconfig option value has been increased to 2048 bytes since nRF Cloud credentials are sometimes longer than 1024 bytes.
 
-* :ref:`nrf_cloud_rest_cell_pos_sample` sample:
+* :ref:`nrf_cloud_rest_cell_location` sample:
 
   * Added:
 

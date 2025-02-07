@@ -66,6 +66,18 @@ static int translate_error(int err)
 
 	/* In case of CME error translate to an errno value */
 	switch (nrf_modem_at_err(err)) {
+	case 0: /* phone failure. invalid command, parameter, or other unexpected error */
+		LOG_WRN("Phone failure");
+		return -EIO;
+	case 23: /* memory failure. unexpected error in memory handling */
+		LOG_WRN("Memory failure");
+		return -E2BIG;
+	case 50: /* incorrect parameters in a command */
+		LOG_WRN("Incorrect parameters in command");
+		return -EINVAL;
+	case 60: /* system error */
+		LOG_WRN("System error");
+		return -ENOEXEC;
 	case 513: /* not found */
 		LOG_WRN("Key not found");
 		return -ENOENT;
@@ -81,6 +93,9 @@ static int translate_error(int err)
 	case 519: /* already exists */
 		LOG_WRN("Key already exists");
 		return -EALREADY;
+	case 527: /* Invalid content */
+		LOG_WRN("Invalid content");
+		return -EINVAL;
 	case 528: /* not allowed in power off warning */
 		LOG_WRN("Not allowed when power off warning is active");
 		return -ECANCELED;
@@ -291,7 +306,7 @@ int modem_key_mgmt_clear(nrf_sec_tag_t sec_tag)
 
 	while (token != NULL) {
 		err = sscanf(token, "%%CMNG: %u,%u,\"", &tag, &type);
-		if (tag == sec_tag) {
+		if (tag == sec_tag && err == 2) {
 			err = nrf_modem_at_printf("AT%%CMNG=3,%u,%u", sec_tag, type);
 		}
 		token = strtok(NULL, "\n");

@@ -7,7 +7,7 @@ AWS IoT
    :local:
    :depth: 2
 
-The Amazon Web Services Internet-of-Things (AWS IoT) sample demonstrates how to connect an nRF91 Series or nRF70 Series device to the `AWS IoT Core`_ service over MQTT to publish and receive messages.
+The Amazon Web Services Internet-of-Things (AWS IoT) sample demonstrates how to connect an nRF91 Series, nRF70 Series, or nRF54L15 with nRF7002 EB device to the `AWS IoT Core`_ service over MQTT to publish and receive messages.
 This sample showcases the use of the :ref:`lib_aws_iot` library, which includes support for FOTA using the :ref:`lib_aws_fota` library.
 
 .. |wifi| replace:: Wi-Fi®
@@ -152,6 +152,7 @@ The sample includes pre-configured configuration files for the development kits 
 * :file:`boards/nrf9160dk_nrf9160_ns.conf` - Configuration file for the nRF9160 DK.
 * :file:`boards/thingy91_nrf9160_ns.conf` - Configuration file for the Thingy:91.
 * :file:`boards/nrf7002dk_nrf5340_cpuapp_ns.conf` - Configuration file for the nRF7002 DK.
+* :file:`boards/nrf54l15dk_nrf54l15_cpuapp.conf` - Configuration file for the nRF54L15 DK.
 * :file:`boards/native_sim.conf` - Configuration file for the native simulator board.
 
 The following configuration and DTS overlay files are included to host the MCUboot secondary image slot on external flash for the nRF7002 DK:
@@ -209,7 +210,7 @@ The *modem_version* parameter in messages published to AWS IoT will not be prese
 .. note::
    For nRF91 Series devices, the output differs from the above example output.
    This is because the sample enables the :ref:`lib_at_host` library using the :kconfig:option:`CONFIG_AT_HOST_LIBRARY` option.
-   This library makes it possible to send AT commands to the nRF91 Series modem and receive responses using the `Cellular Monitor`_ app from nRF Connect for Desktop.
+   This library makes it possible to send AT commands to the nRF91 Series modem and receive responses using the `Cellular Monitor app`_ in nRF Connect for Desktop.
    The additional logs are AT command responses that the modem sends to the application core that are forwarded over UART to be displayed on any of these nRF Connect for Desktop apps.
 
 To observe incoming messages in the AWS IoT console, follow the steps documented in :ref:`aws_iot_testing_and_debugging`.
@@ -232,7 +233,7 @@ Troubleshooting
 
 To enable more verbose logging from the AWS IoT library, enable the :kconfig:option:`CONFIG_AWS_IOT_LOG_LEVEL_DBG` option.
 
-* If you have issues with connectivity on nRF91 Series devices, see the `Cellular Monitor`_ documentation to learn how to capture modem traces in order to debug network traffic in Wireshark.
+* If you have issues with connectivity on nRF91 Series devices, see the `Cellular Monitor app`_ documentation to learn how to capture modem traces in order to debug network traffic in Wireshark.
   The sample enables modem traces by default.
 * If you have issues with the sample, refer to :ref:`testing`.
 * For issues related to connection towards AWS IoT, refer to :ref:`AWS IoT library troubleshooting <aws_iot_troubleshooting>`.

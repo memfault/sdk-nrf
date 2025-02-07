@@ -15,12 +15,12 @@ static const struct device *const dev_in = DEVICE_DT_GET(DEV_IN);
 /* Delay after pull input config to allow signal to settle.  The value
  * selected is conservative (higher than may be necessary).
  */
-#define PULL_DELAY_US 1000U
+#define PULL_DELAY_MS K_MSEC(1U)
 
 /* Short-hand for a checked read of PIN_IN raw state */
 static bool raw_in(void)
 {
-	k_busy_wait(PULL_DELAY_US);
+	k_sleep(PULL_DELAY_MS);
 	gpio_port_value_t v;
 	int rc = gpio_port_get_raw(dev_in, &v);
 
@@ -41,7 +41,7 @@ static void raw_out(bool set)
 	}
 	zassert_equal(rc, 0,
 		      "raw_out failed");
-	k_busy_wait(PULL_DELAY_US);
+	k_sleep(PULL_DELAY_MS);
 }
 
 /* Short-hand for a checked write of PIN_OUT logic state */
@@ -56,7 +56,7 @@ static void logic_out(bool set)
 	}
 	zassert_equal(rc, 0,
 		      "raw_out failed");
-	k_busy_wait(PULL_DELAY_US);
+	k_sleep(PULL_DELAY_MS);
 }
 
 /* Verify device, configure for physical in and out, verify
@@ -66,6 +66,17 @@ static int setup(void)
 {
 	int rc;
 	gpio_port_value_t v1;
+
+	TC_PRINT("-> Test uses following backend: ");
+	if (IS_ENABLED(CONFIG_GPIO_NRFE_EGPIO_BACKEND_ICMSG)) {
+		TC_PRINT("ICMsg\n");
+	} else if (IS_ENABLED(CONFIG_GPIO_NRFE_EGPIO_BACKEND_ICBMSG)) {
+		TC_PRINT("ICBMsg\n");
+	} else if (IS_ENABLED(CONFIG_GPIO_NRFE_EGPIO_BACKEND_MBOX)) {
+		TC_PRINT("MBOX\n");
+	} else {
+		TC_PRINT("unknown\n");
+	}
 
 	TC_PRINT("Validate device %s\n", dev_out->name);
 	zassert_true(device_is_ready(dev_out), "GPIO dev_out is not ready");
@@ -85,7 +96,7 @@ static int setup(void)
 	zassert_equal(rc, 0,
 		      "pin config output low failed");
 
-	k_busy_wait(PULL_DELAY_US);
+	k_sleep(PULL_DELAY_MS);
 
 	rc = gpio_port_get_raw(dev_in, &v1);
 	zassert_equal(rc, 0,
@@ -114,7 +125,7 @@ static int setup(void)
 	zassert_equal(rc, 0,
 		      "pin config output high failed");
 
-	k_busy_wait(PULL_DELAY_US);
+	k_sleep(PULL_DELAY_MS);
 
 	rc = gpio_port_get_raw(dev_in, &v1);
 	zassert_equal(rc, 0,
@@ -462,6 +473,36 @@ static int bits_logical(void)
 	return TC_PASS;
 }
 
+/**
+ * @brief Stress test - send many GPIO requests one by one
+ */
+static int stress_gpio_pin_set_raw(void)
+{
+	int rc;
+	int rc_acc = 0;
+
+	TC_PRINT("- %s\n", __func__);
+
+	for (int i = 0; i < 300000; i++) {
+		rc = gpio_pin_set_raw(dev_out, PIN_OUT, (i % 2));
+		/* If TX buffer is full, wait a bit and retry */
+		while (rc == -EIO) {
+			k_usleep(100);
+			rc = gpio_pin_set_raw(dev_out, PIN_OUT, (i % 2));
+		}
+
+		/* Report any other error */
+		if (rc) {
+			TC_PRINT("%d: rc = %d\n", i, rc);
+			rc_acc += rc;
+			break;
+		}
+	}
+	zassert_equal(rc_acc, 0, "at least one set operation failed, rc_acc = %d)", rc_acc);
+
+	return TC_PASS;
+}
+
 ZTEST(egpio_port, test_egpio_port)
 {
 	zassert_equal(setup(), TC_PASS,
@@ -476,6 +517,8 @@ ZTEST(egpio_port, test_egpio_port)
 		      "check_logic_output_levels failed");
 	zassert_equal(bits_logical(), TC_PASS,
 		      "bits_logical failed");
+	zassert_equal(stress_gpio_pin_set_raw(), TC_PASS,
+		      "stress_gpio_pin_set_raw failed");
 }
 
 /* Test GPIO port configuration */

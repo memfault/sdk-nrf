@@ -109,6 +109,10 @@ The following snippets are available:
 * ``logging`` - Enables logging using RTT.
   For additional options, refer to :ref:`RTT logging <ug_logging_backends_rtt>`.
 * ``usb`` - Enables emulating a serial port over USB for Spinel communication with the host.
+
+  .. note::
+     The ``usb`` snippet does not support the ``nrf54l15dk/nrf54l15/cpuapp``, ``nrf54l15dk/nrf54l10/cpuapp`` and ``nrf54l15dk/nrf54l05/cpuapp`` board targets.
+
 * ``hci`` - Enables support for the Bluetooth HCI interface parallel to :ref:`Thread RCP <thread_architectures_designs_cp_rcp>`.
 
 FEM support

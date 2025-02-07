@@ -11,7 +11,7 @@ Matter: Door lock
 This door lock sample demonstrates the usage of the :ref:`Matter <ug_matter>` application layer to build a door lock device with one basic bolt.
 You can use this sample as a reference for creating your application.
 
-This device works as a Matter accessory device, meaning it can be paired and controlled remotely over a Matter network built on top of a low-power 802.15.4 Thread or Wi-Fi network.
+This device works as a Matter accessory device, meaning it can be paired and controlled remotely over a Matter network built on top of a low-power 802.15.4 Thread or Wi-Fi® network.
 Support for both Thread and Wi-Fi depends on the hardware platform.
 The door lock sample can be built with support for one transport protocol, either Thread or Wi-Fi, or with support for :ref:`switching between Matter over Wi-Fi and Matter over Thread <matter_lock_sample_wifi_thread_switching>`, where the application activates either Thread or Wi-Fi on boot, depending on the runtime configuration.
 
@@ -36,7 +36,7 @@ This requires additional hardware depending on the setup you choose.
 .. note::
     |matter_gn_required_note|
 
-If you want to enable and test :ref:`matter_lock_sample_ble_nus`, you also need a smartphone with either Android (Android 11 or newer) or iOS (iOS 16.1 or newer).
+If you want to enable and test :ref:`Matter Bluetooth® LE with Nordic UART Service <matter_lock_sample_ble_nus>`, you also need a smartphone with either Android (Android 11 or newer) or iOS (iOS 16.1 or newer).
 
 IPv6 network support
 ====================
@@ -63,10 +63,12 @@ You can enable both methods after :ref:`building and running the sample <matter_
 Remote testing in a network
 ===========================
 
+.. |Bluetoothsc| replace:: Bluetooth
+
 .. matter_door_lock_sample_remote_testing_start
 
 By default, the Matter accessory device has IPv6 networking disabled.
-You must pair it with the Matter controller over Bluetooth® LE to get the configuration from the controller to use the device within a Thread or Wi-Fi network.
+You must pair it with the Matter controller over |Bluetoothsc| LE to get the configuration from the controller to use the device within a Thread or Wi-Fi network.
 You have to make the device discoverable manually (for security reasons).
 The controller must get the `Onboarding information`_ from the Matter accessory device and provision the device into the network.
 For details, see the `Commissioning the device`_ section.
@@ -81,8 +83,8 @@ The credentials can be used to control remote access to the bolt lock.
 The PIN code assigned by the Matter controller is stored persistently, which means that it can survive a device reboot.
 Depending on the IPv6 network technology in use, the following storage backends are supported by default to store the PIN code credential:
 
-* Matter over Thread - secure storage backend (:kconfig:option:`CONFIG_NCS_SAMPLE_MATTER_SECURE_STORAGE_BACKEND` Kconfig option enabled by default).
-* Matter over Wi-Fi - non-secure storage backend (:kconfig:option:`CONFIG_NCS_SAMPLE_MATTER_SETTINGS_STORAGE_BACKEND` Kconfig option enabled by default).
+* Matter over Thread - secure storage backend (:ref:`CONFIG_NCS_SAMPLE_MATTER_SECURE_STORAGE_BACKEND<CONFIG_NCS_SAMPLE_MATTER_SECURE_STORAGE_BACKEND>` Kconfig option enabled by default).
+* Matter over Wi-Fi - non-secure storage backend (:ref:`CONFIG_NCS_SAMPLE_MATTER_SETTINGS_STORAGE_BACKEND<CONFIG_NCS_SAMPLE_MATTER_SETTINGS_STORAGE_BACKEND>` Kconfig option enabled by default).
 
 You can learn more about the |NCS| Matter persistent storage module and its configuration in the :ref:`ug_matter_persistent_storage` section of the :ref:`ug_matter_device_advanced_kconfigs` documentation.
 
@@ -278,6 +280,8 @@ The following snippet is available:
 Device Firmware Upgrade support
 ===============================
 
+.. |Bluetooth| replace:: Bluetooth
+
 .. matter_door_lock_sample_build_with_dfu_start
 
 .. note::
@@ -287,7 +291,7 @@ Device Firmware Upgrade support
 The sample supports over-the-air (OTA) device firmware upgrade (DFU) using one of the two following protocols:
 
 * Matter OTA update protocol that uses the Matter operational network for querying and downloading a new firmware image.
-* Simple Management Protocol (SMP) over Bluetooth® LE.
+* Simple Management Protocol (SMP) over |Bluetooth| LE.
   In this case, the DFU can be done either using a smartphone application or a PC command line tool.
   Note that this protocol is not part of the Matter specification.
 
@@ -314,6 +318,13 @@ For example:
    west build -b nrf52840dk/nrf52840 -- -DCONFIG_CHIP_DFU_OVER_BT_SMP=y
 
 .. matter_door_lock_sample_build_with_dfu_end
+
+SUIT DFU on nRF54H20
+--------------------
+
+.. include:: ../template/README.rst
+    :start-after: matter_template_dfu_suit_start
+    :end-before: matter_template_dfu_suit_end
 
 .. _matter_lock_sample_configuration_fem:
 
@@ -362,6 +373,44 @@ To disable factory data support, set the following Kconfig options to ``n``:
 To learn more about factory data, read the :doc:`matter:nrfconnect_factory_data_configuration` page in the Matter documentation.
 
 .. matter_door_lock_sample_factory_data_end
+
+.. matter_door_lock_sample_factory_data_nrf54h20_start
+
+Merging the factory data hex file with the firmware hex file is currently not available on the nRF54H20 DK.
+The factory data support is disabled by default on this board.
+You can still use it, but you need to flash the :file:`factory_data.hex` file manually.
+
+To use factory data on the nRF54H20 DK, complete the following steps:
+
+1. Flash the :file:`factory_data.hex` file into the device using the following command:
+
+   .. code-block:: console
+
+      nrfutil device program --firmware build/template/zephyr/factory_data.hex
+
+#. Enable factory data support by building the sample with the :kconfig:option:`CONFIG_CHIP_FACTORY_DATA` Kconfig option set to ``y`` using the following command:
+
+   .. code-block:: console
+
+      west build -p -b nrf54h20dk/nrf54h20/cpuapp -- -DCONFIG_CHIP_FACTORY_DATA=y
+
+#. Flash the firmware into the device:
+
+   .. code-block:: console
+
+      west flash --erase
+
+The ``west flash --erase`` command does not clear the factory data partition.
+If you want to clear it, use the following command, and fill the ``<address>`` argument as an address of the factory data partition.
+By default, the address is set to ``0xe174000``.
+
+.. code-block:: console
+
+   nrfutil device erase --pages <address>
+
+Migrating the DAC private key from the factory data set to Trusted Storage is not supported yet on nRF54H20 DK.
+
+.. matter_door_lock_sample_factory_data_nrf54h20_end
 
 User interface
 **************
@@ -441,7 +490,10 @@ See `Configuration`_ for information about building the sample with the DFU supp
 
 .. code-block:: console
 
-    west build -b nrf54h20dk/nrf54h20/cpuapp -p -- -DSB_CONFIG_WIFI_NRF70=y -DCONFIG_CHIP_WIFI=y -Dlock_SHIELD=nrf700x_nrf54h20dk
+    west build -b nrf54h20dk/nrf54h20/cpuapp -p -- -DSB_CONFIG_WIFI_NRF70=y -DCONFIG_CHIP_WIFI=y -Dlock_SHIELD=nrf7002eb_interposer_p1
+
+.. note::
+   |54H_engb_2_8|
 
 Selecting a configuration
 =========================

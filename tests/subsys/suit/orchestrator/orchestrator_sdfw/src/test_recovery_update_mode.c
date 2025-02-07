@@ -52,10 +52,14 @@ static void setup_erased_flash(void)
 
 	zassert_equal(0, err, "Unable to erase storage before test execution");
 
-	suit_plat_err_t ret = suit_storage_report_clear(0);
+	suit_plat_err_t ret = suit_storage_flags_clear(SUIT_FLAG_RECOVERY);
 
 	zassert_equal(SUIT_PLAT_SUCCESS, ret,
 		      "Unable to clear recovery flag before test execution");
+
+	ret = suit_storage_flags_clear(SUIT_FLAG_FOREGROUND_DFU);
+	zassert_equal(SUIT_PLAT_SUCCESS, ret,
+		      "Unable to clear foreground DFU flag before test execution");
 
 	/* Recover MPI area from the backup region. */
 	err = suit_storage_init();
@@ -80,7 +84,6 @@ static void setup_update_candidate(const uint8_t *buf, size_t len)
 static void assert_post_recovery_install_state(void)
 {
 	const suit_plat_mreg_t *regions = NULL;
-	const uint8_t *buf = NULL;
 	size_t len = 0;
 
 	/* Each install attempt must at the end: */
@@ -88,9 +91,11 @@ static void assert_post_recovery_install_state(void)
 	suit_plat_err_t ret = suit_storage_update_cand_get(&regions, &len);
 
 	zassert_equal(SUIT_PLAT_ERR_NOT_FOUND, ret, "Update candidate presence not cleared");
-	/* - do not modify the emergency flag */
-	zassert_equal(SUIT_PLAT_ERR_NOT_FOUND, suit_storage_report_read(0, &buf, &len),
-		      "Emergency flag changed");
+	/* - clear the emergency flag */
+	zassert_equal(SUIT_PLAT_ERR_NOT_FOUND, suit_storage_flags_check(SUIT_FLAG_RECOVERY),
+		      "Recovery flag not cleared");
+	zassert_equal(SUIT_PLAT_ERR_NOT_FOUND, suit_storage_flags_check(SUIT_FLAG_FOREGROUND_DFU),
+		      "Foreground DFU flag set");
 	/* - do not modify the execution mode */
 	zassert_equal(EXECUTION_MODE_INSTALL_RECOVERY, suit_execution_mode_get(),
 		      "Execution mode modified");
@@ -99,7 +104,6 @@ static void assert_post_recovery_install_state(void)
 static void assert_post_recovery_install_failed_state(void)
 {
 	const suit_plat_mreg_t *regions = NULL;
-	const uint8_t *buf = NULL;
 	size_t len = 0;
 
 	/* Each install attempt must at the end: */
@@ -108,8 +112,10 @@ static void assert_post_recovery_install_failed_state(void)
 
 	zassert_equal(SUIT_PLAT_ERR_NOT_FOUND, ret, "Update candidate presence not cleared");
 	/* - do not modify the emergency flag */
-	zassert_equal(SUIT_PLAT_SUCCESS, suit_storage_report_read(0, &buf, &len),
-		      "Emergency flag changed");
+	zassert_equal(SUIT_PLAT_SUCCESS, suit_storage_flags_check(SUIT_FLAG_RECOVERY),
+		      "Recovery flag changed");
+	zassert_equal(SUIT_PLAT_ERR_NOT_FOUND, suit_storage_flags_check(SUIT_FLAG_FOREGROUND_DFU),
+		      "Foreground DFU flag changed");
 	/* - do not modify the execution mode */
 	zassert_equal(EXECUTION_MODE_INSTALL_RECOVERY, suit_execution_mode_get(),
 		      "Execution mode modified");
@@ -129,10 +135,8 @@ static void enter_recovery_mode(void *fixture)
 
 	setup_erased_flash();
 
-	suit_plat_err_t ret = suit_storage_report_save(0, NULL, 0);
-
-	zassert_equal(SUIT_PLAT_SUCCESS, ret,
-		      "Unable to set boot report (emergency flag) before test execution");
+	zassert_equal(SUIT_PLAT_SUCCESS, suit_storage_flags_set(SUIT_FLAG_RECOVERY),
+		      "Unable to set recovery flag before test execution");
 }
 
 ZTEST_SUITE(orchestrator_recovery_update_tests, NULL, NULL, enter_recovery_mode,

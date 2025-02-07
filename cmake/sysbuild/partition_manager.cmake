@@ -395,25 +395,13 @@ get_property(PM_SUBSYS_PREPROCESSED GLOBAL PROPERTY PM_SUBSYS_PREPROCESSED)
 # - It's the root image, and a static configuration has been provided
 # - It's the root image, and PM_IMAGES is populated.
 # - It's the root image, and other domains exist.
-# - A subsys has defined a partition and CONFIG_PM_SINGLE_IMAGE is set.
-# Otherwise, return here
-#if (NOT (
-#  (IMAGE_NAME AND is_dynamic_partition_in_domain) OR
-#  (NOT IMAGE_NAME AND static_configuration) OR
-#  (NOT IMAGE_NAME AND PM_IMAGES) OR
-#  (NOT IMAGE_NAME AND PM_DOMAINS) OR
-#  (PM_SUBSYS_PREPROCESSED AND CONFIG_PM_SINGLE_IMAGE)
-#  ))
-#  return()
-#endif()
 
 # Set the dynamic partition. This is the only partition which does not
 # have a statically defined size. There is only one dynamic partition per
 # domain. For the "root domain" (ie the domain of the root image) this is
 # always "app".
 if (NOT is_dynamic_partition_in_domain)
-  set(dynamic_partition "app")  # Should this be renamed to main image name, or does it matter at all ?
-#  set(dynamic_partition "${DEFAULT_IMAGE}")  # Should this be renamed to main image name, or does it matter at all ?
+  set(dynamic_partition "app")
 else()
   set(dynamic_partition ${${DOMAIN}_PM_DOMAIN_DYNAMIC_PARTITION})
   set(
@@ -525,6 +513,7 @@ foreach(d APP ${PM_DOMAINS})
 
   sysbuild_get(${image_name}_CONFIG_SOC_SERIES_NRF91X IMAGE ${image_name} VAR CONFIG_SOC_SERIES_NRF91X KCONFIG)
   sysbuild_get(${image_name}_CONFIG_SOC_NRF5340_CPUAPP IMAGE ${image_name} VAR CONFIG_SOC_NRF5340_CPUAPP KCONFIG)
+  sysbuild_get(${image_name}_CONFIG_SOC_NRF54L15_CPUAPP IMAGE ${image_name} VAR CONFIG_SOC_NRF54L15_CPUAPP KCONFIG)
 
   if (${image_name}_CONFIG_SOC_SERIES_NRF91X)
     # See nRF9160 Product Specification, chapter "UICR"
@@ -534,6 +523,9 @@ foreach(d APP ${PM_DOMAINS})
     # See nRF5340 Product Specification, chapter Application Core -> ... "UICR"
     set(otp_start_addr "0xff8100")
     set(otp_size 764)  # 191 * 4
+  elseif (DEFINED ${image_name}_CONFIG_SOC_NRF54L15_CPUAPP)
+    set(otp_start_addr "0xffd500")
+    set(otp_size 1276)  # 319 * 4
   endif()
 
   sysbuild_get(${image_name}_CONFIG_SOC_SERIES_NRF54LX IMAGE ${image_name} VAR CONFIG_SOC_SERIES_NRF54LX KCONFIG)
@@ -557,7 +549,7 @@ foreach(d APP ${PM_DOMAINS})
   sysbuild_get(${image_name}_CONFIG_FLASH_SIZE IMAGE ${image_name} VAR CONFIG_FLASH_SIZE KCONFIG)
   math(EXPR flash_size "${${image_name}_CONFIG_FLASH_SIZE} * 1024" OUTPUT_FORMAT HEXADECIMAL)
 
-  if (${image_name}_CONFIG_SOC_SERIES_NRF91X OR ${image_name}_CONFIG_SOC_NRF5340_CPUAPP)
+  if (${image_name}_CONFIG_SOC_SERIES_NRF91X OR ${image_name}_CONFIG_SOC_NRF5340_CPUAPP OR ${image_name}_CONFIG_SOC_NRF54L15_CPUAPP)
     add_region(
       NAME otp
       SIZE ${otp_size}

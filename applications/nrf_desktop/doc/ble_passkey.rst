@@ -7,7 +7,7 @@ Bluetooth LE passkey module
    :local:
    :depth: 2
 
-Use the Bluetooth LE passkey module to enable pairing based on passkey for increased security.
+Use the Bluetooth® LE passkey module to enable pairing based on passkey for increased security.
 
 Module events
 *************
@@ -42,5 +42,5 @@ The passkey input is handled in the :ref:`nrf_desktop_passkey`.
 
 .. note::
     By default, Zephyr's Bluetooth Peripheral demands the security level 3 in case the passkey authentication is enabled.
-    If the nRF Desktop dongle is unable to achieve the security level 3, it will be unable to connect with the peripheral.
+    If the nRF Desktop dongle cannot achieve the security level 3, it cannot connect with the peripheral.
     The :kconfig:option:`CONFIG_BT_SMP_ENFORCE_MITM` option is disabled by default to allow the dongle to connect without the authentication.

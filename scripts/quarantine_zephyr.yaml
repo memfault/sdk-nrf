@@ -57,7 +57,6 @@
     - sample.modules.lvgl.demo_widgets
     - sample.smf.smf_calculator
   platforms:
-    - native_posix
     - native_sim
     - native_sim/native/64
   comment: "https://nordicsemi.atlassian.net/browse/NCSDK-24924"
@@ -83,7 +82,6 @@
     - nrf5340dk/nrf5340/cpuapp/ns
     - nrf9160dk/nrf9160/ns
     - nrf54l15dk/nrf54l15/cpuapp
-    - nrf54l15pdk/nrf54l15/cpuapp
   comment: "https://nordicsemi.atlassian.net/browse/NCSDK-24928"
 
 - scenarios:
@@ -127,7 +125,6 @@
     - drivers.flash.common.default
   platforms:
     - nrf54l15dk/nrf54l15/cpuapp
-    - nrf54l15pdk/nrf54l15/cpuapp
   comment: "https://nordicsemi.atlassian.net/browse/NCSDK-27852"
 
 - scenarios:
@@ -135,7 +132,6 @@
   platforms:
     - nrf54h20dk/nrf54h20/cpuppr
     - nrf54l15dk/nrf54l15/cpuflpr
-    - nrf54l15pdk/nrf54l15/cpuflpr
   comment: "https://nordicsemi.atlassian.net/browse/NCSDK-27981"
 
 - scenarios:
@@ -143,7 +139,6 @@
     - sample.net.sockets.big_http_download.ci
   platforms:
     - nrf54l15dk/nrf54l15/cpuapp
-    - nrf54l15pdk/nrf54l15/cpuapp
   comment: "to be fixed in https://github.com/zephyrproject-rtos/zephyr/pull/73777"
 
 - scenarios:
@@ -166,7 +161,7 @@
     - nrf52dk/nrf52832
     - nrf5340dk/nrf5340/cpunet
     - nrf54h20dk/nrf54h20/cpuppr
-    - nrf54l15pdk/nrf54l15/cpuflpr
+    - nrf54l15dk/nrf54l15/cpuflpr
     - qemu_cortex_m3
   comment: "overflow, to report/fix in the upstream @permac and put ticket # here"
 
@@ -181,13 +176,6 @@
   comment: "https://nordicsemi.atlassian.net/browse/NCSDK-29462"
 
 - scenarios:
-    - drivers.watchdog
-  platforms:
-    - nrf54l15pdk/nrf54l15/cpuapp
-    - nrf54l15pdk/nrf54l15/cpuflpr
-  comment: "Missing support for nrf54l15pdk"
-
-- scenarios:
     - sample.filesystem.fat_fs.nrf54l15dk
   platforms:
     - nrf54l15dk/nrf54l15/cpuapp
@@ -199,6 +187,22 @@
     - nrf54l15dk/nrf54l15/cpuapp
   comment: "Test not aligned for nrf54l15 - missing snippet settings"
 
+- scenarios:
+    - net.sockets.tls12.ec_kex
+    - net.sockets.tls13.ephemeral_kex
+    - net.sockets.tls13.psk_kex.tickets
+    - net.sockets.tls13.ephemeral_kex.tickets
+  platforms:
+    - native_sim
+  comment: "https://nordicsemi.atlassian.net/browse/NCSDK-30873"
+
+- scenarios:
+    - drivers.power_domain.build.pm
+    - drivers.power_domain.build
+  platforms:
+    - native_sim
+  comment: "https://nordicsemi.atlassian.net/browse/NCSDK-30877"
+
 # ---------------------------------   Won't fix section -----------------------------------
 
 - scenarios:
@@ -207,7 +211,6 @@
     - nrf5340dk/nrf5340/cpuapp/ns
     - nrf9160dk/nrf9160/ns
     - nrf54l15dk/nrf54l15/cpuapp
-    - nrf54l15pdk/nrf54l15/cpuapp
   comment: "Won't be fixed - https://nordicsemi.atlassian.net/browse/NCSDK-15508"
 
 - scenarios:
@@ -410,7 +413,6 @@
     - sample.shell.shell_module.login
   platforms:
     - nrf54l15dk/nrf54l15/cpuflpr
-    - nrf54l15pdk/nrf54l15/cpuflpr
   comment: "region RAM/FLASH overflowed"
 
 - scenarios:
@@ -418,6 +420,8 @@
     - libraries.libc.newlib.thread_safety.userspace.stress
   platforms:
     - nrf54h20dk/nrf54h20/cpurad
+    - nrf54h20dk/nrf54h20/cpuapp
+  comment: "region FLASH overflowed"
 
 - scenarios:
     - libraries.cmsis_dsp.matrix.unary_f64
@@ -433,8 +437,17 @@
   comment: "Not fixable during upmerge, fix will be included in next upmerge"
 
 - scenarios:
-    - sample.filesystem.fat_fs.nrf54l15pdk
+    - sample.filesystem.fat_fs.nrf54l15dk
   platforms:
     - nrf54l15dk/nrf54l15/cpuapp
-    - nrf54l15pdk/nrf54l15/cpuapp
   comment: "partition manager configuration need to be fixed/provided"
+
+- platforms:
+    - native_posix
+  comment: "native_posix will be removed soon - native_sim platform is the default simulator now"
+
+- scenarios:
+    - drivers.hwinfo.api
+  platforms:
+    - nrf54h20dk/nrf54h20/cpuppr
+  comment: Unsupported device

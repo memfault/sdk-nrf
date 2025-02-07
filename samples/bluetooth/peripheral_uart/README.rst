@@ -26,7 +26,7 @@ The sample supports the following development kits:
    * When used with :ref:`zephyr:nrf5340dk_nrf5340`, the sample might support the MCUboot bootloader with serial recovery of the networking core image.
 
 The sample also requires using a compatible application for `Testing`_.
-You can use the `nRF Connect Bluetooth Low Energy`_ or `nRF Connect for Mobile`_ applications (or other similar applications, such as `nRF Blinky`_ or `nRF Toolbox`_).
+You can use the `Bluetooth Low Energy app`_ for desktop or the `nRF Connect for Mobile`_ (or other similar applications, such as `nRF Blinky`_ or `nRF Toolbox`_).
 Using mobile applications for testing requires a smartphone or tablet.
 
 You can also test the application with the :ref:`central_uart` sample.
@@ -178,6 +178,9 @@ Building and running
 
 .. include:: /includes/nRF54H20_erase_UICR.txt
 
+.. note::
+   |54H_engb_2_8|
+
 Experimental nRF54H20 SoC radio core only build
 ===============================================
 
@@ -230,7 +233,7 @@ After programming the sample to your development kit, complete the following ste
       #. Reset the kit.
       #. Observe that **LED 1** is blinking and the device is advertising under the default name **Nordic_UART_Service**.
          You can configure this name using the :kconfig:option:`CONFIG_BT_DEVICE_NAME` Kconfig option.
-      #. Observe that the text "Starting Nordic UART service example" is printed on the COM listener running on the computer.
+      #. Observe that the text "Starting Nordic UART service sample" is printed on the COM listener running on the computer.
 
    .. group-tab:: nRF54 DKs
 
@@ -244,7 +247,7 @@ After programming the sample to your development kit, complete the following ste
       #. Reset the kit.
       #. Observe that **LED 0** is blinking and the device is advertising under the default name **Nordic_UART_Service**.
          You can configure this name using the :kconfig:option:`CONFIG_BT_DEVICE_NAME` Kconfig option.
-      #. Observe that the text "Starting Nordic UART service example" is printed on the COM listener running on the computer.
+      #. Observe that the text "Starting Nordic UART service sample" is printed on the COM listener running on the computer.
 
 .. _peripheral_uart_testing_mobile:
 
@@ -278,6 +281,8 @@ To perform the test, complete the following steps:
          You can write to the UART RX and get the text displayed on the COM listener.
       #. Type "0123456789" and tap :guilabel:`SEND`.
          Verify that the text "0123456789" is displayed on the COM listener.
+      #. Tap the three-dot menu below the device name, and select **Enable CCCDs**.
+         This enables the notifications on the UART TX characteristic on the peripheral (DK) to allow sending UART characters to the phone or tablet.
       #. To send data from the device to your phone or tablet, enter any text, for example, "Hello", and press Enter to see it on the COM listener.
          Observe that a notification is sent to the peer.
       #. Disconnect the device in nRF Connect for Mobile.
@@ -306,6 +311,8 @@ To perform the test, complete the following steps:
          You can write to the UART RX and get the text displayed on the COM listener.
       #. Type "0123456789" and tap :guilabel:`SEND`.
          Verify that the text "0123456789" is displayed on the COM listener.
+      #. Tap the three-dot menu below the device name, and select **Enable CCCDs**.
+         This enables the notifications on the UART TX characteristic on the peripheral (DK) to allow sending UART characters to the phone or tablet.
       #. To send data from the device to your phone or tablet, enter any text, for example, "Hello", and press Enter to see it on the COM listener.
          Observe that a notification is sent to the peer.
       #. Disconnect the device in nRF Connect for Mobile.
@@ -317,21 +324,21 @@ To perform the test, complete the following steps:
 Testing with Bluetooth Low Energy app
 -------------------------------------
 
-If you have an nRF52 Series DK with the Peripheral UART sample and either a dongle or second Nordic Semiconductor development kit that supports Bluetooth Low Energy, you can test the sample on your computer.
-Use the `nRF Connect Bluetooth Low Energy`_ app in `nRF Connect for Desktop`_ for testing.
+If you have an nRF52 Series DK with the Peripheral UART sample and either a dongle or second Nordic Semiconductor development kit that supports the `Bluetooth Low Energy app`_, you can test the sample on your computer.
+Use the `Bluetooth Low Energy app`_ in `nRF Connect for Desktop`_ for testing.
 
 To perform the test, complete the following steps:
 
-1. Install the nRF Connect Bluetooth Low Energy app in `nRF Connect for Desktop`_.
+1. Install the `Bluetooth Low Energy app`_ in `nRF Connect for Desktop`_.
 #. Connect to your nRF52 Series DK.
 #. Connect the dongle or second development kit to a USB port of your computer.
-#. Open the Bluetooth Low Energy app.
+#. Open the app.
 #. Select the serial port that corresponds to the dongle or the second development kit.
    Do not select the kit you want to test just yet.
 
    .. note::
       If the dongle or the second development kit has not been used with the Bluetooth Low Energy app before, you may be asked to update the J-Link firmware and connectivity firmware on the nRF SoC to continue.
-      When the nRF SoC has been updated with the correct firmware, the nRF Connect Bluetooth Low Energy app finishes connecting to your device over USB.
+      When the nRF SoC has been updated with the correct firmware, the app finishes connecting to your device over USB.
       When the connection is established, the device appears in the main view.
 
 #. Click :guilabel:`Start scan`.
@@ -348,7 +355,7 @@ To perform the test, complete the following steps:
 #. In the terminal emulator, enter any text, for example ``Hello``.
 
    The data is transmitted to the DK that runs the Peripheral UART sample.
-   The **UART TX** characteristic displayed in the Bluetooth Low Energy app changes to the corresponding ASCII value.
+   The **UART TX** characteristic displayed in the app changes to the corresponding ASCII value.
    For example, the value for ``Hello`` is ``48 65 6C 6C 6F``.
 
 Dependencies

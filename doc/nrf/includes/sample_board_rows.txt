@@ -94,15 +94,15 @@
 
 .. thingy91x_nrf9151
 
-| :ref:`Thingy:91 X <ug_nrf91>` | PCA20065 | thingy91x | ``thingy91x/nrf9151`` |
+| :ref:`Thingy:91 X <ug_thingy91x>` | PCA20065 | thingy91x | ``thingy91x/nrf9151`` |
 
 .. thingy91x_nrf9151_ns
 
-| :ref:`Thingy:91 X <ug_nrf91>` | PCA20065 | thingy91x | ``thingy91x/nrf9151/ns`` |
+| :ref:`Thingy:91 X <ug_thingy91x>` | PCA20065 | thingy91x | ``thingy91x/nrf9151/ns`` |
 
 .. thingy91x_nrf5340_cpuapp
 
-| :ref:`Thingy:91 X <ug_nrf91>` | PCA20065 | thingy91x | ``thingy91x/nrf5340/cpuapp`` |
+| :ref:`Thingy:91 X <ug_thingy91x>` | PCA20065 | thingy91x | ``thingy91x/nrf5340/cpuapp`` |
 
 .. nrf52dk_nrf52810
 
@@ -222,13 +222,13 @@
 
 | Native Simulator | | native_sim | ``native_sim`` |
 
-.. nrf54l15pdk_nrf54l15_cpuapp
+.. nrf54l15dk_nrf54l05_cpuapp
 
-| :ref:`nRF54L15 PDK <ug_nrf54l15_gs>` | PCA10156 | :ref:`nrf54l15pdk <zephyr:nrf54l15pdk_nrf54l15>` | ``nrf54l15pdk/nrf54l15/cpuapp`` |
+| :ref:`nRF54L15 DK (emulating nRF54L05) <ug_nrf54l>`  | PCA10156 | :ref:`nrf54l15dk <zephyr:nrf54l15dk_nrf54l15>` | ``nrf54l15dk/nrf54l05/cpuapp`` |
 
-.. nrf54l15pdk@0.3.0_nrf54l15_cpuapp
+.. nrf54l15dk_nrf54l10_cpuapp
 
-| :ref:`nRF54L15 PDK <ug_nrf54l15_gs>` | PCA10156 | :ref:`nrf54l15pdk <zephyr:nrf54l15pdk_nrf54l15>` | ``nrf54l15pdk@0.3.0/nrf54l15/cpuapp`` |
+| :ref:`nRF54L15 DK (emulating nRF54L10) <ug_nrf54l>` | PCA10156 | :ref:`nrf54l15dk <zephyr:nrf54l15dk_nrf54l15>` | ``nrf54l15dk/nrf54l10/cpuapp`` |
 
 .. nrf54l15dk_nrf54l15_cpuapp
 
@@ -237,3 +237,13 @@
 .. nrf54l15dk_nrf54l15_cpuapp_ns
 
 | :ref:`nRF54L15 DK <ug_nrf54l>` | PCA10156 | :ref:`nrf54l15dk <zephyr:nrf54l15dk_nrf54l15>` | ``nrf54l15dk/nrf54l15/cpuapp/ns`` |
+
+.. nrf54l15dk_nrf54l15_cpuapp_and_cpuapp_ns
+
+| :ref:`nRF54L15 DK <ug_nrf54l>` | PCA10156 | :ref:`nrf54l15dk <zephyr:nrf54l15dk_nrf54l15>` | ``nrf54l15dk/nrf54l15/cpuapp``    |
+|                                |          |                                                |                                   |
+|                                |          |                                                | ``nrf54l15dk/nrf54l15/cpuapp/ns`` |
+
+.. nrf54l15dk_nrf54l15_cpuflpr
+
+| :ref:`nRF54L15 DK <ug_nrf54l>` | PCA10156 | :ref:`nrf54l15dk <zephyr:nrf54l15dk_nrf54l15>` | ``nrf54l15dk/nrf54l15/cpuflpr`` |

@@ -67,6 +67,8 @@ Depending on your preferred development method, you can start the correct CLI to
 
       ..
 
+      See the documentation for nRF Util's `Toolchain Manager command`_ for the list of supported shells.
+
 .. _gs_updating_repos:
 .. _gs_updating_repos_examples:
 .. _updating_repos_examples:
@@ -154,8 +156,8 @@ After you updated the |NCS| repositories to the new version and you need to migr
 
 .. _vsc_update:
 
-Updating |nRFVSC|
-*****************
+Updating the |nRFVSC|
+*********************
 
 |VSC| checks for extension updates and automatically installs them when they are available.
 After an extension is updated, |VSC| prompts you to reload the application.

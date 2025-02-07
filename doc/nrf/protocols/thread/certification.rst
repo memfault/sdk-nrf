@@ -93,47 +93,17 @@ Complete the following steps to prepare for the certification tests:
 
 #. Prepare Thread Test Harness.
 
-   a. Copy the provided :file:`ncs/modules/lib/openthread/tools/harness-thci/OpenThread.py` file into :file:`C:\\GRL\\Thread1.2\\Thread_Harness\\THCI\\nRF_Connect_SDK.py`.
+   a. Copy all THCI files provided in the :file:`ncs/nrf/samples/openthread/cli/harness-thci/` directory into :file:`C:\\GRL\\Thread1.2\\Thread_Harness\\THCI\\`.
 
-   b. Copy the provided :file:`ncs/nrf/samples/openthread/cli/harness-thci-1-3/nRF_Connect_SDK_1_3.py` file into :file:`C:\\GRL\\Thread1.2\\Thread_Harness\\THCI\\nRF_Connect_SDK_1_3.py`.
-
-   c. Copy images of your choice to :file:`C:\\GRL\\Thread1.2\\Web\\images\\nRF_Connect_SDK.jpg` and :file:`C:\\GRL\\Thread1.2\\Web\\images\\nRF_Connect_SDK_1_3.jpg`.
+   b. Copy images of your choice to :file:`C:\\GRL\\Thread1.2\\Web\\images\\nRF_Connect_SDK.jpg` and :file:`C:\\GRL\\Thread1.2\\Web\\images\\nRF_Connect_SDK_1_3.jpg`.
 
      You can use the same image for both.
 
-   d. Edit :file:`C:\\GRL\\Thread1.2\\Thread_Harness\\THCI\\nRF_Connect_SDK.py` as follows:
-
-      .. code-block:: python
-
-            >> Thread Host Controller Interface
-            >> Device : OpenThread THCI
-            >> Class : OpenThread
-
-      to
-
-      .. code-block:: python
-
-            >> Thread Host Controller Interface
-            >> Device : nRF_Connect_SDK THCI
-            >> Class : nRF_Connect_SDK
-
-      and
-
-      .. code-block:: python
-
-         class OpenThread(OpenThreadTHCI, IThci):
-
-      to
-
-      .. code-block:: python
-
-         class nRF_Connect_SDK(OpenThreadTHCI, IThci):
-
-   e. Edit :file:`C:\\GRL\\Thread1.2\\Web\\data\\deviceInputFields.xml` and prepend the following code:
+   c. Edit :file:`C:\\GRL\\Thread1.2\\Web\\data\\deviceInputFields.xml` and prepend the following code:
 
       .. code-block::
 
-         <DEVICE name="nRF Connect SDK" thumbnail="nRF_Connect_SDK.jpg" description = "Nordic Semiconductor: NCS Baudrate:115200" THCI="nRF_Connect_SDK">
+         <DEVICE name="nRF_Connect_SDK_11_12" thumbnail="nRF_Connect_SDK.jpg" description = "Nordic Semiconductor: NCS Baudrate:115200" THCI="nRF_Connect_SDK_11_12">
             <ITEM label="Serial Line"
                type="text"
                forParam="SerialPort"
@@ -147,7 +117,7 @@ Complete the following steps to prepare for the certification tests:
                hint="eg: 115200">115200
             </ITEM>
          </DEVICE>
-         <DEVICE name="nRF Connect SDK 1.3" thumbnail="nRF_Connect_SDK_1_3.jpg" description = "Nordic Semiconductor: NCS Baudrate:115200" THCI="nRF_Connect_SDK_1_3">
+         <DEVICE name="nRF_Connect_SDK_13_14" thumbnail="nRF_Connect_SDK_1_3.jpg" description = "Nordic Semiconductor: NCS Baudrate:115200" THCI="nRF_Connect_SDK_13_14">
             <ITEM label="Serial Line"
                type="text"
                forParam="SerialPort"
@@ -162,8 +132,8 @@ Complete the following steps to prepare for the certification tests:
             </ITEM>
          </DEVICE>
 
-      The device with name "nRF Connect SDK" is intended to be used for Thread 1.1 and Thread 1.2 Certification Programs tests.
-      The device with name "nRF Connect SDK 1.3" is intended to be used for Thread 1.3 Certification Program tests.
+      The device with name "nRF Connect SDK 1.1 1.2" is intended to be used for Thread 1.1 and Thread 1.2 Certification Programs tests.
+      The device with name "nRF Connect SDK 1.3 1.4" is intended to be used for Thread 1.3 and Thread 1.4 Certification Programs tests.
 
 See the following links for more information on OpenThread:
 
@@ -196,9 +166,9 @@ The report is generated to the output console log, and stored as an additional b
 
 Generating the OpenThread report is enabled by default if the :kconfig:option:`CONFIG_NET_L2_OPENTHREAD` Kconfig option is set to ``y``.
 This means that it is enabled for all samples that use the Thread stack.
-To disable the generation, set the :kconfig:option:`CONFIG_OPENTHREAD_REPORT` kconfig option to ``n``.
+To disable the generation, set the :kconfig:option:`CONFIG_OPENTHREAD_REPORT` Kconfig option to ``n``.
 
-By default, the build artefact name is set as :file:`ot_report.txt`, but you can specify a different name by setting the :kconfig:option:`CONFIG_OPENTHREAD_REPORT_BUILD_ARTEFACT_NAME` kconfig value to the new one.
+By default, the build artefact name is set as :file:`ot_report.txt`, but you can specify a different name by setting the :kconfig:option:`CONFIG_OPENTHREAD_REPORT_BUILD_ARTEFACT_NAME` Kconfig value to the new one.
 
 Depending on if you build the application using the :ref:`nrfxlib:ot_libs` or if you build the application and Thread stack from the source files, you will see the following logs in your build console:
 
@@ -209,16 +179,16 @@ Depending on if you build the application using the :ref:`nrfxlib:ot_libs` or if
       .. code-block::
 
          ################### OPENTHREAD REPORT ###################
-         + Target device: nrf52840
-         + Thread version: v1.3
+         + Target device: nrf54l15
+         + Thread version: v1.4
          + OpenThread library feature set: Minimal Thread Device (MTD)
          + Thread device type: Sleepy End Device (SED)
-         + OpenThread Library: openthread/lib/cortex-m4/soft-float/v1.3/mtd/
-         + OpenThread NCS revision: thread-reference-20230706-819-gd60aaab22
-         + OpenThread NCS SHA: d60aaab22
-         + NCS revision: v2.7.99-cs1-41-g26ef793b91-dirty
-         + NCS SHA: 26ef793b91
-         + No differences in the used Thread library in comparison to the NCS v2.7.0 release.
+         + OpenThread Library: openthread/lib/nrf54l15_cpuapp/soft-float/v1.4/mtd/
+         + OpenThread NCS revision: ncs-thread-reference-20241002-dirty
+         + OpenThread NCS SHA: ee86dc26d
+         + NCS revision: v2.8.0-preview1-434-g49bcdd3c6d6-dirty
+         + NCS SHA: 49bcdd3c6d6
+         + No differences in the used Thread library in comparison to the NCS v2.8.0 release.
          ###################        END        ###################
 
       The generated build artefact will also include the list of the :ref:`nrfxlib:nrfxlib` repository changes between the current revision and the latest |NCS| release.
@@ -230,16 +200,16 @@ Depending on if you build the application using the :ref:`nrfxlib:ot_libs` or if
       .. code-block::
 
          ################### OPENTHREAD REPORT ###################
-         + Target device: nrf52840
-         + Thread version: v1.3
+         + Target device: nrf54l15
+         + Thread version: v1.4
          + OpenThread library feature set: Minimal Thread Device (MTD)
          + Thread device type: Sleepy End Device (SED)
-         + OpenThread Library: openthread/lib/cortex-m4/soft-float/v1.3/mtd/
-         + OpenThread NCS revision: thread-reference-20230706-819-gd60aaab22
-         + OpenThread NCS SHA: d60aaab22
-         + NCS revision: v2.7.99-cs1-41-g26ef793b91-dirty
-         + NCS SHA: 26ef793b91
-         + Found differences in the nrfxlib repository in comparison to the NCS v2.7.0 release. See the ot_report.txt report file to learn more.
+         + OpenThread Library: openthread/lib/nrf54l15_cpuapp/soft-float/v1.4/mtd/
+         + OpenThread NCS revision: ncs-thread-reference-20241002-dirty
+         + OpenThread NCS SHA: ee86dc26d
+         + NCS revision: v2.8.0-preview1-434-g49bcdd3c6d6-dirty
+         + NCS SHA: 49bcdd3c6d6
+         + Found differences in the nrfxlib repository in comparison to the NCS v2.8.0 release. See the ot_report.txt report file to learn more.
          ###################        END        ###################
 
       You can look at the report file located in the application build directory to see the full list of changes.
@@ -250,15 +220,15 @@ Depending on if you build the application using the :ref:`nrfxlib:ot_libs` or if
       .. code-block::
 
          ################### OPENTHREAD REPORT ###################
-         + Target device: nrf52840
-         + Thread version: v1.3
+         + Target device: nrf54l15
+         + Thread version: v1.4
          + OpenThread library feature set: Minimal Thread Device (MTD)
          + Thread device type: Sleepy End Device (SED)
          + OpenThread library has been built from sources
-         + OpenThread NCS revision: thread-reference-20230706-819-gd60aaab22
-         + OpenThread NCS SHA: d60aaab22
-         + NCS revision: v2.7.99-cs1-41-g26ef793b91-dirty
-         + NCS SHA: 26ef793b91
+         + OpenThread NCS revision: ncs-thread-reference-20241002-dirty
+         + OpenThread NCS SHA: ee86dc26d
+         + NCS revision: v2.8.0-preview1-434-g49bcdd3c6d6-dirty
+         + NCS SHA: 49bcdd3c6d6
          ###################        END        ###################
 
       The information shows that the Thread library has been build from sources, so it cannot be used for :ref:`ug_thread_cert_inheritance_without_modifications`.

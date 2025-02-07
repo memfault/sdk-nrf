@@ -10,6 +10,13 @@ Legacy configurations and supported features
 
 This section covers the configurations available when using :ref:`legacy_crypto_support`.
 
+.. caution::
+   Legacy crypto toolbox APIs are marked as deprecated in the |NCS| version 2.8.0, and will be removed in a future version.
+   It is not recommended to use the legacy crypto toolbox APIs and the related configurations in any new designs.
+
+.. note::
+   Legacy crypto toolbox APIs are not supported on nRF54L Series devices.
+
 .. _nrf_security_backend_config_multiple:
 
 Configuring backends

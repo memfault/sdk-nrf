@@ -5,6 +5,8 @@
  */
 
 #include <suit_storage_mpi.h>
+#include <suit_storage_nvv.h>
+#include <suit_storage_flags_internal.h>
 #include <suit_storage_internal.h>
 #include <zephyr/logging/log.h>
 
@@ -50,10 +52,22 @@ union suit_config_entry {
 	uint8_t erase_block[EB_SIZE(suit_config_t)];
 };
 
+/* SUIT Manifest Runtime Non Volatile Variables area, aligned to the erase block size. */
+union suit_nvv_entry {
+	suit_storage_nvv_t nvv;
+	uint8_t erase_block[EB_SIZE(suit_storage_nvv_t)];
+};
+
+/* SUIT flags area, aligned to the erase block size. */
+union suit_flags_entry {
+	suit_storage_flags_t flags;
+	uint8_t erase_block[EB_SIZE(suit_storage_flags_t)];
+};
+
 /* SUIT report binary. */
 typedef uint8_t suit_report_t[SUIT_REPORT_SIZE];
 
-/* SUIT rebort area, aligned to the erase block size. */
+/* SUIT report area, aligned to the erase block size. */
 union suit_report_entry {
 	suit_report_t report;
 	uint8_t erase_block[EB_SIZE(suit_report_t)];
@@ -69,6 +83,10 @@ struct suit_storage {
 	union suit_config_entry config_backup;
 	/** The main storage for the SUIT envelopes. */
 	union suit_envelope_entry envelopes[CONFIG_SUIT_STORAGE_N_ENVELOPES];
+	/** Storage for the SUIT Manifest Runtime Non Volatile Variables. */
+	union suit_nvv_entry nvv;
+	/** Storage for the SUIT flags. */
+	union suit_flags_entry flags;
 	/** Storage for the SUIT reports. */
 	union suit_report_entry reports[SUIT_N_REPORTS];
 };
@@ -193,6 +211,16 @@ static suit_plat_err_t find_report_area(size_t index, uint8_t **addr, size_t *si
 	return SUIT_PLAT_SUCCESS;
 }
 
+static suit_plat_err_t find_nvv_area(uint8_t **addr, size_t *size)
+{
+	struct suit_storage *storage = (struct suit_storage *)SUIT_STORAGE_ADDRESS;
+
+	*addr = storage->nvv.erase_block;
+	*size = sizeof(storage->nvv.erase_block);
+
+	return SUIT_PLAT_SUCCESS;
+}
+
 suit_plat_err_t suit_storage_init(void)
 {
 	suit_plat_err_t err = SUIT_PLAT_SUCCESS;
@@ -218,6 +246,17 @@ suit_plat_err_t suit_storage_init(void)
 
 	err = suit_storage_report_internal_init();
 	if (err != SUIT_PLAT_SUCCESS) {
+		return err;
+	}
+
+	err = suit_storage_flags_internal_init();
+	if (err != SUIT_PLAT_SUCCESS) {
+		return err;
+	}
+
+	err = suit_storage_nvv_init();
+	if (err != SUIT_PLAT_SUCCESS) {
+		LOG_ERR("Failed to init NVV (err: %d)", err);
 		return err;
 	}
 
@@ -339,6 +378,36 @@ suit_plat_err_t suit_storage_install_envelope(const suit_manifest_class_id_t *id
 	return err;
 }
 
+suit_plat_err_t suit_storage_var_get(size_t index, uint8_t *value)
+{
+	suit_plat_err_t err;
+	uint8_t *area_addr = NULL;
+	size_t area_size = 0;
+
+	err = find_nvv_area(&area_addr, &area_size);
+	if (err != SUIT_PLAT_SUCCESS) {
+		LOG_WRN("Unable to find NVV area.");
+		return err;
+	}
+
+	return suit_storage_nvv_get(area_addr, area_size, index, value);
+}
+
+suit_plat_err_t suit_storage_var_set(size_t index, uint8_t value)
+{
+	suit_plat_err_t err;
+	uint8_t *area_addr = NULL;
+	size_t area_size = 0;
+
+	err = find_nvv_area(&area_addr, &area_size);
+	if (err != SUIT_PLAT_SUCCESS) {
+		LOG_WRN("Unable to find NVV area.");
+		return err;
+	}
+
+	return suit_storage_nvv_set(area_addr, area_size, index, value);
+}
+
 suit_plat_err_t suit_storage_report_clear(size_t index)
 {
 	uint8_t *area_addr = NULL;
@@ -451,4 +520,31 @@ suit_plat_err_t suit_storage_purge(suit_manifest_domain_t domain)
 	}
 
 	return ret;
+}
+
+suit_plat_err_t suit_storage_flags_clear(suit_storage_flag_t flag)
+{
+	struct suit_storage *storage = (struct suit_storage *)SUIT_STORAGE_ADDRESS;
+	uint8_t *area_addr = storage->flags.erase_block;
+	size_t area_size = sizeof(storage->flags.erase_block);
+
+	return suit_storage_flags_internal_clear(area_addr, area_size, flag);
+}
+
+suit_plat_err_t suit_storage_flags_set(suit_storage_flag_t flag)
+{
+	struct suit_storage *storage = (struct suit_storage *)SUIT_STORAGE_ADDRESS;
+	uint8_t *area_addr = storage->flags.erase_block;
+	size_t area_size = sizeof(storage->flags.erase_block);
+
+	return suit_storage_flags_internal_set(area_addr, area_size, flag);
+}
+
+suit_plat_err_t suit_storage_flags_check(suit_storage_flag_t flag)
+{
+	struct suit_storage *storage = (struct suit_storage *)SUIT_STORAGE_ADDRESS;
+	uint8_t *area_addr = storage->flags.erase_block;
+	size_t area_size = sizeof(storage->flags.erase_block);
+
+	return suit_storage_flags_internal_check(area_addr, area_size, flag);
 }

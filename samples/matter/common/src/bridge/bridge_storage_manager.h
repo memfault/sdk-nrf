@@ -34,7 +34,8 @@ class BridgeStorageManager {
 public:
 	static inline constexpr auto kMaxUserDataSize = 128u;
 
-	struct BridgedDevice {
+#ifdef CONFIG_BRIDGE_MIGRATE_VERSION_1
+	struct BridgedDeviceV1 {
 		uint16_t mEndpointId;
 		uint16_t mDeviceType;
 		size_t mNodeLabelLength;
@@ -42,19 +43,37 @@ public:
 		size_t mUserDataSize = 0;
 		uint8_t *mUserData = nullptr;
 	};
+#endif
+
+	struct BridgedDeviceV2 {
+		uint16_t mEndpointId;
+		uint16_t mDeviceType;
+		size_t mUniqueIDLength;
+		char mUniqueID[MatterBridgedDevice::kUniqueIDSize] = { 0 };
+		size_t mNodeLabelLength;
+		char mNodeLabel[MatterBridgedDevice::kNodeLabelSize] = { 0 };
+		size_t mUserDataSize = 0;
+		uint8_t *mUserData = nullptr;
+	};
+
+	using BridgedDevice = BridgedDeviceV2;
+	static constexpr uint8_t kCurrentVersion = 2;
 
 	static constexpr auto kMaxIndexLength = 3;
 
 	BridgeStorageManager()
 		: mBridge("br", strlen("br")), mBridgedDevicesCount("brd_cnt", strlen("brd_cnt"), &mBridge),
 		  mBridgedDevicesIndexes("brd_ids", strlen("brd_ids"), &mBridge),
-		  mBridgedDevice("brd", strlen("brd"), &mBridge), mVersion("ver", strlen("ver"), &mBridge),
+		  mBridgedDevice("brd", strlen("brd"), &mBridge), mVersion("ver", strlen("ver"), &mBridge)
+#ifdef CONFIG_BRIDGE_MIGRATE_PRE_2_7_0
+		  ,
 		  mBridgedDeviceEndpointId("eid", strlen("eid"), &mBridgedDevice),
 		  mBridgedDeviceNodeLabel("label", strlen("label"), &mBridgedDevice),
 		  mBridgedDeviceType("type", strlen("type"), &mBridgedDevice)
 #ifdef CONFIG_BRIDGED_DEVICE_BT
 		  ,
 		  mBt("bt", strlen("bt"), &mBridgedDevice), mBtAddress("addr", strlen("addr"), &mBt)
+#endif
 #endif
 	{
 	}
@@ -124,7 +143,7 @@ public:
 	 * @return true if key has been loaded successfully
 	 * @return false an error occurred
 	 */
-	bool LoadBridgedDevice(BridgedDevice &device, uint8_t index);
+	template <typename T = BridgedDevice> bool LoadBridgedDevice(T &device, uint8_t index);
 
 	/**
 	 * @brief Store bridged device into settings. Helper method allowing to store endpoint id, node label and device
@@ -150,20 +169,46 @@ private:
 	/**
 	 * @brief Provides backward compatibility between non-compatible data scheme versions.
 	 *
-	 * It checks the used data scheme version based on version key value.
-	 * If the version key is present it means that the new keys structure is used (only version
-	 * equal to 1 is for now valid and means post nRF Connect SDK 2.6.0).
-	 * Otherwise, the deprecated structure is used, so the migration has to be done. In such a case, method loads
-	 * the data using key names from an old scheme, removes the old data and stores again using the new key names.
+	 * It checks the used data scheme version based on version key value. If the version key is not present (it
+	 * means that the old scheme is used - pre nRF Connect SDK 2.7.0) or if the version is different than
+	 * kCurrentVersion, the migration has to be done.
 	 *
 	 * @return true if migration was successful
 	 * @return false an error occurred
 	 */
 	bool MigrateData();
 
+#ifdef CONFIG_BRIDGE_MIGRATE_PRE_2_7_0
+	/**
+	 * @brief Migrate bridged device data at given index.
+	 *
+	 * It migrates bridge device structure from pre nRF Connect SDK 2.7.0 scheme to current one. Method loads the
+	 * data using key names from an old scheme, removes the old data and stores again using the new key names.
+	 *
+	 * @param bridgedDeviceIndex index describing specific bridged device to be removed
+	 * @return true if migration was successful
+	 * @return false an error occurred
+	 */
+	bool MigrateDataOldScheme(uint8_t bridgedDeviceIndex);
+#endif
+
+#ifdef CONFIG_BRIDGE_MIGRATE_VERSION_1
+	/**
+	 * @brief Migrate bridged device data at given index.
+	 *
+	 * It migrates bridge device structure from version 1 to current one.
+	 *
+	 * @param bridgedDeviceIndex index describing specific bridged device to be removed
+	 * @return true if migration was successful
+	 * @return false an error occurred
+	 */
+	bool MigrateDataVersion1(uint8_t bridgedDeviceIndex);
+#endif
+
 	/* The below methods are deprecated and used only for the migration purposes between the older scheme versions.
 	 */
 
+#ifdef CONFIG_BRIDGE_MIGRATE_PRE_2_7_0
 	/**
 	 * @brief Load bridged device endpoint id from settings
 	 *
@@ -244,8 +289,7 @@ private:
 	 */
 	bool RemoveBtAddress(uint8_t bridgedDeviceIndex);
 #endif
-
-	static constexpr auto kMaxBufferSize = sizeof(MatterBridgedDevice);
+#endif
 
 	Nrf::PersistentStorageNode mBridge;
 	Nrf::PersistentStorageNode mBridgedDevicesCount;
@@ -253,6 +297,7 @@ private:
 	Nrf::PersistentStorageNode mBridgedDevice;
 	Nrf::PersistentStorageNode mVersion;
 
+#ifdef CONFIG_BRIDGE_MIGRATE_PRE_2_7_0
 	/* The below fields are deprecated and used only for the migration purposes between the older scheme versions.
 	 */
 	Nrf::PersistentStorageNode mBridgedDeviceEndpointId;
@@ -261,6 +306,7 @@ private:
 #ifdef CONFIG_BRIDGED_DEVICE_BT
 	Nrf::PersistentStorageNode mBt;
 	Nrf::PersistentStorageNode mBtAddress;
+#endif
 #endif
 };
 

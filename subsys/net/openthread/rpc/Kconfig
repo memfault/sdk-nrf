@@ -15,6 +15,14 @@ menuconfig OPENTHREAD_RPC
 
 if OPENTHREAD_RPC
 
+config OPENTHREAD_RPC_DNS_MAX_TXT_DATA_SIZE
+	int "Maximum size of TXT data that can be serialized by DNS API"
+	default 255
+	help
+	  During serialization of a service information the server must allocate
+	  a stack allocated buffer for storing TXT data. This value controls the
+	  buffer size.
+
 choice OPENTHREAD_RPC_ROLE_CHOICE
 	prompt "OpenThread over RPC role selection"
 	default OPENTHREAD_RPC_CLIENT
@@ -58,6 +66,18 @@ config OPENTHREAD_RPC_CLIENT_NUM_SENT_COAP_REQUESTS
 	  for ongoing CoAP requests awaiting a response.
 
 endmenu # "OpenThread over RPC client configuration"
+
+menu "OpenThread over RPC client configuration"
+	depends on OPENTHREAD_RPC_SERVER
+
+config OPENTHREAD_RPC_MESSAGE_POOL
+	int "Maximum number of messages key identifiers that can be allocated on server"
+	default 8
+	help
+	  Defines maximum number of messages key indentifiers that can be allocated on server at
+	  the same time.
+
+endmenu
 
 config OPENTHREAD_RPC_INITIALIZE_NRF_RPC
 	bool "Automatically initialize nRF RPC library"

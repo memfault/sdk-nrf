@@ -8,7 +8,7 @@
 #define NRF_CLOUD_DOWNLOAD_H__
 
 #include <dfu/dfu_target.h>
-#include <net/download_client.h>
+#include <net/downloader.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -19,7 +19,7 @@ enum nrf_cloud_download_type {
 
 	/* Download a FOTA update using the fota_download library */
 	NRF_CLOUD_DL_TYPE_FOTA,
-	/* Download data using the download_client library */
+	/* Download data using the downloader library */
 	NRF_CLOUD_DL_TYPE_DL_CLIENT,
 
 	NRF_CLOUD_DL_TYPE_DL__LAST
@@ -42,37 +42,27 @@ struct nrf_cloud_download_data {
 	/* File download path */
 	const char *path;
 
-	/* Download client configuration */
-	struct download_client_cfg dl_cfg;
+	/* Downloader host configuration */
+	struct downloader_host_cfg dl_host_conf;
 
 	union {
 		/* FOTA type data */
 		struct nrf_cloud_download_fota fota;
-		/* Download client type data */
-		struct download_client *dlc;
+		/* Downloader data */
+		struct downloader *dl;
 	};
-
-#if defined(CONFIG_NRF_CLOUD_COAP_DOWNLOADS)
-	/* Track the received bytes for CoAP downloads */
-	size_t coap_rcvd_bytes;
-	/* Offset used when resuming a download */
-	size_t resume_offset;
-#endif
 };
 
 /** @brief Start download. Only one download at a time is allowed. FOTA downloads have priority.
  *         If a FOTA download is started while a non-FOTA download is active, the non-FOTA
  *         download is stopped.
  */
-int nrf_cloud_download_start(struct nrf_cloud_download_data *const dl);
+int nrf_cloud_download_start(struct nrf_cloud_download_data *const cloud_dl);
 
 /** @brief Cancel the active download.
  *         Call to stop the current download and reset the download state.
  */
 void nrf_cloud_download_cancel(void);
-
-/** @brief Resume a CoAP download at the provided offset. */
-int nrf_cloud_download_coap_offset_resume(const size_t offset);
 
 /** @brief Reset the active download state. Call when download has ended. */
 void nrf_cloud_download_end(void);

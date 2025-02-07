@@ -55,6 +55,7 @@ config MCUBOOT_COMPRESSED_IMAGE_SUPPORT
 
 config MCUBOOT_MAX_UPDATEABLE_IMAGES
 	int
+	default 1 if MCUBOOT_MODE_SINGLE_APP
 	default 4
 
 config MCUBOOT_APPLICATION_IMAGE_NUMBER
@@ -63,7 +64,7 @@ config MCUBOOT_APPLICATION_IMAGE_NUMBER
 
 config MCUBOOT_NETWORK_CORE_IMAGE_NUMBER
 	int
-	default 1 if NETCORE_APP_UPDATE
+	default 1 if NETCORE_APP_UPDATE && !MCUBOOT_MODE_SINGLE_APP
 	default -1
 
 config MCUBOOT_WIFI_PATCHES_IMAGE_NUMBER
@@ -79,6 +80,14 @@ config MCUBOOT_QSPI_XIP_IMAGE_NUMBER
 	default 1 if QSPI_XIP_SPLIT_IMAGE
 	default -1
 
+config MCUBOOT_MCUBOOT_IMAGE_NUMBER
+	int
+	default 4 if SECURE_BOOT_APPCORE && MCUBOOT_NETWORK_CORE_IMAGE_NUMBER != -1 && MCUBOOT_WIFI_PATCHES_IMAGE_NUMBER != -1 && MCUBOOT_QSPI_XIP_IMAGE_NUMBER != 1
+	default 3 if SECURE_BOOT_APPCORE && ((MCUBOOT_QSPI_XIP_IMAGE_NUMBER != -1 && (MCUBOOT_NETWORK_CORE_IMAGE_NUMBER != -1 || MCUBOOT_WIFI_PATCHES_IMAGE_NUMBER != -1)) || (MCUBOOT_NETWORK_CORE_IMAGE_NUMBER != -1 && MCUBOOT_WIFI_PATCHES_IMAGE_NUMBER != -1))
+	default 2 if SECURE_BOOT_APPCORE && (MCUBOOT_NETWORK_CORE_IMAGE_NUMBER != -1 || MCUBOOT_WIFI_PATCHES_IMAGE_NUMBER != -1 || MCUBOOT_QSPI_XIP_IMAGE_NUMBER != -1)
+	default 1 if SECURE_BOOT_APPCORE
+	default -1
+
 config MCUBOOT_MIN_UPDATEABLE_IMAGES
 	int
 	default 4 if MCUBOOT_NETWORK_CORE_IMAGE_NUMBER != -1 && MCUBOOT_WIFI_PATCHES_IMAGE_NUMBER != -1 && MCUBOOT_QSPI_XIP_IMAGE_NUMBER != -1
@@ -86,20 +95,36 @@ config MCUBOOT_MIN_UPDATEABLE_IMAGES
 	default 2 if MCUBOOT_NETWORK_CORE_IMAGE_NUMBER != -1 || MCUBOOT_WIFI_PATCHES_IMAGE_NUMBER != -1 || MCUBOOT_QSPI_XIP_IMAGE_NUMBER != -1
 	default 1
 
+config MCUBOOT_MIN_ADDITIONAL_UPDATEABLE_IMAGES
+	int
+	default 1 if MCUBOOT_MCUBOOT_IMAGE_NUMBER != -1
+	default 0
+
 config MCUBOOT_UPDATEABLE_IMAGES
 	int "Updateable images"
 	range MCUBOOT_MIN_UPDATEABLE_IMAGES MCUBOOT_MAX_UPDATEABLE_IMAGES
-	default 2 if SOC_SERIES_NRF91X && SECURE_BOOT_APPCORE && (MCUBOOT_MODE_SWAP_WITHOUT_SCRATCH || MCUBOOT_MODE_SWAP_SCRATCH || MCUBOOT_MODE_OVERWRITE_ONLY)
 	help
-	  The number of images that MCUboot will be built with.
+	  The number of images that MCUboot will be built with. Note that if
+	  ``MCUBOOT_ADDITIONAL_UPDATEABLE_IMAGES`` is set to a non-zero value then that value will
+	  be added to the MCUboot updateable image number but not the application, this is to allow
+	  for features like NSIB updates of MCUboot itself.
+
+config MCUBOOT_ADDITIONAL_UPDATEABLE_IMAGES
+	int "Additional MCUboot-only updateable images"
+	range MCUBOOT_MIN_ADDITIONAL_UPDATEABLE_IMAGES MCUBOOT_MIN_ADDITIONAL_UPDATEABLE_IMAGES
+	default MCUBOOT_MIN_ADDITIONAL_UPDATEABLE_IMAGES
+	help
+	  The number of additional images that MCUboot will be built with.
 
 config MCUBOOT_APP_SYNC_UPDATEABLE_IMAGES
 	bool "Sync updateable image value to main application"
-	default n if SOC_SERIES_NRF91X && SECURE_BOOT_APPCORE && (MCUBOOT_MODE_SWAP_WITHOUT_SCRATCH || MCUBOOT_MODE_SWAP_SCRATCH || MCUBOOT_MODE_OVERWRITE_ONLY)
 	default y
 	help
 	  If enabled then will synchronise the value of ``MCUBOOT_UPDATEABLE_IMAGES`` to MCUboot
-	  and the main application, if disable then will only set this value to MCUboot
+	  and the main application, if disabled then will only set this value to MCUboot.
+
+	  Note: ``MCUBOOT_MIN_ADDITIONAL_UPDATEABLE_IMAGES`` will be applied to MCUboot only
+	  irrespective of this option.
 
 config SECURE_BOOT_MCUBOOT_VERSION
 	string "MCUboot S0/S1 image update version"
@@ -118,6 +143,28 @@ choice BOOT_SIGNATURE_TYPE
 
 endchoice
 
+config MCUBOOT_FPROTECT_ALLOW_COMBINED_REGIONS
+	bool
+	default y
+	depends on SOC_SERIES_NRF54LX && !SECURE_BOOT_APPCORE
+
+config BOOT_SIGNATURE_TYPE_PURE
+	bool "Verify signature directly over image"
+	depends on SOC_SERIES_NRF54LX
+	depends on BOOT_SIGNATURE_TYPE_ED25519
+	help
+	  The image signature will be verified over image rather than
+	  hash of an image.
+	  This option is currently only supported with ED25519 and configurations
+	  where both image slots are within internal SoC device storage.
+
+config MCUBOOT_SIGNATURE_USING_KMU
+	bool "Use KMU stored keys for signature verification"
+	depends on SOC_SERIES_NRF54LX
+	depends on BOOT_SIGNATURE_TYPE_ED25519
+	help
+	  The device needs to be provisioned with proper set of keys.
+
 endif
 
 config MCUBOOT_USE_ALL_AVAILABLE_RAM
@@ -131,6 +178,7 @@ config MCUBOOT_USE_ALL_AVAILABLE_RAM
 config MCUBOOT_NRF53_MULTI_IMAGE_UPDATE
 	bool "Network core multi-image update (in single operation)"
 	depends on NETCORE_APP_UPDATE
+	depends on !MCUBOOT_MODE_SINGLE_APP
 	help
 	  If selected, network core image updates can be applied in a single operation. This is
 	  required if the secondary partition resides in off-chip memory.

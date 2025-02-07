@@ -128,14 +128,6 @@ int hci_vs_sdc_zephyr_read_tx_power(
 				   return_params, sizeof(*return_params));
 }
 
-int hci_vs_sdc_read_supported_vs_commands(
-	sdc_hci_cmd_vs_read_supported_vs_commands_return_t *return_params)
-{
-	return hci_vs_cmd_with_rsp_only(SDC_HCI_OPCODE_CMD_VS_READ_SUPPORTED_VS_COMMANDS,
-					return_params,
-					sizeof(*return_params));
-}
-
 int hci_vs_sdc_llpm_mode_set(const sdc_hci_cmd_vs_llpm_mode_set_t *params)
 {
 	return hci_vs_cmd_no_rsp(SDC_HCI_OPCODE_CMD_VS_LLPM_MODE_SET,
@@ -238,14 +230,6 @@ int hci_vs_sdc_central_acl_event_spacing_set(
 	const sdc_hci_cmd_vs_central_acl_event_spacing_set_t *params)
 {
 	return hci_vs_cmd_no_rsp(SDC_HCI_OPCODE_CMD_VS_CENTRAL_ACL_EVENT_SPACING_SET,
-				 params,
-				 sizeof(*params));
-}
-
-
-int hci_vs_sdc_set_conn_event_trigger(const sdc_hci_cmd_vs_set_conn_event_trigger_t *params)
-{
-	return hci_vs_cmd_no_rsp(SDC_HCI_OPCODE_CMD_VS_SET_CONN_EVENT_TRIGGER,
 				 params,
 				 sizeof(*params));
 }

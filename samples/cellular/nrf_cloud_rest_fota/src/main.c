@@ -18,6 +18,7 @@
 #include <net/nrf_cloud_defs.h>
 #include <net/fota_download.h>
 #include <dk_buttons_and_leds.h>
+#include "smp_reset.h"
 
 LOG_MODULE_REGISTER(nrf_cloud_rest_fota, CONFIG_NRF_CLOUD_REST_FOTA_SAMPLE_LOG_LEVEL);
 
@@ -81,7 +82,10 @@ static void sample_reboot(enum nrf_cloud_fota_reboot_status status);
 static struct nrf_cloud_fota_poll_ctx fota_ctx = {
 	.rest_ctx = &rest_ctx,
 	.device_id = device_id,
-	.reboot_fn = sample_reboot
+	.reboot_fn = sample_reboot,
+#if SMP_FOTA_ENABLED
+	.smp_reset_cb = nrf52840_reset_api
+#endif
 };
 
 #if defined(CONFIG_REST_FOTA_DO_JITP)
@@ -219,7 +223,8 @@ static void send_device_status(void)
 		.bootloader = 1,
 		.modem = 1,
 		.application = 1,
-		.modem_full = fota_ctx.full_modem_fota_supported
+		.modem_full = fota_ctx.full_modem_fota_supported,
+		.smp = SMP_FOTA_ENABLED
 	};
 
 	struct nrf_cloud_svc_info svc_inf = {
@@ -467,6 +472,7 @@ static void sample_reboot(enum nrf_cloud_fota_reboot_status status)
 
 static void check_credentials(void)
 {
+#if defined(CONFIG_NRF_CLOUD_CHECK_CREDENTIALS)
 	int err = nrf_cloud_credentials_configured_check();
 
 	if (err == -ENOTSUP) {
@@ -480,6 +486,9 @@ static void check_credentials(void)
 		LOG_ERR("nrf_cloud_credentials_configured_check() failed, error: %d", err);
 		LOG_WRN("Continuing without verifying that credentials are installed");
 	}
+#else
+	LOG_DBG("nRF Cloud credentials check not enabled");
+#endif /* defined(CONFIG_NRF_CLOUD_CHECK_CREDENTIALS) */
 }
 
 int main(void)

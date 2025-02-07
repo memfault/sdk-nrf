@@ -8,7 +8,9 @@
 #include <suit_storage.h>
 #include <suit_storage_mpi.h>
 #include <suit_execution_mode.h>
+#ifdef CONFIG_SDFW_LCS
 #include <sdfw/lcs.h>
+#endif /* CONFIG_SDFW_LCS */
 #include <zephyr/logging/log.h>
 #include <sdfw/arbiter.h>
 
@@ -18,6 +20,11 @@
 #define MANIFEST_PUBKEY_APPLICATION_GEN0 0x40022100
 #define MANIFEST_PUBKEY_RADIO_GEN0	 0x40032100
 #define MANIFEST_PUBKEY_GEN_RANGE	 2
+
+#define FWENC_APPLICATION_GEN0           0x40022000
+#define FWENC_RADIOCORE_GEN0             0x40032000
+#define FWENC_SYSCTRL_GEN0               0x40082000
+#define FWENC_GEN_RANGE	                 1
 
 LOG_MODULE_REGISTER(suit_mci_nrf54h20, CONFIG_SUIT_LOG_LEVEL);
 
@@ -58,6 +65,7 @@ mci_err_t suit_mci_invoke_order_get(const suit_manifest_class_id_t **class_id, s
 		}
 		break;
 
+	case EXECUTION_MODE_INVOKE_FOREGROUND_DFU:
 	case EXECUTION_MODE_INVOKE_RECOVERY:
 		if (suit_storage_mpi_class_get(SUIT_MANIFEST_SEC_TOP, &class_id[0]) !=
 		    SUIT_PLAT_SUCCESS) {
@@ -141,8 +149,11 @@ mci_err_t suit_mci_independent_update_policy_get(const suit_manifest_class_id_t 
 	 * update candidate before resetting the SoC.
 	 */
 	switch (suit_execution_mode_get()) {
+	case EXECUTION_MODE_INVOKE_FOREGROUND_DFU:
 	case EXECUTION_MODE_INVOKE_RECOVERY:
+	case EXECUTION_MODE_INSTALL_FOREGROUND_DFU:
 	case EXECUTION_MODE_INSTALL_RECOVERY:
+	case EXECUTION_MODE_POST_INVOKE_FOREGROUND_DFU:
 	case EXECUTION_MODE_POST_INVOKE_RECOVERY:
 		if ((role == SUIT_MANIFEST_APP_RECOVERY) || (role == SUIT_MANIFEST_RAD_RECOVERY)) {
 			*policy = SUIT_INDEPENDENT_UPDATE_DENIED;
@@ -246,7 +257,7 @@ mci_err_t suit_mci_signing_key_id_validate(const suit_manifest_class_id_t *class
 			return SUIT_PLAT_SUCCESS;
 		} else if ((mpi->signature_verification_policy ==
 			    SUIT_MPI_SIGNATURE_CHECK_ENABLED_ON_UPDATE) &&
-			   (suit_execution_mode_get() == EXECUTION_MODE_INVOKE)) {
+			   suit_execution_mode_booting()) {
 			/* By allowing key_id == 0 in the invoke path, the platform will verify
 			 * the signature only during updates.
 			 */
@@ -294,6 +305,53 @@ mci_err_t suit_mci_signing_key_id_validate(const suit_manifest_class_id_t *class
 	case SUIT_MANIFEST_RAD_LOCAL_2:
 		if (key_id >= MANIFEST_PUBKEY_RADIO_GEN0 &&
 		    key_id <= MANIFEST_PUBKEY_RADIO_GEN0 + MANIFEST_PUBKEY_GEN_RANGE) {
+			return SUIT_PLAT_SUCCESS;
+		}
+		break;
+
+	default:
+		break;
+	}
+
+	return MCI_ERR_WRONGKEYID;
+}
+
+mci_err_t suit_mci_fw_encryption_key_id_validate(const suit_manifest_class_id_t *class_id,
+						 uint32_t key_id)
+{
+	suit_manifest_role_t role = SUIT_MANIFEST_UNKNOWN;
+
+	if (class_id == NULL) {
+		return SUIT_PLAT_ERR_INVAL;
+	}
+
+	if (suit_storage_mpi_role_get(class_id, &role) != SUIT_PLAT_SUCCESS) {
+		return MCI_ERR_MANIFESTCLASSID;
+	}
+
+	switch (role) {
+	case SUIT_MANIFEST_SEC_SYSCTRL:
+		if (key_id >= FWENC_SYSCTRL_GEN0 &&
+		    key_id <= FWENC_SYSCTRL_GEN0 + FWENC_GEN_RANGE) {
+			return SUIT_PLAT_SUCCESS;
+		}
+		break;
+
+	case SUIT_MANIFEST_APP_RECOVERY:
+	case SUIT_MANIFEST_APP_LOCAL_1:
+	case SUIT_MANIFEST_APP_LOCAL_2:
+	case SUIT_MANIFEST_APP_LOCAL_3:
+		if (key_id >= FWENC_APPLICATION_GEN0 &&
+		    key_id <= FWENC_APPLICATION_GEN0 + FWENC_GEN_RANGE) {
+			return SUIT_PLAT_SUCCESS;
+		}
+		break;
+
+	case SUIT_MANIFEST_RAD_RECOVERY:
+	case SUIT_MANIFEST_RAD_LOCAL_1:
+	case SUIT_MANIFEST_RAD_LOCAL_2:
+		if (key_id >= FWENC_RADIOCORE_GEN0 &&
+		    key_id <= FWENC_RADIOCORE_GEN0 + FWENC_GEN_RANGE) {
 			return SUIT_PLAT_SUCCESS;
 		}
 		break;
@@ -634,11 +692,17 @@ suit_mci_manifest_process_dependency_validate(const suit_manifest_class_id_t *pa
 		}
 
 		if ((parent_role == SUIT_MANIFEST_APP_RECOVERY) &&
-		    (child_role == SUIT_MANIFEST_RAD_RECOVERY)) {
+		    ((child_role == SUIT_MANIFEST_RAD_RECOVERY) ||
+			 ((child_role >= SUIT_MANIFEST_APP_LOCAL_1) &&
+		      (child_role <= SUIT_MANIFEST_APP_LOCAL_3)) ||
+		     ((child_role >= SUIT_MANIFEST_RAD_LOCAL_1) &&
+		      (child_role <= SUIT_MANIFEST_RAD_LOCAL_2)))) {
 			return SUIT_PLAT_SUCCESS;
 		}
+
 		break;
 
+	case EXECUTION_MODE_INSTALL_FOREGROUND_DFU:
 	case EXECUTION_MODE_INSTALL_RECOVERY:
 		if ((parent_role == SUIT_MANIFEST_SEC_TOP) &&
 		    ((child_role == SUIT_MANIFEST_SEC_SYSCTRL) ||
@@ -656,6 +720,7 @@ suit_mci_manifest_process_dependency_validate(const suit_manifest_class_id_t *pa
 		}
 		break;
 
+	case EXECUTION_MODE_INVOKE_FOREGROUND_DFU:
 	case EXECUTION_MODE_INVOKE_RECOVERY:
 		if ((parent_role == SUIT_MANIFEST_SEC_TOP) &&
 		    ((child_role == SUIT_MANIFEST_SEC_SYSCTRL) ||

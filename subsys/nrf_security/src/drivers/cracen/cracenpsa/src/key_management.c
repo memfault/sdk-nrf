@@ -15,6 +15,7 @@
 #include <sicrypto/ecc.h>
 #include <sicrypto/ecdsa.h>
 #include <sicrypto/ed25519.h>
+#include <sicrypto/ed25519ph.h>
 #include <sicrypto/ed448.h>
 #include <sicrypto/montgomery.h>
 #include <sicrypto/rsa_keygen.h>
@@ -31,7 +32,7 @@
 
 extern const uint8_t cracen_N3072[384];
 
-extern mbedtls_threading_mutex_t cracen_mutex_symmetric;
+extern nrf_security_mutex_t cracen_mutex_symmetric;
 
 #define DEFAULT_KEY_SIZE(bits) (bits), PSA_BITS_TO_BYTES(bits), (1 + 2 * PSA_BITS_TO_BYTES(bits))
 static struct {
@@ -602,6 +603,7 @@ static psa_status_t export_ecc_public_key_from_keypair(const psa_key_attributes_
 	psa_status_t psa_status;
 	size_t expected_pub_key_size = 0;
 	int si_status = 0;
+	psa_algorithm_t key_alg = psa_get_key_algorithm(attributes);
 	const struct sx_pk_ecurve *sx_curve;
 	struct sitask t;
 
@@ -637,11 +639,15 @@ static psa_status_t export_ecc_public_key_from_keypair(const psa_key_attributes_
 		if (key_buffer_size != sizeof(ikg_opaque_key)) {
 			return PSA_ERROR_INVALID_ARGUMENT;
 		}
-		priv_key =
-			si_sig_fetch_ikprivkey(sx_curve, ((ikg_opaque_key *)key_buffer)->owner_id);
-		data[0] = SI_ECC_PUBKEY_UNCOMPRESSED;
-		pub_key.key.eckey.qx = &data[1];
-		pub_key.key.eckey.qy = &data[1 + sx_pk_curve_opsize(sx_curve)];
+
+		if (IS_ENABLED(PSA_NEED_CRACEN_ECDSA_SECP_R1_256)) {
+			priv_key = si_sig_fetch_ikprivkey(sx_curve, *key_buffer);
+			data[0] = SI_ECC_PUBKEY_UNCOMPRESSED;
+			pub_key.key.eckey.qx = &data[1];
+			pub_key.key.eckey.qy = &data[1 + sx_pk_curve_opsize(sx_curve)];
+		} else {
+			return PSA_ERROR_NOT_SUPPORTED;
+		}
 	} else {
 
 		switch (psa_curve) {
@@ -669,9 +675,15 @@ static psa_status_t export_ecc_public_key_from_keypair(const psa_key_attributes_
 			break;
 		case PSA_ECC_FAMILY_TWISTED_EDWARDS:
 			if (key_bits_attr == 255) {
-				priv_key.def = si_sig_def_ed25519;
-				priv_key.key.ed25519 = (struct sx_ed25519_v *)key_buffer;
-				pub_key.key.ed25519 = (struct sx_ed25519_pt *)data;
+				if (key_alg == PSA_ALG_ED25519PH) {
+					priv_key.def = si_sig_def_ed25519ph;
+					priv_key.key.ed25519 = (struct sx_ed25519_v *)key_buffer;
+					pub_key.key.ed25519 = (struct sx_ed25519_pt *)data;
+				} else {
+					priv_key.def = si_sig_def_ed25519;
+					priv_key.key.ed25519 = (struct sx_ed25519_v *)key_buffer;
+					pub_key.key.ed25519 = (struct sx_ed25519_pt *)data;
+				}
 			} else {
 				priv_key.def = si_sig_def_ed448;
 				priv_key.key.ed448 = (struct sx_ed448_v *)key_buffer;
@@ -696,6 +708,7 @@ static psa_status_t export_ecc_public_key_from_keypair(const psa_key_attributes_
 	*data_length = expected_pub_key_size;
 	return PSA_SUCCESS;
 }
+
 static psa_status_t export_rsa_public_key_from_keypair(const psa_key_attributes_t *attributes,
 						       const uint8_t *key_buffer,
 						       size_t key_buffer_size, uint8_t *data,
@@ -867,12 +880,18 @@ psa_status_t cracen_import_key(const psa_key_attributes_t *attributes, const uin
 			MBEDTLS_SVC_KEY_ID_GET_KEY_ID(psa_get_key_id(attributes)));
 		psa_key_attributes_t stored_attributes;
 
-		if (key_buffer_size < cracen_get_opaque_size(attributes)) {
+		size_t opaque_key_size;
+		psa_status_t status = cracen_get_opaque_size(attributes, &opaque_key_size);
+
+		if (status != PSA_SUCCESS) {
+			return status;
+		}
+
+		if (key_buffer_size < opaque_key_size) {
 			return PSA_ERROR_BUFFER_TOO_SMALL;
 		}
 
-		psa_status_t status = cracen_kmu_provision(attributes, slot_id, data, data_length);
-
+		status = cracen_kmu_provision(attributes, slot_id, data, data_length);
 		if (status != PSA_SUCCESS) {
 			return status;
 		}
@@ -1111,7 +1130,7 @@ psa_status_t generate_key_for_kmu(const psa_key_attributes_t *attributes, uint8_
 		if (status != PSA_SUCCESS) {
 			return status;
 		}
-	} else if (key_type == PSA_KEY_TYPE_AES) {
+	} else if (key_type == PSA_KEY_TYPE_AES || key_type == PSA_KEY_TYPE_HMAC) {
 		status = psa_generate_random(key, PSA_BITS_TO_BYTES(psa_get_key_bits(attributes)));
 		if (status != PSA_SUCCESS) {
 			return status;
@@ -1164,50 +1183,14 @@ psa_status_t cracen_generate_key(const psa_key_attributes_t *attributes, uint8_t
 	return PSA_ERROR_NOT_SUPPORTED;
 }
 
-size_t cracen_get_opaque_size(const psa_key_attributes_t *attributes)
-{
-	if (PSA_KEY_LIFETIME_GET_LOCATION(psa_get_key_lifetime(attributes)) ==
-	    PSA_KEY_LOCATION_CRACEN) {
-		switch (MBEDTLS_SVC_KEY_ID_GET_KEY_ID(psa_get_key_id(attributes))) {
-		case CRACEN_BUILTIN_IDENTITY_KEY_ID:
-			if (psa_get_key_type(attributes) ==
-			    PSA_KEY_TYPE_ECC_KEY_PAIR(PSA_ECC_FAMILY_SECP_R1)) {
-				return sizeof(ikg_opaque_key);
-			}
-			break;
-		case CRACEN_BUILTIN_MEXT_ID:
-		case CRACEN_BUILTIN_MKEK_ID:
-			if (psa_get_key_type(attributes) == PSA_KEY_TYPE_AES) {
-				return sizeof(ikg_opaque_key);
-			}
-			break;
-#ifdef CONFIG_PSA_NEED_CRACEN_PLATFORM_KEYS
-		default:
-			return cracen_platform_keys_get_size(attributes);
-#endif
-		}
-	}
-
-	if (PSA_KEY_LIFETIME_GET_LOCATION(psa_get_key_lifetime(attributes)) ==
-	    PSA_KEY_LOCATION_CRACEN_KMU) {
-		if (PSA_KEY_TYPE_IS_ECC(psa_get_key_type(attributes))) {
-			if (psa_get_key_type(attributes) ==
-			    PSA_KEY_TYPE_ECC_PUBLIC_KEY(PSA_ECC_FAMILY_SECP_R1)) {
-				return PSA_EXPORT_PUBLIC_KEY_OUTPUT_SIZE(
-					psa_get_key_type(attributes), psa_get_key_bits(attributes));
-			}
-			return PSA_BITS_TO_BYTES(psa_get_key_bits(attributes));
-		} else {
-			return sizeof(kmu_opaque_key_buffer);
-		}
-	}
-	return 0;
-}
 
 psa_status_t cracen_get_builtin_key(psa_drv_slot_number_t slot_number,
 				    psa_key_attributes_t *attributes, uint8_t *key_buffer,
 				    size_t key_buffer_size, size_t *key_buffer_length)
 {
+	size_t opaque_key_size;
+	psa_status_t status = PSA_ERROR_INVALID_ARGUMENT;
+
 	/* According to the PSA Crypto Driver specification, the PSA core will set the `id`
 	 * and the `lifetime` field of the attribute struct. We will fill all the other
 	 * attributes, and update the `lifetime` field to be more specific.
@@ -1225,12 +1208,17 @@ psa_status_t cracen_get_builtin_key(psa_drv_slot_number_t slot_number,
 							    PSA_KEY_USAGE_VERIFY_HASH |
 							    PSA_KEY_USAGE_VERIFY_MESSAGE);
 
+		status = cracen_get_opaque_size(attributes, &opaque_key_size);
+		if (status != PSA_SUCCESS) {
+			return status;
+		}
+
 		/* According to the PSA Crypto Driver interface proposed document the driver
 		 * should fill the attributes even if the buffer of the key is too small. So
 		 * we check the buffer here and not earlier in the function.
 		 */
-		if (key_buffer_size >= cracen_get_opaque_size(attributes)) {
-			*key_buffer_length = cracen_get_opaque_size(attributes);
+		if (key_buffer_size >= opaque_key_size) {
+			*key_buffer_length = opaque_key_size;
 			*((ikg_opaque_key *)key_buffer) =
 				(ikg_opaque_key){.slot_number = slot_number,
 						 .owner_id = MBEDTLS_SVC_KEY_ID_GET_OWNER_ID(
@@ -1252,11 +1240,15 @@ psa_status_t cracen_get_builtin_key(psa_drv_slot_number_t slot_number,
 		psa_set_key_usage_flags(attributes,
 					PSA_KEY_USAGE_DERIVE | PSA_KEY_USAGE_VERIFY_DERIVATION);
 
+		status = cracen_get_opaque_size(attributes, &opaque_key_size);
+		if (status != PSA_SUCCESS) {
+			return status;
+		}
 		/* See comment about the placement of this check in the previous switch
 		 * case.
 		 */
-		if (key_buffer_size >= cracen_get_opaque_size(attributes)) {
-			*key_buffer_length = cracen_get_opaque_size(attributes);
+		if (key_buffer_size >= opaque_key_size) {
+			*key_buffer_length = opaque_key_size;
 			*((ikg_opaque_key *)key_buffer) =
 				(ikg_opaque_key){.slot_number = slot_number,
 						 .owner_id = MBEDTLS_SVC_KEY_ID_GET_OWNER_ID(
@@ -1341,7 +1333,7 @@ psa_status_t cracen_export_key(const psa_key_attributes_t *attributes, const uin
 		 * use case. Here the decision was to avoid defining another mutex to handle the
 		 * push buffer for the rest of the use cases.
 		 */
-		nrf_security_mutex_lock(&cracen_mutex_symmetric);
+		nrf_security_mutex_lock(cracen_mutex_symmetric);
 		status = cracen_kmu_prepare_key(key_buffer);
 		if (status == SX_OK) {
 			memcpy(data, kmu_push_area, key_out_size);
@@ -1349,7 +1341,7 @@ psa_status_t cracen_export_key(const psa_key_attributes_t *attributes, const uin
 		}
 
 		(void)cracen_kmu_clean_key(key_buffer);
-		nrf_security_mutex_unlock(&cracen_mutex_symmetric);
+		nrf_security_mutex_unlock(cracen_mutex_symmetric);
 
 		return silex_statuscodes_to_psa(status);
 	}
@@ -1385,7 +1377,7 @@ psa_status_t cracen_copy_key(psa_key_attributes_t *attributes, const uint8_t *so
 	psa_status_t psa_status;
 	size_t key_size = PSA_BITS_TO_BYTES(psa_get_key_bits(attributes));
 
-	nrf_security_mutex_lock(&cracen_mutex_symmetric);
+	nrf_security_mutex_lock(cracen_mutex_symmetric);
 	status = cracen_kmu_prepare_key(source_key);
 
 	if (status == SX_OK) {
@@ -1397,7 +1389,7 @@ psa_status_t cracen_copy_key(psa_key_attributes_t *attributes, const uint8_t *so
 	}
 
 	(void)cracen_kmu_clean_key(source_key);
-	nrf_security_mutex_unlock(&cracen_mutex_symmetric);
+	nrf_security_mutex_unlock(cracen_mutex_symmetric);
 
 	if (status != SX_OK) {
 		return silex_statuscodes_to_psa(status);

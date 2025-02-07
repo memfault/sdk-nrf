@@ -197,10 +197,10 @@ def page_filter_install(
     if visitor.found_filter_dropdown:
         app.add_css_file("page_filter.css")
         app.add_js_file("page_filter.mjs", type="module")
-        filename = app.builder.script_files[-1]
+        script = app.builder.script_files[-1]
 
         page_depth = len(Path(pagename).parents) - 1
-        body = f"import setupFiltering from './{page_depth * '../'}{filename}'; "
+        body = f"import setupFiltering from './{page_depth * '../'}{script.filename}'; "
         for dropdown in visitor.found_filter_dropdown:
             body += f"setupFiltering('{dropdown.name}'"
             if dropdown.container_element and dropdown.filter_tags:
@@ -224,10 +224,11 @@ def read_versions(app: Sphinx) -> None:
     try:
         with open(VERSIONS_FILE) as version_file:
             nrf_versions = json.loads(version_file.read())
+            # Updated regex to match versions with optional segments
             nrf_versions = list(
-                filter(lambda v: re.match(r"\d\.\d\.\d$", v), nrf_versions)
+                filter(lambda v: re.match(r"\d+\.\d+\.\d+(-.*)?$", v), nrf_versions)
             )
-            # Versions classes are on the format "vX-X-X"
+            # Convert versions to a format suitable for class names
             app.env.nrf_versions = [
                 f"v{version.replace('.', '-')}" for version in reversed(nrf_versions)
             ]

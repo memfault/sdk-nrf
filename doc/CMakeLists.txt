@@ -133,6 +133,7 @@ function(add_docset name version)
   set(DOCSET_SRC_DIR ${CMAKE_BINARY_DIR}/${name}/src)
   set(DOCSET_DOCTREE_DIR ${CMAKE_BINARY_DIR}/${name}/doctree)
   set(DOCSET_HTML_DIR ${CMAKE_BINARY_DIR}/html/${name})
+  set(DOCSET_LINKCHECK_DIR ${CMAKE_BINARY_DIR}/linkcheck/${name})
   set(DOCSET_MAKE_DIRS ${DOCSET_BUILD_DIR};${DOCSET_SRC_DIR};${DOCSET_HTML_DIR})
   set(DOCSET_CLEAN_DIRS ${DOCSET_BUILD_DIR};${DOCSET_HTML_DIR})
   set(DOCSET_ENV DOXYGEN_EXECUTABLE=${DOXYGEN_EXECUTABLE};DOCSET_VERSION=${version};DOCS_HTML_DIR=${DOCSET_HTML_DIR})
@@ -211,7 +212,7 @@ function(add_docset name version)
       ${SPHINXOPTS_EXTRA}
       ${EXTRA_ARGS}
       ${DOCSET_SRC_DIR}
-      ${DOCSET_BUILD_DIR}
+      ${DOCSET_LINKCHECK_DIR}
     USES_TERMINAL
     COMMENT "Checking links for ${name} docset..."
   )
@@ -312,7 +313,7 @@ add_doxygen_docset(nrf ${NRF_BASE} ${NRF_VERSION})
 #-------------------------------------------------------------------------------
 # docset: mcuboot
 
-add_docset(mcuboot "2.0.99")
+add_docset(mcuboot "2.1.99")
 
 #-------------------------------------------------------------------------------
 # docset: nrfx
@@ -327,13 +328,18 @@ add_docset(tfm "2.1.0")
 #-------------------------------------------------------------------------------
 # docset: matter
 
-add_docset(matter "1.3.0")
+add_docset(matter "1.4.0")
 
 #-------------------------------------------------------------------------------
 # docset: nrfxlib
 
 add_docset(nrfxlib ${NRF_VERSION})
 add_doxygen_docset(nrfxlib ${ZEPHYR_NRFXLIB_MODULE_DIR} ${NRF_VERSION})
+
+#-------------------------------------------------------------------------------
+# docset: wifi
+
+add_doxygen_docset(wifi ${ZEPHYR_NRF_WIFI_MODULE_DIR} "" STANDALONE)
 
 #-------------------------------------------------------------------------------
 # docset: internal
@@ -405,6 +411,7 @@ add_dependencies(build-all
     tfm-all
     matter-all
     kconfig-all
+    wifi
 )
 if (EXISTS "${ZEPHYR_DOC_INTERNAL_MODULE_DIR}" )
   add_dependencies(build-all internal-all)

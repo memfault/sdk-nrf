@@ -12,8 +12,10 @@ tests:
       - nrf9151dk/nrf9151/ns
       - nrf9160dk/nrf9160/ns
       - nrf9161dk/nrf9161/ns
-    tags: ci_build sysbuild ci_samples_cellular
-
+    tags:
+      - ci_build
+      - sysbuild
+      - ci_samples_cellular
   # Following configurations will be used by the positioning CI integration job to verify PRs
   sample.cellular.gnss.integration_config_positioning_agnss_nrfcloud_ltem_pvt:
     sysbuild: true
@@ -26,6 +28,7 @@ tests:
       - CONFIG_GNSS_SAMPLE_NMEA_ONLY=n
       - CONFIG_GNSS_SAMPLE_MODE_PERIODIC=n
       - CONFIG_GNSS_SAMPLE_ASSISTANCE_MINIMAL=n
+      - CONFIG_LTE_LC_EDRX_MODULE=y
       - CONFIG_LTE_EDRX_REQ=y
       - CONFIG_FPU=y
       - CONFIG_GNSS_SAMPLE_REFERENCE_LATITUDE="61.49375330"
@@ -37,7 +40,10 @@ tests:
       - nrf9151dk/nrf9151/ns
     platform_allow:
       - nrf9151dk/nrf9151/ns
-    tags: ci_build sysbuild ci_samples_cellular
+    tags:
+      - ci_build
+      - sysbuild
+      - ci_samples_cellular
   sample.cellular.gnss.integration_config_positioning_agnss_nrfcloud_nbiot_nmea_lte_on:
     sysbuild: true
     build_only: true
@@ -49,6 +55,7 @@ tests:
       - CONFIG_GNSS_SAMPLE_NMEA_ONLY=y
       - CONFIG_GNSS_SAMPLE_MODE_PERIODIC=n
       - CONFIG_GNSS_SAMPLE_ASSISTANCE_MINIMAL=n
+      - CONFIG_LTE_LC_EDRX_MODULE=y
       - CONFIG_LTE_EDRX_REQ=y
       - CONFIG_FPU=y
       - CONFIG_GNSS_SAMPLE_REFERENCE_LATITUDE="61.49375330"
@@ -60,7 +67,10 @@ tests:
       - nrf9151dk/nrf9151/ns
     platform_allow:
       - nrf9151dk/nrf9151/ns
-    tags: ci_build sysbuild ci_samples_cellular
+    tags:
+      - ci_build
+      - sysbuild
+      - ci_samples_cellular
   sample.cellular.gnss.integration_config_positioning_pgps_nrfcloud_ltem_nmea:
     sysbuild: true
     build_only: true
@@ -79,13 +89,16 @@ tests:
       - CONFIG_MODEM_ANTENNA_GNSS_EXTERNAL=y
       - CONFIG_LOG_BUFFER_SIZE=2048
     extra_args:
-      - OVERLAY_CONFIG=overlay-pgps.conf
+      - EXTRA_CONF_FILE=overlay-pgps.conf
       - gnss_SNIPPET="nrf91-modem-trace-uart"
     integration_platforms:
       - nrf9151dk/nrf9151/ns
     platform_allow:
       - nrf9151dk/nrf9151/ns
-    tags: ci_build sysbuild ci_samples_cellular
+    tags:
+      - ci_build
+      - sysbuild
+      - ci_samples_cellular
   sample.cellular.gnss.integration_config_positioning_gnss_ltem_pvt:
     sysbuild: true
     build_only: true
@@ -97,6 +110,7 @@ tests:
       - CONFIG_GNSS_SAMPLE_NMEA_ONLY=n
       - CONFIG_GNSS_SAMPLE_MODE_PERIODIC=n
       - CONFIG_GNSS_SAMPLE_ASSISTANCE_MINIMAL=n
+      - CONFIG_LTE_LC_EDRX_MODULE=y
       - CONFIG_LTE_EDRX_REQ=y
       - CONFIG_FPU=y
       - CONFIG_GNSS_SAMPLE_REFERENCE_LATITUDE="61.49375330"
@@ -108,4 +122,7 @@ tests:
       - nrf9151dk/nrf9151/ns
     platform_allow:
       - nrf9151dk/nrf9151/ns
-    tags: ci_build sysbuild ci_samples_cellular
+    tags:
+      - ci_build
+      - sysbuild
+      - ci_samples_cellular

@@ -194,8 +194,8 @@ Installing the required software
 On your computer, install `nRF Connect for Desktop`_.
 After installing and starting the application, install the Programmer app.
 
-You must also install a terminal emulator, such as `nRF Connect Serial Terminal`_, the nRF Terminal (part of the `nRF Connect for Visual Studio Code`_ extension), or PuTTY.
-nRF Connect Serial Terminal is the recommended method for :ref:`nrf70_gs_connecting`.
+You must also install a terminal emulator, such as the `Serial Terminal app`_, the nRF Terminal (part of the `nRF Connect for Visual Studio Code`_ extension), or PuTTY.
+The Serial Terminal app is the recommended method for :ref:`nrf70_gs_connecting`.
 
 On your mobile device, install the `nRF Connect for Mobile`_ application from the corresponding application store.
 
@@ -328,6 +328,8 @@ Follow the instructions in the :ref:`building` page to build and the :ref:`progr
 
 .. note::
    To flash and debug applications on the nRF7002 DK, you must use the `nRF Command Line Tools`_ version 10.12.0 or above.
+
+   |nrf_CLT_deprecation_note|
 
 Debugging
 =========

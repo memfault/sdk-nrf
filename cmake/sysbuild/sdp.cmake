@@ -2,36 +2,26 @@
 #
 # SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
 
-# Update eGPIO images KConfig based on SDP configuration.
-#
-# Usage:
-#   egpio_update_kconfig()
-#
-function(egpio_update_kconfig)
-  if(SB_CONFIG_EGPIO_BACKEND_MBOX)
-    foreach(image ${PRE_CMAKE_IMAGES})
-      set_config_bool(${image} CONFIG_GPIO_NRFE_EGPIO_BACKEND_MBOX y)
-    endforeach()
-    if(DEFINED SB_CONFIG_SOC_NRF54L15)
-      sysbuild_cache_set(VAR flpr_egpio_EXTRA_DTC_OVERLAY_FILE APPEND REMOVE_DUPLICATES "./boards/nrf54l15dk_nrf54l15_cpuflpr_mbox.overlay")
-    endif()
-    sysbuild_cache_set(VAR ${DEFAULT_IMAGE}_SNIPPET APPEND REMOVE_DUPLICATES "emulated-gpio-mbox")
-    message(STATUS "eGPIO: Using MBOX backend")
-  elseif(SB_CONFIG_EGPIO_BACKEND_ICMSG)
-    foreach(image ${PRE_CMAKE_IMAGES})
-      set_config_bool(${image} CONFIG_GPIO_NRFE_EGPIO_BACKEND_ICMSG y)
-    endforeach()
-    set_config_bool(flpr_egpio CONFIG_IPC_SERVICE y)
-    set_config_bool(flpr_egpio CONFIG_IPC_SERVICE_BACKEND_ICMSG y)
-    if(DEFINED SB_CONFIG_SOC_NRF54L15)
-      sysbuild_cache_set(VAR flpr_egpio_EXTRA_DTC_OVERLAY_FILE APPEND REMOVE_DUPLICATES "./boards/nrf54l15dk_nrf54l15_cpuflpr_icmsg.overlay")
-    endif()
-    sysbuild_cache_set(VAR ${DEFAULT_IMAGE}_SNIPPET APPEND REMOVE_DUPLICATES "emulated-gpio-icmsg")
-    message(STATUS "eGPIO: Using ICMSG backend")
-  endif()
+# Apply snippet to both images. Assumption is that SDP image is called 'sdp'.
+function(sdp_apply_snippets snippet)
+  sysbuild_cache_set(VAR ${DEFAULT_IMAGE}_SNIPPET APPEND REMOVE_DUPLICATES ${snippet})
+  sysbuild_cache_set(VAR sdp_SNIPPET APPEND REMOVE_DUPLICATES ${snippet})
 endfunction()
 
-# If eGPIO FLPR application is enabled, update Kconfigs
-if(SB_CONFIG_EGPIO_FLPR_APPLICATION)
-  egpio_update_kconfig()
+if(SB_CONFIG_SDP)
+  if(SB_CONFIG_SDP_GPIO)
+    if(SB_CONFIG_SDP_GPIO_BACKEND_MBOX)
+      set(snippet_name "sdp-gpio-mbox")
+    elseif(SB_CONFIG_SDP_GPIO_BACKEND_ICMSG)
+      set(snippet_name "sdp-gpio-icmsg")
+    elseif(SB_CONFIG_SDP_GPIO_BACKEND_ICBMSG)
+      set(snippet_name "sdp-gpio-icbmsg")
+    endif()
+  endif()
+  if(SB_CONFIG_SDP_MSPI)
+    set(snippet_name "sdp-mspi")
+  endif()
+
+  sdp_apply_snippets(${snippet_name})
+  set(snippet_name)
 endif()

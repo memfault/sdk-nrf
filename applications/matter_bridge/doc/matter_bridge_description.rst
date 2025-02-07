@@ -19,7 +19,7 @@ The application supports the following development kits:
 
 .. table-from-sample-yaml::
 
-To test the Matter bridge application with the :ref:`Bluetooth LE bridged device <matter_bridge_app_bridged_support>`, you also need the following:
+To test the Matter bridge application with the :ref:`Bluetooth® LE bridged device <matter_bridge_app_bridged_support>`, you also need the following:
 
 * An additional development kit compatible with one of the following Bluetooth LE samples:
 
@@ -28,7 +28,7 @@ To test the Matter bridge application with the :ref:`Bluetooth LE bridged device
 
 * A micro-USB cable for every development kit to connect it to the PC.
 
-To commission the Matter bridge device and control it remotely through a Wi-Fi network, you also need a Matter controller device :ref:`configured on PC or smartphone <ug_matter_configuring>`.
+To commission the Matter bridge device and control it remotely through a Wi-Fi® network, you also need a Matter controller device :ref:`configured on PC or smartphone <ug_matter_configuring>`.
 This requires additional hardware depending on your setup.
 
 .. note::
@@ -98,13 +98,17 @@ For example:
 
 For information about how to upgrade the device firmware using a PC or a smartphone, see the :ref:`matter_bridge_app_dfu` section.
 
-.. note::
-    Currently the DFU over Bluetooth LE SMP and Matter OTA are not available for the ``nrf54h20dk/nrf54h20/cpuapp`` board target.
-
 The Matter bridge device has an additional functionality, enabling it to work as a smart plug.
 This feature provides an additional endpoint with an ID equal to 2, which represents Matter on/off smart plug device type functionality.
 This means that you can integrate the Matter bridge functionality into your end product, such as a smart plug, and avoid having to use a standalone bridge device.
 This is an optional feature and can be enabled by :ref:`Configuring the smart plug functionality <matter_bridge_smart_plug_functionality>`.
+
+SUIT DFU on nRF54H20
+====================
+
+.. include:: ../../../samples/matter/template/README.rst
+    :start-after: matter_template_dfu_suit_start
+    :end-before: matter_template_dfu_suit_end
 
 .. _matter_bridge_app_bridged_support:
 
@@ -131,7 +135,7 @@ Remote testing in a network
 ===========================
 
 By default, the Matter accessory device has no IPv6 network configured.
-To use the device within a Wi-Fi network, you must pair it with the Matter controller over Bluetooth® LE to get the configuration from the controller.
+To use the device within a Wi-Fi network, you must pair it with the Matter controller over Bluetooth LE to get the configuration from the controller.
 
 The Bluetooth LE advertising starts automatically upon device startup, but only for a predefined period of time (1 hour by default).
 If the Bluetooth LE advertising times out, you can re-enable it manually (see the :ref:`matter_bridge_app_ui` section).
@@ -388,70 +392,78 @@ Check and configure the following configuration options:
 .. _CONFIG_BRIDGED_DEVICE_IMPLEMENTATION:
 
 CONFIG_BRIDGED_DEVICE_IMPLEMENTATION
-   Select bridged device implementation.
+   ``bool`` - Select bridged device implementation.
    See the :ref:`matter_bridge_app_bridged_support_configs` section for more information.
    Accepts the following values:
 
    .. _CONFIG_BRIDGED_DEVICE_SIMULATED:
 
    CONFIG_BRIDGED_DEVICE_SIMULATED
-      Implement a simulated bridged device.
+      ``bool`` - Implement a simulated bridged device.
       You must also configure :ref:`CONFIG_BRIDGED_DEVICE_SIMULATED_ONOFF_IMPLEMENTATION <CONFIG_BRIDGED_DEVICE_SIMULATED_ONOFF_IMPLEMENTATION>`
 
    .. _CONFIG_BRIDGED_DEVICE_BT:
 
    CONFIG_BRIDGED_DEVICE_BT
-      Implement a Bluetooth LE bridged device.
+      ``bool`` - Implement a Bluetooth LE bridged device.
 
 .. _CONFIG_BRIDGE_HUMIDITY_SENSOR_BRIDGED_DEVICE:
 
 CONFIG_BRIDGE_HUMIDITY_SENSOR_BRIDGED_DEVICE
-   Enable support for Humidity Sensor bridged device.
+   ``bool`` - Enable support for Humidity Sensor bridged device.
 
 .. _CONFIG_BRIDGE_ONOFF_LIGHT_BRIDGED_DEVICE:
 
 CONFIG_BRIDGE_ONOFF_LIGHT_BRIDGED_DEVICE
-   Enable support for OnOff Light bridged device.
+   ``bool`` - Enable support for OnOff Light bridged device.
 
 .. _CONFIG_BRIDGE_SWITCH_BRIDGED_DEVICE:
 
 CONFIG_BRIDGE_SWITCH_BRIDGED_DEVICE
-   Enable support for a switch bridged device.
+   ``bool`` - Enable support for a switch bridged device.
    Accepts the following values:
 
    .. _CONFIG_BRIDGE_GENERIC_SWITCH_BRIDGED_DEVICE:
 
    CONFIG_BRIDGE_GENERIC_SWITCH_BRIDGED_DEVICE
-      Enable support for Generic Switch bridged device.
+      ``bool`` - Enable support for Generic Switch bridged device.
 
    .. _CONFIG_BRIDGE_ONOFF_LIGHT_SWITCH_BRIDGED_DEVICE:
 
    CONFIG_BRIDGE_ONOFF_LIGHT_SWITCH_BRIDGED_DEVICE
-      Enable support for OnOff Light Switch bridged device.
+      ``bool`` - Enable support for OnOff Light Switch bridged device.
 
 .. _CONFIG_BRIDGE_TEMPERATURE_SENSOR_BRIDGED_DEVICE:
 
 CONFIG_BRIDGE_TEMPERATURE_SENSOR_BRIDGED_DEVICE
-   Enable support for Temperature Sensor bridged device.
+   ``bool`` - Enable support for Temperature Sensor bridged device.
 
-If you selected the simulated device implementation using the :ref:`CONFIG_BRIDGED_DEVICE_SIMULATED <CONFIG_BRIDGED_DEVICE_SIMULATED>` Kconfig option, also check and configure the following option:
+.. _CONFIG_BRIDGE_MIGRATE_PRE_2_7_0:
+
+CONFIG_BRIDGE_MIGRATE_PRE_2_7_0
+``bool`` - Enable migration of bridged device data stored in old scheme from pre |NCS| 2.7.0 releases.
+
+.. _CONFIG_BRIDGE_MIGRATE_VERSION_1:
+
+CONFIG_BRIDGE_MIGRATE_VERSION_1
+``bool`` - Enable migration of bridged device data stored in version 1 of new scheme.If you selected the simulated device implementation using the :ref:`CONFIG_BRIDGED_DEVICE_SIMULATED <CONFIG_BRIDGED_DEVICE_SIMULATED>` Kconfig option, also check and configure the following option:
 
 .. _CONFIG_BRIDGED_DEVICE_SIMULATED_ONOFF_IMPLEMENTATION:
 
 CONFIG_BRIDGED_DEVICE_SIMULATED_ONOFF_IMPLEMENTATION
-   Select the simulated OnOff device implementation.
+   ``bool`` - Select the simulated OnOff device implementation.
    Accepts the following values:
 
    .. _CONFIG_BRIDGED_DEVICE_SIMULATED_ONOFF_AUTOMATIC:
 
    CONFIG_BRIDGED_DEVICE_SIMULATED_ONOFF_AUTOMATIC
-      Automatically simulated OnOff device.
+      ``bool`` - Automatically simulated OnOff device.
       The simulated device automatically changes its state periodically.
 
    .. _CONFIG_BRIDGED_DEVICE_SIMULATED_ONOFF_SHELL:
 
    CONFIG_BRIDGED_DEVICE_SIMULATED_ONOFF_SHELL
-      Shell-controlled simulated OnOff device.
+      ``bool`` - Shell-controlled simulated OnOff device.
       The state of the simulated device is changed using shell commands.
 
 If you selected the Bluetooth LE device implementation using the :ref:`CONFIG_BRIDGED_DEVICE_BT <CONFIG_BRIDGED_DEVICE_BT>` Kconfig option, also check and configure the following options:
@@ -459,29 +471,29 @@ If you selected the Bluetooth LE device implementation using the :ref:`CONFIG_BR
 .. _CONFIG_BRIDGE_BT_MAX_SCANNED_DEVICES:
 
 CONFIG_BRIDGE_BT_MAX_SCANNED_DEVICES
-   Set the maximum number of scanned devices.
+   ``int`` - Set the maximum number of scanned devices.
 
 .. _CONFIG_BRIDGE_BT_MINIMUM_SECURITY_LEVEL:
 
 CONFIG_BRIDGE_BT_MINIMUM_SECURITY_LEVEL
-   Set the minimum Bluetooth security level of bridged devices that the bridge device will accept.
+   ``int`` - Set the minimum Bluetooth security level of bridged devices that the bridge device will accept.
    Bridged devices using this or a higher level will be allowed to connect to the bridge.
    See the :ref:`matter_bridge_app_bt_security` section for more information.
 
 .. _CONFIG_BRIDGE_BT_RECOVERY_MAX_INTERVAL:
 
 CONFIG_BRIDGE_BT_RECOVERY_MAX_INTERVAL
-   Set the maximum time (in seconds) between recovery attempts when the Bluetooth LE connection to the bridged device is lost.
+   ``int`` - Set the maximum time (in seconds) between recovery attempts when the Bluetooth LE connection to the bridged device is lost.
 
 .. _CONFIG_BRIDGE_BT_RECOVERY_SCAN_TIMEOUT_MS:
 
 CONFIG_BRIDGE_BT_RECOVERY_SCAN_TIMEOUT_MS
-   Set the time (in milliseconds) within which the Bridge will try to re-establish a connection to the lost Bluetooth LE device.
+   ``int`` - Set the time (in milliseconds) within which the Bridge will try to re-establish a connection to the lost Bluetooth LE device.
 
 .. _CONFIG_BRIDGE_BT_SCAN_TIMEOUT_MS:
 
 CONFIG_BRIDGE_BT_SCAN_TIMEOUT_MS
-   Set the Bluetooth LE scan timeout in milliseconds.
+   ``int`` - Set the Bluetooth LE scan timeout in milliseconds.
 
 The following options affect how many bridged devices the application supports.
 See the :ref:`matter_bridge_app_bridged_support_configs` section for more information.
@@ -489,12 +501,12 @@ See the :ref:`matter_bridge_app_bridged_support_configs` section for more inform
 .. _CONFIG_BRIDGE_MAX_BRIDGED_DEVICES_NUMBER:
 
 CONFIG_BRIDGE_MAX_BRIDGED_DEVICES_NUMBER
-   Set the maximum number of physical non-Matter devices supported by the Bridge.
+   ``int`` - Set the maximum number of physical non-Matter devices supported by the Bridge.
 
 .. _CONFIG_BRIDGE_MAX_DYNAMIC_ENDPOINTS_NUMBER:
 
 CONFIG_BRIDGE_MAX_DYNAMIC_ENDPOINTS_NUMBER
-   Set the maximum number of dynamic endpoints supported by the Bridge.
+   ``int`` - Set the maximum number of dynamic endpoints supported by the Bridge.
 
 .. _matter_bridge_app_bridged_support_configs:
 
@@ -556,7 +568,7 @@ The current maximum number of Bluetooth LE connections that can be selected usin
 
          .. group-tab:: Matter bridge over Thread
 
-            You can not increase the default number of Bluetooth LE connections in this configuration using overlays.
+            You cannot increase the default number of Bluetooth LE connections in this configuration using overlays.
             This is because the configuration uses both Thread and Bluetooth LE protocols, and limited RAM memory.
             You can still increase the number of connections by modifying the board files and decreasing the buffer sizes.
             The default number of connections is ``10``, which effectively means 9 bridged devices.
@@ -576,7 +588,7 @@ The current maximum number of Bluetooth LE connections that can be selected usin
              .. parsed-literal::
                :class: highlight
 
-               west build -b nrf54h20dk/nrf54h20/cpuapp -p -- -DSB_CONFIG_WIFI_NRF70=y -DCONFIG_CHIP_WIFI=y -Dmatter_bridge_SHIELD=nrf700x_nrf54h20dk -DCONFIG_BRIDGED_DEVICE_BT=y -DEXTRA_CONF_FILE="overlay-bt_max_connections_app.conf" -Dipc_radio_EXTRA_CONF_FILE="overlay-bt_max_connections_net.conf"
+               west build -b nrf54h20dk/nrf54h20/cpuapp -p -- -DSB_CONFIG_WIFI_NRF70=y -DCONFIG_CHIP_WIFI=y -Dmatter_bridge_SHIELD=nrf7002eb_interposer_p1 -DCONFIG_BRIDGED_DEVICE_BT=y -DEXTRA_CONF_FILE="overlay-bt_max_connections_app.conf" -Dipc_radio_EXTRA_CONF_FILE="overlay-bt_max_connections_net.conf"
 
          .. group-tab:: Matter bridge over Thread
 
@@ -697,6 +709,17 @@ The application supports the following configurations:
 
        Enables the Matter Bridge to work with Wi-Fi on nRF5340 DK.
 
+Factory data support
+====================
+
+.. include:: ../../../samples/matter/lock/README.rst
+    :start-after: matter_door_lock_sample_factory_data_start
+    :end-before: matter_door_lock_sample_factory_data_end
+
+.. include:: ../../../samples/matter/lock/README.rst
+    :start-after: matter_door_lock_sample_factory_data_nrf54h20_start
+    :end-before: matter_door_lock_sample_factory_data_nrf54h20_end
+
 Building and running
 ********************
 
@@ -719,7 +742,11 @@ Once connected, run the following command to build the sample:
 
    .. code-block:: console
 
-      west build -b nrf54h20dk/nrf54h20/cpuapp -p -- -DSB_CONFIG_WIFI_NRF70=y -DCONFIG_CHIP_WIFI=y -Dmatter_bridge_SHIELD=nrf700x_nrf54h20dk
+      west build -b nrf54h20dk/nrf54h20/cpuapp -p -- -DSB_CONFIG_WIFI_NRF70=y -DCONFIG_CHIP_WIFI=y -Dmatter_bridge_SHIELD=nrf7002eb_interposer_p1
+
+.. note::
+   |54H_engb_2_8|
+
 
 Selecting a configuration
 =========================
@@ -737,17 +764,7 @@ To enable the Matter smart plugin functionality, run the following command with 
 .. parsed-literal::
    :class: highlight
 
-   .. group-tab:: nRF54 DKs
-
-      .. code-block:: console
-
-         west build -b nrf54h20dk/nrf54h20/cpuapp -p -- -DSB_CONFIG_WIFI_NRF70=y -DCONFIG_CHIP_WIFI=y -Dmatter_bridge_SHIELD=nrf700x_nrf54h20dk -DCONFIG_BRIDGED_DEVICE_BT=y -Dmatter_bridge_SNIPPET=onoff_plug
-
-   .. group-tab:: nRF70 DKs
-
-      .. code-block:: console
-
-         west build -b nrf7002dk/nrf5340/cpuapp -p -- -DCONFIG_BRIDGED_DEVICE_BT=y -Dmatter_bridge_SNIPPET=onoff_plug
+   west build -b *board_target* -p -- -Dmatter_bridge_SNIPPET=onoff_plug
 
 .. _matter_bridge_testing:
 

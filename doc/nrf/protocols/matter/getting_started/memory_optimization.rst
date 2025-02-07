@@ -48,9 +48,6 @@ LTO is an advanced compilation technique that performs optimization across all c
 
 To enable LTO, set the :kconfig:option:`CONFIG_LTO` and :kconfig:option:`CONFIG_ISR_TABLES_LOCAL_DECLARATION` Kconfig options to ``y``.
 
-.. note::
-   Support for Link Time Optimization is experimental.
-
 .. _ug_matter_device_memory_profiling:
 
 Profiling memory in Matter applications
@@ -69,8 +66,8 @@ Alternatively, you can enable each option separately.
 
 The Kconfig option enables the following functionalities on the Matter device:
 
-- :ref:`ug_matter_configuring_settings_shell` by setting the :kconfig:option:`CONFIG_NCS_SAMPLE_MATTER_SETTINGS_SHELL` Kconfig option to ``y``.
-- :doc:`matter:nrfconnect_examples_cli` by setting the :kconfig:option:`CONFIG_CHIP_LIB_SHELL` Kconfig option to ``y``.
+- :ref:`ug_matter_configuring_settings_shell` by setting the :ref:`CONFIG_NCS_SAMPLE_MATTER_SETTINGS_SHELL<CONFIG_NCS_SAMPLE_MATTER_SETTINGS_SHELL>` Kconfig option to ``y``.
+- :doc:`Command-line interface <matter:nrfconnect_examples_cli>` by setting the :kconfig:option:`CONFIG_CHIP_LIB_SHELL` Kconfig option to ``y``.
 - Zephyr Kernel commands by setting the :kconfig:option:`CONFIG_KERNEL_SHELL` Kconfig option to ``y``.
 - Zephyr Settings shell by setting the :kconfig:option:`CONFIG_SETTINGS_SHELL` Kconfig option to ``y``.
 - OpenThread shell by setting the :kconfig:option:`CONFIG_OPENTHREAD_SHELL` Kconfig option to ``y`` if you build the Matter over Thread variant.
@@ -359,7 +356,7 @@ The following table presents the possible threads used in a Matter application a
 | Thread name         | Kconfig option                                                   | Description of the related stack                               |
 +---------------------+------------------------------------------------------------------+----------------------------------------------------------------+
 | CHIP                | :kconfig:option:`CONFIG_CHIP_TASK_STACK_SIZE`                    | Matter thread stack.                                           |
-|                     |                                                                  | For example, all functions scheduled to be execute from        |
+|                     |                                                                  | For example, all functions scheduled to be executed from       |
 |                     |                                                                  | the Matter thread context using                                |
 |                     |                                                                  | the ``SystemLayer().ScheduleLambda`` function.                 |
 +---------------------+------------------------------------------------------------------+----------------------------------------------------------------+
@@ -367,7 +364,7 @@ The following table presents the possible threads used in a Matter application a
 |                     |                                                                  | For Matter over Thread only.                                   |
 +---------------------+------------------------------------------------------------------+----------------------------------------------------------------+
 | main                | :kconfig:option:`CONFIG_MAIN_STACK_SIZE`                         | Application thread stack.                                      |
-|                     |                                                                  | For example, all functions scheduled to be execute from        |
+|                     |                                                                  | For example, all functions scheduled to be executed from       |
 |                     |                                                                  | the Main thread context using                                  |
 |                     |                                                                  | the ``Nrf::PostTask`` function.                                |
 +---------------------+------------------------------------------------------------------+----------------------------------------------------------------+
@@ -391,7 +388,7 @@ The following table presents the possible threads used in a Matter application a
 |                     |                                                                  | For Matter over Thread only.                                   |
 +---------------------+------------------------------------------------------------------+----------------------------------------------------------------+
 | net_mgmt            | :kconfig:option:`CONFIG_NET_MGMT_EVENT_STACK_SIZE`               | Zephyr network management event processing thread stack.       |
-|                     |                                                                  | For Matter over Wi-Fi only.                                    |
+|                     |                                                                  | For Matter over Wi-Fi® only.                                   |
 +---------------------+------------------------------------------------------------------+----------------------------------------------------------------+
 | wpa_supplicant_main | :kconfig:option:`CONFIG_WIFI_NM_WPA_SUPPLICANT_THREAD_STACK_SIZE`| WPA supplicant main thread.                                    |
 |                     |                                                                  | Processing Wi-Fi requests and connections.                     |
@@ -418,7 +415,18 @@ The static size is determined by the :kconfig:option:`CONFIG_CHIP_MALLOC_SYS_HEA
 To use a dynamic heap size on your Matter device, set them both to ``n``.
 
 The static heap size means that you can define the maximum heap size for your application by setting the :kconfig:option:`CONFIG_CHIP_MALLOC_SYS_HEAP_SIZE` Kconfig value.
-You can also adjust the heap dedicated for MbedTLS purposes by setting the :kconfig:option:`CONFIG_MBEDTLS_HEAP_SIZE` Kconfig option value.
+You can also adjust the heap dedicated for Mbed TLS purposes by setting the :kconfig:option:`CONFIG_MBEDTLS_HEAP_SIZE` Kconfig option value.
+
+Packet buffer pool size
+-----------------------
+
+The Matter application uses a fixed-size pool for packet buffer memory management.
+The pool size is determined by the :kconfig:option:`CONFIG_CHIP_SYSTEM_PACKETBUFFER_POOL_SIZE` Kconfig option.
+You can adjust the pool size to reduce the memory usage of your application, but that can have a negative effect on the performance of the application.
+
+.. note::
+   The Thread protocol has a separate configuration for memory allocation.
+   See :ref:`thread_configuring_messagepool` in the Thread documentation for more information.
 
 Memory profiling troubleshooting
 ================================

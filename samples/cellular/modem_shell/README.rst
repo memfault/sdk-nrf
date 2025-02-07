@@ -446,7 +446,7 @@ Examples
 
      location get
 
-* Retrieve location with Wi-Fi positioning.
+* Retrieve location with Wi-Fi® positioning.
   You need to have a Wi-Fi-enabled device and build the sample with Wi-Fi support.
   If the location is not found, use cellular positioning:
 
@@ -812,11 +812,6 @@ Configuration options
 
 Check and configure the following configuration options for the sample:
 
-.. _CONFIG_MOSH_LINK:
-
-CONFIG_MOSH_LINK
-   Enable LTE link control feature in modem shell.
-
 .. _CONFIG_MOSH_PING:
 
 CONFIG_MOSH_PING
@@ -1017,9 +1012,9 @@ To program the certificates and connect to nRF Cloud, complete the following ste
       mosh:~$ at at_cmd_mode start
 
 #. Disconnect the MoSh terminal.
-#. Connect and use `Cellular Monitor`_  to store the certificates to the modem (default nRF Cloud security tag).
+#. Connect and use the `Cellular Monitor app`_ to store the certificates to the modem (default nRF Cloud security tag).
 
-   See `Managing credentials`_ in the Cellular Monitor user guide for instructions.
+   See `Managing credentials`_ in the Cellular Monitor app documentation for instructions.
 #. Reconnect the MoSh terminal and press ``ctrl-x`` and ``ctrl-q`` to exit the AT command mode.
 #. Set the modem to normal mode to activate LTE:
 
@@ -1108,7 +1103,7 @@ After programming the development kit, test it in the Linux environment by perfo
 1. Connect the development kit to the computer using a USB cable.
    The development kit is assigned a ttyACM device (Linux).
 
-#. Open a serial connection to the development kit (/dev/ttyACM2) with a terminal |ANSI| (for example, nRF Connect Serial Terminal).
+#. Open a serial connection to the development kit (/dev/ttyACM2) with a terminal |ANSI| (for example, the `Serial Terminal app`_).
    See :ref:`test_and_optimize` for the required settings and steps.
 
 #. Reset the development kit.

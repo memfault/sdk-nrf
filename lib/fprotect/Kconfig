@@ -47,6 +47,7 @@ config FPROTECT_BLOCK_SIZE
 menuconfig FPROTECT
 	bool "Enable FPROTECT"
 	depends on SOC_FAMILY_NORDIC_NRF
+	select NRFX_RRAMC if SOC_SERIES_NRF54LX
 	help
 	  Enable the software library FPROTECT that may or may not be used
 	  by other systems to protect flash from writes and possibly also
@@ -71,5 +72,12 @@ config FPROTECT_APP
 	  of the 'app' partition can be found by either inspecting the file
 	  'pm_config.h' in your build directory, or by invoking the
 	  'partition_manager_report' target.
+
+config FPROTECT_ALLOW_COMBINED_REGIONS
+	bool "Use both RRAMC_regions"
+	depends on SOC_SERIES_NRF54LX && MCUBOOT
+	help
+	  Intended for use with NRF54L series devices. Gives total of 62kB
+	  lockable memory.
 
 endif # FPROTECT

@@ -8,6 +8,7 @@ Updating the DK firmware using Programmer
    :local:
    :depth: 2
 
+Updating the firmware for nRF91 Series devices involves several key steps to ensure the device operates with the latest features, improvements, and security updates.
 Before you begin to update the firmware, download and extract the latest application and modem firmware from the `nRF9151 DK Downloads`_, `nRF9161 DK Downloads`_, or `nRF9160 DK Downloads`_ page, depending on the DK you are using.
 
 The downloaded ZIP archive contains the following firmware:
@@ -53,7 +54,14 @@ Modem firmware
 The :file:`CONTENTS.txt` file in the extracted folder contains the location and names of the different firmware images.
 
 Complete the steps in the following sections to program applications using the Programmer app from `nRF Connect for Desktop`_.
-You will need the following USB cables for this purpose:
+The nRF Connect for Desktop requires `SEGGER J-Link`_ |jlink_ver|.
+
+* On Windows, the driver comes bundled with nRF Connect for Desktop.
+* On macOS and Linux, you must install the driver manually.
+
+See the `nRF Connect for Desktop's additional requirements`_ section for more details on the SEGGER J-Link driver.
+
+You will also need the following USB cables:
 
 * nRF91x1 DK - USB-C cable
 * nRF9160 DK - micro-USB cable
@@ -204,7 +212,18 @@ To update the application firmware using the Programmer app, complete the follow
 #. Click the :guilabel:`Erase & write` button in the **DEVICE** section to program the DK.
    Do not unplug or turn off the DK during this process.
 
-   .. figure:: images/programmer_erasewrite_nrf9160dk.png
-      :alt: Programmer - Erase & write
+   .. tabs::
 
-      Programmer - Erase & write
+      .. group-tab:: nRF91x1 DK
+
+         .. figure:: images/programmer_erasewrite_nrf9151dk.png
+            :alt: Programmer - Erase & write (nRF9151 DK shown)
+
+            Programmer - Erase & write (nRF9151 DK shown)
+
+      .. group-tab:: nRF9160 DK
+
+         .. figure:: images/programmer_erasewrite_nrf9160dk.png
+            :alt: Programmer - Erase & write
+
+            Programmer - Erase & write

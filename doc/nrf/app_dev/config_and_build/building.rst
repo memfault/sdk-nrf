@@ -16,12 +16,13 @@ Just as for creating the application, you can build the application using either
 
    .. group-tab:: nRF Connect for VS Code
 
-      For instructions about building with the |nRFVSC|, see `How to build an application`_ in the extension documentation.
+      To build with the |nRFVSC|, you first need to create a build configuration.
+      For instructions, see `How to build an application`_ in the extension documentation.
 
       By default, the extension runs both stages of the CMake build (:ref:`configuration phase and building phase <app_build_system>`).
       If you want to only set up the build configuration without building it, make sure the :guilabel:`Build after generating configuration` is not selected.
 
-      To build with :ref:`configuration_system_overview_sysbuild`, select the :guilabel:`Use sysbuild` checkbox.
+      To build with :ref:`configuration_system_overview_sysbuild`, :ref:`keep the default setting selected <sysbuild_enabled_ncs>` or select the :guilabel:`Use sysbuild` radio button.
 
       If you want to build with custom options or scripts, read about `Binding custom tasks to actions`_ in the extension documentation.
 
@@ -123,7 +124,7 @@ For more options, see Zephyr's :ref:`zephyr:west-building` or run the ``west --h
      - ``west build -b nrf52840dk/nrf52840 --no-sysbuild``
    * - ``-vvv``
      - Enable a detailed :ref:`zephyr:west-building-verbose` log, which includes the full commands used by the build system to generate the :ref:`app_build_output_files`.
-     - ``west build -b nrf52840dk/nrf52840 -vvv``
+     - ``west -vvv build -b nrf52840dk/nrf52840``
    * - *directory_name*
      - Build from a directory other than the current directory.
      - ``west build -b nrf5340dk/nrf5340/cpuapp/ns nrf/samples/tfm/tfm_psa_template``

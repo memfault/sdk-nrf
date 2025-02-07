@@ -78,6 +78,10 @@ The following is an example of the CLI command:
 
        west build -b nrf9160dk/nrf9160/ns -- -DEXTRA_CONF_FILE=overlay-scan-only.conf -DSHIELD=nrf7002ek
 
+.. note::
+   The nRF91 Series supports Wi-Fi through nR70 Series shields but is limited to scan-only operation to enhance location accuracy.
+   However, it does not support full Wi-Fi operations.
+
 To build for the Thingy:91 X using the nRF5340 as the host chip, use the ``thingy91x/nrf5340/cpuapp`` board target with the ``SB_CONFIG_THINGY91X_STATIC_PARTITIONS_NRF53_EXTERNAL_FLASH=y`` CMake option set.
 This requires an external debugger since the nRF9151 normally owns the buses.
 This special configuration is not compatible with nRF9151 firmware compiled for the default configuration.
@@ -96,7 +100,15 @@ The following is an example of the CLI commands:
    # If you see NRF5340_xxAA_REV1, proceed with flashing:
    west flash --erase
 
+.. note::
+    |nrfjprog_deprecation_note|
+
 See also :ref:`cmake_options` for instructions on how to provide CMake options.
+
+
+.. note::
+   |54H_engb_2_8|
+
 
 Supported CLI commands
 ======================
@@ -272,11 +284,20 @@ It adds the following subcommands to interact with the :ref:`lib_wifi_credential
      - Description
    * - add
      - | Add a network to the credentials storage with following parameters:
-       | <SSID>
-       | <Passphrase> (optional: valid only for secured SSIDs)
-       | <BSSID> (optional)
-       | <Band> (optional: 2.4GHz, 5GHz)
-       | favorite (optional, makes the network higher priority in automatic connection)
+       | <-s --ssid \"<SSID>\">: SSID.
+       | [-c --channel]: Channel that needs to be scanned for connection. 0:any channel
+       | [-b, --band] 0: any band (2:2.4GHz, 5:5GHz, 6:6GHz)
+       | [-p, --passphrase]: Passphrase (valid only for secure SSIDs)
+       | [-k, --key-mgmt]: Key management type.
+       | 0:None, 1:WPA2-PSK, 2:WPA2-PSK-256, 3:SAE-HNP, 4:SAE-H2E, 5:SAE-AUTO, 6:WAPI,"
+       | " 7:EAP-TLS, 8:WEP, 9: WPA-PSK, 10: WPA-Auto-Personal, 11: DPP
+       | [-w, --ieee-80211w]: MFP (optional: needs security type to be specified)
+       | : 0:Disable, 1:Optional, 2:Required.
+       | [-m, --bssid]: MAC address of the AP (BSSID).
+       | [-t, --timeout]: Duration after which connection attempt needs to fail.
+       | [-a, --identity]: Identity for enterprise mode.
+       | [-K, --key-passwd]: Private key passwd for enterprise mode.
+       | [-h, --help]: Print out the help for the connect command.
    * - delete <SSID>
      - Removes network from credentials storage.
    * - list

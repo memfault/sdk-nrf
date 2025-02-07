@@ -179,6 +179,32 @@ suit_check_component_compatibility_rsp = (
 	ret: int,
 )
 
+; Get manifest variable request
+suit_get_manifest_var_req = (
+	14,
+	id: uint,
+)
+
+; Get manifest variable response
+suit_get_manifest_var_rsp = (
+	14,
+	ret: int,
+	value: uint,
+)
+
+; Set manifest variable request
+suit_set_manifest_var_req = (
+	15,
+	id: uint,
+	value: uint,
+)
+
+; Set manifest variable response
+suit_set_manifest_var_rsp = (
+	15,
+	ret: int,
+)
+
 ; Get supported manifest roles request
 suit_get_supported_manifest_roles_req = (
 	18,
@@ -240,6 +266,54 @@ suit_authorize_process_dependency_rsp = (
 	ret: int,
 )
 
+; In-place updateable components
+suit_get_ipuc_count_req = (
+	30,
+)
+
+suit_get_ipuc_count_rsp = (
+	30,
+	ret: int,
+	count: uint
+)
+
+suit_get_ipuc_info_req = (
+	31,
+	idx: uint
+)
+
+suit_get_ipuc_info_rsp = (
+	31,
+	ret: int,
+	component_id: bstr,
+	role: int,
+)
+
+suit_setup_write_ipuc_req = (
+	32,
+	component_id: bstr,
+	encryption_info: bstr,
+	compression_info: bstr,
+)
+
+suit_setup_write_ipuc_rsp = (
+	32,
+	ret: int,
+)
+
+suit_write_ipuc_req = (
+	33,
+	component_id: bstr,
+	offset: uint,
+	last_chunk: bool,
+	addr: uint,
+	size: uint,
+)
+
+suit_write_ipuc_rsp = (
+	33,
+	ret: int,
+)
 
 ; Missing image event notification message
 suit_evt_sub_req = (
@@ -301,6 +375,58 @@ suit_chunk_status_rsp = (
 	chunk_info: [ 0*3 suit_chunk_info_entry],
 )
 
+; Read the current boot mode.
+; This service is used to provide an execution context for the companion app.
+suit_boot_mode_read_req = (
+	50,
+)
+
+; See suit_boot_mode_t for boot_mode field possible values.
+suit_boot_mode_read_rsp = (
+	50,
+	ret: int,
+	boot_mode: uint,
+)
+
+; Confirm that the image was booted.
+; This service is use by the companion app to release SUIT orchestrator in case
+; of synchronous invocation.
+suit_invoke_confirm_req = (
+	51,
+	ret: int,
+)
+
+suit_invoke_confirm_rsp = (
+	51,
+	ret: int,
+)
+
+; Reset all SUIT boot flags.
+; This API will reboot the SDFW and attempt to boot the system from installed
+; manifests.
+suit_boot_flags_reset_req = (
+	52,
+)
+
+suit_boot_flags_reset_rsp = (
+	52,
+	ret: int,
+)
+
+; Reboot the system into a foreground DFU mode.
+; In this mode the SUIT orchestrator boots the application recovery image.
+; The recovery image should check the context of invocation through
+; the suit_execution_mode_read_req service.
+; The foreground DFU may be left by providing update candidate or through
+; the suit_boot_flags_reset_req service.
+suit_foreground_dfu_required_req = (
+	53,
+)
+
+suit_foreground_dfu_required_rsp = (
+	53,
+	ret: int,
+)
 
 suit_req = [
 	; Union of different requests
@@ -319,9 +445,22 @@ suit_req = [
 		suit_get_supported_manifest_info_req /
 		suit_authorize_process_dependency_req /
 
+		suit_get_ipuc_count_req /
+		suit_get_ipuc_info_req /
+		suit_setup_write_ipuc_req /
+		suit_write_ipuc_req /
+
+		suit_get_manifest_var_req /
+		suit_set_manifest_var_req /
+
 		suit_evt_sub_req /
 		suit_chunk_enqueue_req /
-		suit_chunk_status_req
+		suit_chunk_status_req /
+
+		suit_boot_mode_read_req /
+		suit_invoke_confirm_req /
+		suit_boot_flags_reset_req /
+		suit_foreground_dfu_required_req
 	),
 ]
 
@@ -342,9 +481,22 @@ suit_rsp = [
 		suit_get_supported_manifest_info_rsp /
 		suit_authorize_process_dependency_rsp /
 
+		suit_get_ipuc_count_rsp /
+		suit_get_ipuc_info_rsp /
+		suit_setup_write_ipuc_rsp /
+		suit_write_ipuc_rsp /
+
+		suit_get_manifest_var_rsp /
+		suit_set_manifest_var_rsp /
+
 		suit_evt_sub_rsp /
 		suit_chunk_enqueue_rsp /
-		suit_chunk_status_rsp
+		suit_chunk_status_rsp /
+
+		suit_boot_mode_read_rsp /
+		suit_invoke_confirm_rsp /
+		suit_boot_flags_reset_rsp /
+		suit_foreground_dfu_required_rsp
 	),
 ]
 

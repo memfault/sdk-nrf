@@ -10,7 +10,7 @@
 #include <zcbor_common.h>
 #ifdef CONFIG_SUIT_METADATA
 #include <suit_metadata.h>
-#endif /* CONFIG_SUIT_METaDATA */
+#endif /* CONFIG_SUIT_METADATA */
 #ifdef CONFIG_SUIT_PLATFORM
 #include <suit_platform_internal.h>
 #endif /* CONFIG_SUIT_PLATFORM*/
@@ -70,11 +70,25 @@ suit_plat_err_t suit_plat_decode_component_number(struct zcbor_string *component
 						  uint32_t *number);
 
 /**
- * @brief Decode uint32_t key_id from zcbor_string
+ * @brief Decode uint32_t key_id from zcbor_string.
  *
- * @param key_id Input zcbor_string key ID
- * @param integer_key_id Output key ID in uint32
- * @return SUIT_PLAT_SUCCESS in case of success, otherwise error code
+ * @param[in]  content  Byte string encoded content.
+ * @param[out] value    Decoded 32-bit unsigned integer content.
+ *
+ * @retval SUIT_PLAT_SUCCESS            On success.
+ * @retval SUIT_PLAT_ERR_INVAL          Invalid parameter, i.e. null pointer.
+ * @retval SUIT_PLAT_ERR_CBOR_DECODING  Unable to decode content as unsigned integer.
+ */
+suit_plat_err_t suit_plat_decode_content_uint32(struct zcbor_string *content, uint32_t *value);
+
+/**
+ * @brief Decode uint32_t key_id from zcbor_string.
+ *
+ * @param[in]  key_id          Input zcbor_string key ID.
+ * @param[out] integer_key_id  Output key ID as uint32.
+ *
+ * @retval SUIT_PLAT_SUCCESS            On success.
+ * @retval SUIT_PLAT_ERR_CBOR_DECODING  Unable to decode content as unsigned integer.
  */
 suit_plat_err_t suit_plat_decode_key_id(struct zcbor_string *key_id, uint32_t *integer_key_id);
 
@@ -90,6 +104,22 @@ suit_plat_err_t suit_plat_decode_key_id(struct zcbor_string *key_id, uint32_t *i
 suit_plat_err_t suit_plat_decode_manifest_class_id(struct zcbor_string *component_id,
 						   suit_manifest_class_id_t **class_id);
 #endif /* CONFIG_SUIT_METADATA */
+
+/**
+ * @brief Decode invoke arguments
+ *
+ * @note It is allowed to pass NULLs as output arguments.
+ *       In such case invoke arguments will decoded, but not set.
+ *
+ * @param[in]  invoke_args  Encoded invoke arguments
+ * @param[out] synchronous  Decoded synchronous invoke flag
+ * @param[out] timeout_ms   Decoded timeout for synchronous invoke
+ *
+ * @retval SUIT_PLAT_SUCCESS            if successful.
+ * @retval SUIT_PLAT_ERR_CBOR_DECODING  if failed to decode arguments.
+ */
+suit_plat_err_t suit_plat_decode_invoke_args(struct zcbor_string *invoke_args, bool *synchronous,
+					     uint32_t *timeout_ms);
 
 #ifdef __cplusplus
 }

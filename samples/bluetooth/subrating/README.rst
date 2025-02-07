@@ -69,12 +69,15 @@ Building and running
 
 .. include:: /includes/build_and_run.txt
 
+.. note::
+   |54H_engb_2_8|
+
 Testing
 =======
 
 After programming the sample to both development kits, test it by performing the following steps:
 
-1. Connect to both kits with a terminal emulator (for example, `nRF Connect Serial Terminal`_).
+1. Connect to both kits with a terminal emulator (for example, the `Serial Terminal app`_).
    See :ref:`test_and_optimize` for the required settings and steps.
 #. Reset both kits.
 #. In one of the terminal emulators, type ``c`` to start the application on the connected board in the central role.
@@ -103,7 +106,7 @@ The result should look similar to the following output:
 
     *** Booting nRF Connect SDK v2.7.99-9539f0a1a59b ***
     *** Using Zephyr OS v3.6.99-766b306bcbe8 ***
-    Starting Bluetooth Subrating example
+    Starting Bluetooth Subrating sample
     I: SoftDevice Controller build revision:
     I: 0f 3f c8 4a 7e 8d b6 7a |.?.J~..z
     I: 64 7f 04 47 8b 3c 4b ae |d..G.<K.
@@ -133,7 +136,7 @@ The result should look similar to the following output:
 
     *** Booting nRF Connect SDK v2.7.99-9539f0a1a59b ***
     *** Using Zephyr OS v3.6.99-766b306bcbe8 ***
-    Starting Bluetooth Subrating example
+    Starting Bluetooth Subrating sample
     I: SoftDevice Controller build revision:
     I: 0f 3f c8 4a 7e 8d b6 7a |.?.J~..z
     I: 64 7f 04 47 8b 3c 4b ae |d..G.<K.

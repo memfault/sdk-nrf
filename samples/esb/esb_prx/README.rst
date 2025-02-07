@@ -52,6 +52,9 @@ See :ref:`building` and :ref:`programming` for information about how to build an
 
 .. include:: /includes/nRF54H20_erase_UICR.txt
 
+.. note::
+   |54H_engb_2_8|
+
 FEM support
 ===========
 
@@ -66,7 +69,7 @@ Complete the following steps to test both the Transmitter and Receiver samples:
 
 1. Power on both kits.
 #. Observe that the LEDs change synchronously on both kits.
-#. Optionally, connect to the kits with a terminal emulator (for example, nRF Connect Serial Terminal).
+#. Optionally, connect to the kits with a terminal emulator (for example, the `Serial Terminal app`_).
    See :ref:`test_and_optimize` for the required settings and steps.
 #. Observe the logging output for both kits.
 

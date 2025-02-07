@@ -6,6 +6,7 @@
 
 #include <soc.h>
 #include <zephyr/sys/printk.h>
+#include <zephyr/kernel.h>
 #include <pm_config.h>
 #include <fw_info.h>
 #include <fprotect.h>
@@ -40,7 +41,7 @@ static void uninit_used_uarte(NRF_UARTE_Type *p_reg)
 
 static void uninit_used_peripherals(void)
 {
-#ifdef CONFIG_UART_NRFX
+#if defined(CONFIG_UART_NRFX)
 #if defined(CONFIG_HAS_HW_NRF_UART0)
 	nrf_uart_disable(NRF_UART0);
 #elif defined(CONFIG_HAS_HW_NRF_UARTE0)
@@ -51,6 +52,9 @@ static void uninit_used_peripherals(void)
 #endif
 #if defined(CONFIG_HAS_HW_NRF_UARTE2)
 	uninit_used_uarte(NRF_UARTE2);
+#endif
+#if defined(CONFIG_HAS_HW_NRF_UARTE20)
+	uninit_used_uarte(NRF_UARTE20);
 #endif
 #endif /* CONFIG_UART_NRFX */
 
@@ -67,8 +71,9 @@ extern uint32_t _vector_table_pointer;
 void bl_boot(const struct fw_info *fw_info)
 {
 #if !(defined(CONFIG_SOC_SERIES_NRF91X) \
-      || defined(CONFIG_SOC_NRF5340_CPUNET) \
-      || defined(CONFIG_SOC_NRF5340_CPUAPP))
+	|| defined(CONFIG_SOC_SERIES_NRF54LX) \
+	|| defined(CONFIG_SOC_NRF5340_CPUNET) \
+	|| defined(CONFIG_SOC_NRF5340_CPUAPP))
 	/* Protect bootloader storage data after firmware is validated so
 	 * invalidation of public keys can be written into the page if needed.
 	 * Note that for some devices (for example, nRF9160 and the nRF5340
@@ -77,12 +82,17 @@ void bl_boot(const struct fw_info *fw_info)
 	 * bootloader storage data is locked together with the network core
 	 * application.
 	 */
+#if defined(CONFIG_FPROTECT)
 	int err = fprotect_area(PM_PROVISION_ADDRESS, PM_PROVISION_SIZE);
 
 	if (err) {
 		printk("Failed to protect bootloader storage.\n\r");
 		return;
 	}
+#else
+		printk("Fprotect disabled. No protection applied.\n\r");
+#endif
+
 #endif
 
 #if CONFIG_ARCH_HAS_USERSPACE
@@ -146,7 +156,34 @@ void bl_boot(const struct fw_info *fw_info)
 	__set_MSP(vector_table[0]);
 	__set_PSP(0);
 
+#if CONFIG_SB_CLEANUP_RAM
+	__asm__ volatile (
+		/* vector_table[1] -> r0 */
+		"   mov r0, %0\n"
+		/* Base to write -> r1 */
+		"   mov r1, %1\n"
+		/* Size to write -> r2 */
+		"   mov r2, %2\n"
+		/* Value to write -> r3 */
+		"   mov r3, %3\n"
+		"clear:\n"
+		"   str r3, [r1]\n"
+		"   add r1, r1, #4\n"
+		"   sub r2, r2, #4\n"
+		"   cbz r2, out\n"
+		"   b   clear\n"
+		"out:\n"
+		"   dsb\n"
+		/* Jump to reset vector of an app */
+		"   bx r0\n"
+		:
+		: "r" (vector_table[1]), "i" (CONFIG_SRAM_BASE_ADDRESS),
+		  "i" (CONFIG_SRAM_SIZE * 1024), "i" (0)
+		: "r0", "r1", "r2", "r3", "memory"
+	);
+#else
 	/* Call reset handler. */
 	((void (*)(void))vector_table[1])();
+#endif
 	CODE_UNREACHABLE;
 }

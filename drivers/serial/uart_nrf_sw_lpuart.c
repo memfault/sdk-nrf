@@ -92,8 +92,6 @@ struct lpuart_data {
 	uint8_t *rx_buf;
 	size_t rx_len;
 
-	int32_t rx_timeout;
-
 	uart_callback_t user_callback;
 	void *user_data;
 
@@ -133,8 +131,9 @@ static inline const struct lpuart_config *get_dev_config(const struct device *de
 
 #define GPIOTE_NODE(gpio_node) DT_PHANDLE(gpio_node, gpiote_instance)
 #define GPIOTE_INST_AND_COMMA(gpio_node) \
+	IF_ENABLED(DT_NODE_HAS_PROP(gpio_node, gpiote_instance), ( \
 	[DT_PROP(gpio_node, port)] = \
-		NRFX_GPIOTE_INSTANCE(DT_PROP(GPIOTE_NODE(gpio_node), instance)),
+		NRFX_GPIOTE_INSTANCE(DT_PROP(GPIOTE_NODE(gpio_node), instance)),))
 
 static const nrfx_gpiote_t *get_gpiote(nrfx_gpiote_pin_t pin)
 {
@@ -327,7 +326,8 @@ static bool rdy_pin_blink(struct lpuart_data *data)
 	 * this pin high.
 	 */
 	k_busy_wait(1);
-	if (nrf_gpio_pin_read(data->rdy_pin) == 0 && !nrf_gpiote_event_check(NRF_GPIOTE, event)) {
+	if (nrf_gpio_pin_read(data->rdy_pin) == 0 &&
+	    !nrf_gpiote_event_check(gpiote->p_reg, event)) {
 		/* Suspicious pin state (low). It might be that context was preempted
 		 * for long enough and transfer ended (in that case event will be set)
 		 * or transmitter is working abnormally or pin is just floating.
@@ -358,6 +358,7 @@ static void deactivate_rx(struct lpuart_data *data)
 	}
 
 	/* abort rx */
+	LOG_DBG("RX: Deactivate");
 	data->rx_state = RX_TO_IDLE;
 	err = uart_rx_disable(data->uart);
 	if (err < 0 && err != -EFAULT) {
@@ -383,8 +384,7 @@ static void activate_rx(struct lpuart_data *data)
 	LOG_DBG("RX: Ready");
 	data->rx_got_data = false;
 	data->rx_state = RX_ACTIVE;
-	err = uart_rx_enable(data->uart, data->rx_buf,
-				data->rx_len, data->rx_timeout);
+	err = uart_rx_enable(data->uart, data->rx_buf, data->rx_len, SYS_FOREVER_US);
 	__ASSERT(err == 0, "RX: Enabling failed (err:%d)", err);
 
 	/* Ready. Confirm by toggling the pin. */
@@ -576,7 +576,7 @@ static void uart_callback(const struct device *uart, struct uart_event *evt,
 		break;
 
 	case UART_RX_BUF_RELEASED:
-		LOG_DBG("Rx buf released");
+		LOG_DBG("Rx buf released %p", (void *)evt->data.rx_buf.buf);
 		if (!data->rx_got_data) {
 			LOG_ERR("Empty receiver state:%d", data->rx_state);
 		}
@@ -587,9 +587,8 @@ static void uart_callback(const struct device *uart, struct uart_event *evt,
 	{
 		bool call_cb;
 
-		LOG_DBG("Rx disabled");
-		__ASSERT_NO_MSG((data->rx_state != RX_IDLE) &&
-			 (data->rx_state != RX_OFF));
+		LOG_DBG("Rx disabled %d", data->rx_state);
+		__ASSERT_NO_MSG(data->rx_state != RX_OFF);
 
 		if (data->rx_state == RX_TO_IDLE) {
 			if (data->rx_got_data) {
@@ -603,6 +602,25 @@ static void uart_callback(const struct device *uart, struct uart_event *evt,
 				rdy_pin_idle(data);
 			}
 		} else {
+			if (data->rx_state == RX_IDLE && data->rx_buf) {
+				/* This case may happen if control pins are not behaving
+				 * according to the protocol (e.g. they are floating).
+				 * In that case driver goes to off state and releases
+				 * provided buffers.
+				 */
+				struct uart_event buf_rel_evt = {
+					.type = UART_RX_BUF_RELEASED,
+					.data = {
+						.rx_buf = {
+							.buf = data->rx_buf
+						}
+					}
+				};
+
+				LOG_DBG("RX: Rx buf released %p", (void *)data->rx_buf);
+				user_callback(dev, &buf_rel_evt);
+			}
+
 			data->rx_buf = NULL;
 			data->rx_state = RX_OFF;
 			call_cb = true;
@@ -695,7 +713,10 @@ static int api_tx_abort(const struct device *dev)
 	irq_unlock(key);
 
 	err = uart_tx_abort(data->uart);
-	if (err != -EFAULT) {
+	if (err == -EFAULT) {
+		/* If abort is before TX is started just report ABORT from here. */
+		err = 0;
+	} else {
 		/* if successfully aborted or returned error different than
 		 * one indicating that there is no transfer, return error code.
 		 */
@@ -720,6 +741,7 @@ static int api_tx_abort(const struct device *dev)
 static int api_rx_enable(const struct device *dev, uint8_t *buf,
 			 size_t len, int32_t timeout)
 {
+	ARG_UNUSED(timeout);
 	struct lpuart_data *data = get_dev_data(dev);
 
 	__ASSERT_NO_MSG(data->rx_state == RX_OFF);
@@ -729,10 +751,9 @@ static int api_rx_enable(const struct device *dev, uint8_t *buf,
 	}
 
 	data->rx_len = len;
-	data->rx_timeout = timeout;
 	data->rx_state = RX_IDLE;
 
-	LOG_DBG("RX: Enabling");
+	LOG_DBG("RX: Enabling buf:%p len:%d", (void *)buf, len);
 	rdy_pin_idle(data);
 
 	return 0;
@@ -745,7 +766,7 @@ static int api_rx_buf_rsp(const struct device *dev, uint8_t *buf, size_t len)
 	__ASSERT_NO_MSG((data->rx_state != RX_OFF) &&
 		 (data->rx_state != RX_TO_OFF));
 
-	LOG_DBG("buf rsp, state:%d", data->rx_state);
+	LOG_DBG("buf rsp buf:%p len:%d, state:%d", (void *)buf, len, data->rx_state);
 	if (data->rx_state == RX_TO_IDLE || data->rx_state == RX_BLOCKED) {
 		data->rx_buf = buf;
 		data->rx_len = len;
@@ -1139,14 +1160,25 @@ static const struct uart_driver_api lpuart_api = {
 
 #define GPIO_HAS_PIN(gpio_node, pin_prop)				  \
 	(DT_PROP(gpio_node, port) == (DT_INST_PROP(0, pin_prop) >> 5))
+
+/* There may be GPIO ports which cannot be used with GPIOTE. Check if pins are
+ * not from those ports.
+ */
+#define CHECK_GPIOTE_AVAILABLE(gpio_node) \
+	BUILD_ASSERT((!GPIO_HAS_PIN(gpio_node, req_pin) &&		  \
+		      !GPIO_HAS_PIN(gpio_node, rdy_pin)) ||		  \
+		     DT_NODE_HAS_PROP(gpio_node, gpiote_instance));
+
 #define CHECK_GPIOTE_IRQ_PRIORITY(gpio_node)				  \
+	IF_ENABLED(DT_NODE_HAS_PROP(gpio_node, gpiote_instance), (	  \
 	BUILD_ASSERT((!GPIO_HAS_PIN(gpio_node, req_pin) &&		  \
 		      !GPIO_HAS_PIN(gpio_node, rdy_pin)) ||		  \
 		     DT_IRQ(DT_PARENT(DT_NODELABEL(lpuart)), priority) == \
 		     DT_IRQ(GPIOTE_NODE(gpio_node), priority),		  \
-		     "UARTE and GPIOTE interrupt priority must match.");
+		     "UARTE and GPIOTE interrupt priority must match.");))
 
 DT_FOREACH_STATUS_OKAY(nordic_nrf_gpio, CHECK_GPIOTE_IRQ_PRIORITY)
+DT_FOREACH_STATUS_OKAY(nordic_nrf_gpio, CHECK_GPIOTE_AVAILABLE)
 
 DEVICE_DT_DEFINE(DT_NODELABEL(lpuart), lpuart_init, NULL,
 	      &lpuart_data, &lpuart_config,

@@ -30,7 +30,7 @@ extern "C" {
 /**
  * @brief Maximum number of timers that the system must support.
  */
-#define LWM2M_OS_MAX_TIMER_COUNT (4 + (LWM2M_OS_MAX_WORK_QS * 4))
+#define LWM2M_OS_MAX_TIMER_COUNT (6 + (LWM2M_OS_MAX_WORK_QS * 4))
 
 typedef int lwm2m_os_work_q_t;
 typedef int lwm2m_os_timer_t;
@@ -38,7 +38,7 @@ typedef int lwm2m_os_timer_t;
 /**
  * @brief Maximum number of semaphores that the system must support.
  */
-#define LWM2M_OS_MAX_SEM_COUNT (6 + (LWM2M_OS_MAX_WORK_QS * 1))
+#define LWM2M_OS_MAX_SEM_COUNT (8 + (LWM2M_OS_MAX_WORK_QS * 1))
 
 typedef int lwm2m_os_sem_t;
 
@@ -161,6 +161,9 @@ enum lwm2m_os_pdn_event {
 	LWM2M_OS_PDN_EVENT_IPV6_UP,
 	LWM2M_OS_PDN_EVENT_IPV6_DOWN,
 	LWM2M_OS_PDN_EVENT_NETWORK_DETACHED,
+	LWM2M_OS_PDN_EVENT_APN_RATE_CONTROL_ON,
+	LWM2M_OS_PDN_EVENT_APN_RATE_CONTROL_OFF,
+	LWM2M_OS_PDN_EVENT_CTX_DESTROYED,
 };
 
 /**
@@ -185,7 +188,8 @@ typedef void (*lwm2m_os_pdn_event_handler_t)
  * @param[out] cid The ID of the new PDP context.
  * @param      cb  Optional event handler.
  *
- * @retval  0      If success.
+ * @retval 0 If the operation was successful.
+ *           Otherwise, a negative error code is returned.
  */
 int lwm2m_os_pdn_ctx_create(uint8_t *cid, lwm2m_os_pdn_event_handler_t cb);
 
@@ -196,7 +200,8 @@ int lwm2m_os_pdn_ctx_create(uint8_t *cid, lwm2m_os_pdn_event_handler_t cb);
  * @param apn    The Access Point Name to configure the PDP context with.
  * @param family The family to configure the PDN context for.
  *
- * @retval  0      If success.
+ * @retval 0 If the operation was successful.
+ *           Otherwise, a negative error code is returned.
  */
 int lwm2m_os_pdn_ctx_configure(uint8_t cid, const char *apn, enum lwm2m_os_pdn_fam family);
 
@@ -205,7 +210,8 @@ int lwm2m_os_pdn_ctx_configure(uint8_t cid, const char *apn, enum lwm2m_os_pdn_f
  *
  * @param cid The PDP context to destroy.
  *
- * @retval  0      If success.
+ * @retval 0 If the operation was successful.
+ *           Otherwise, a negative error code is returned.
  */
 int lwm2m_os_pdn_ctx_destroy(uint8_t cid);
 
@@ -218,7 +224,8 @@ int lwm2m_os_pdn_ctx_destroy(uint8_t cid);
  *                    supported, or PDN_FAM_IPV6 if only IPv6 is supported. Otherwise, this value
  *                    will remain unchanged.
  *
- * @retval  0      If success.
+ * @retval 0 If the operation was successful.
+ *           Otherwise, a negative error code is returned.
  */
 int lwm2m_os_pdn_activate(uint8_t cid, int *esm, enum lwm2m_os_pdn_fam *family);
 
@@ -227,7 +234,8 @@ int lwm2m_os_pdn_activate(uint8_t cid, int *esm, enum lwm2m_os_pdn_fam *family);
  *
  * @param cid The PDP context ID.
  *
- * @retval  0      If success.
+ * @retval 0 If the operation was successful.
+ *           Otherwise, a negative error code is returned.
  */
 int lwm2m_os_pdn_deactivate(uint8_t cid);
 
@@ -238,7 +246,7 @@ int lwm2m_os_pdn_deactivate(uint8_t cid);
  *
  * @param cid The context ID of the PDN connection.
  *
- * @retval  0      If success.
+ * @return A non-negative PDN ID on success, or a negative errno otherwise.
  */
 int lwm2m_os_pdn_id_get(uint8_t cid);
 
@@ -246,6 +254,9 @@ int lwm2m_os_pdn_id_get(uint8_t cid);
  * @brief Set a callback for events pertaining to the default PDP context (zero).
  *
  * @param cb The PDN event handler.
+ *
+ * @retval 0 If the operation was successful.
+ *           Otherwise, a negative error code is returned.
  */
 int lwm2m_os_pdn_default_callback_set(lwm2m_os_pdn_event_handler_t cb);
 
@@ -275,8 +286,8 @@ int lwm2m_os_sem_init(lwm2m_os_sem_t **sem, unsigned int initial_count, unsigned
  * @brief Take a semaphore.
  *
  * @param sem     Address of the semaphore.
- * @param timeout Timeout in ms, or -1 for forever, in which case the semaphore is taken for as long
- *                as necessary.
+ * @param timeout Timeout in milliseconds, or -1 for forever, in which case the semaphore is taken
+ *                for as long as necessary.
  *
  * @retval  0      Semaphore taken.
  * @retval -EBUSY  Returned without waiting.
@@ -300,43 +311,72 @@ void lwm2m_os_sem_reset(lwm2m_os_sem_t *sem);
 
 /**
  * @brief Get uptime, in milliseconds.
+ *
+ * @return Current uptime.
  */
 int64_t lwm2m_os_uptime_get(void);
 
 /**
  * @brief Get uptime delta, in milliseconds.
+ *
+ * @param[in] ref Pointer to a reference time, which is updated to the current
+ *                uptime upon return.
+ *
+ * @return Elapsed time.
  */
 int64_t lwm2m_os_uptime_delta(int64_t *ref);
 
 /**
- * @brief Put a thread to a sleep.
+ * @brief Put a thread to sleep.
  *
  * @param ms Desired duration of sleep in milliseconds.
+ *
+ * @return 0 if the requested duration has elapsed, or, if the thread was woken up before the
+ *         desired duration @c ms, the remaining duration left to sleep is returned.
  */
 int lwm2m_os_sleep(int ms);
 
 /**
- * @brief Reboot system.
+ * @brief Reboot the system.
  */
 void lwm2m_os_sys_reset(void);
 
 /**
  * @brief Get a random value.
+ *
+ * @return A random 32-bit value.
  */
 uint32_t lwm2m_os_rand_get(void);
 
 /**
  * @brief Delete a non-volatile storage entry.
+ *
+ * @param[in] id ID of the entry to be deleted.
+ *
+ * @retval 0 If the operation was successful.
+ *           Otherwise, a negative error code is returned.
  */
 int lwm2m_os_storage_delete(uint16_t id);
 
 /**
  * @brief Read an entry from non-volatile storage.
+ *
+ * @param[in]     id   ID of the entry to be read.
+ * @param[out]    data Pointer to data buffer.
+ * @param[in,out] len  Number of bytes to be read.
+ *
+ * @return Number of bytes read. On error, returns a negative value.
  */
 int lwm2m_os_storage_read(uint16_t id, void *data, size_t len);
 
 /**
  * @brief Write an entry to non-volatile storage.
+ *
+ * @param[in]     id   ID of the entry to be written.
+ * @param[in]     data Pointer to the data to be written.
+ * @param[in,out] len  Number of bytes to be written.
+ *
+ * @return Number of bytes written. On error, returns a negative value.
  */
 int lwm2m_os_storage_write(uint16_t id, const void *data, size_t len);
 
@@ -360,26 +400,17 @@ void lwm2m_os_timer_get(lwm2m_os_timer_handler_t handler, lwm2m_os_timer_t **tim
 
 /**
  * @brief Release a timer task.
+ *
+ * @param timer Timer task to be released.
  */
 void lwm2m_os_timer_release(lwm2m_os_timer_t *timer);
-
-/**
- * @brief Start a timer on system work queue.
- *
- * @param timer Timer task.
- * @param delay Delay before submitting the task in ms.
- *
- * @retval  0      Work placed on queue, already on queue or already running.
- * @retval -EINVAL Timer not found.
- */
-int lwm2m_os_timer_start(lwm2m_os_timer_t *timer, int64_t delay);
 
 /**
  * @brief Start a timer on a specific queue.
  *
  * @param work_q Workqueue.
  * @param timer  Timer task.
- * @param delay  Delay before submitting the task in ms.
+ * @param delay  Delay before submitting the task in milliseconds.
  *
  * @retval  0      Work placed on queue, already on queue or already running.
  * @retval -EINVAL Timer or work_q not found.
@@ -389,7 +420,7 @@ int lwm2m_os_timer_start_on_q(lwm2m_os_work_q_t *work_q, lwm2m_os_timer_t *timer
 /**
  * @brief Cancel a timer run.
  *
- * @param timer Timer task.
+ * @param timer Timer task to cancel.
  * @param sync  If true, wait for active tasks to finish before canceling.
  */
 void lwm2m_os_timer_cancel(lwm2m_os_timer_t *timer, bool sync);
@@ -399,7 +430,7 @@ void lwm2m_os_timer_cancel(lwm2m_os_timer_t *timer, bool sync);
  *
  * @param timer Timer task.
  *
- * @return Time remaining in ms.
+ * @return Time remaining in milliseconds.
  */
 int64_t lwm2m_os_timer_remaining(lwm2m_os_timer_t *timer);
 
@@ -408,23 +439,24 @@ int64_t lwm2m_os_timer_remaining(lwm2m_os_timer_t *timer);
  *
  * @param timer Timer task.
  *
- * @retval  true  If a timer task is pending.
+ * @retval true  If the timer task is pending.
+ * @retval false If the timer task is idle.
  */
 bool lwm2m_os_timer_is_pending(lwm2m_os_timer_t *timer);
 
 /**
  * @brief Initialize AT command driver.
  *
- * @retval  0      If success.
- * @retval -EIO    If AT command driver initialization failed.
+ * @retval  0   If success.
+ * @retval -EIO If AT command driver initialization failed.
  */
 int lwm2m_os_at_init(lwm2m_os_at_handler_callback_t callback);
 
 /**
  * @brief Register as an SMS client/listener.
  *
- * @retval  0      If success.
- * @retval -EIO    If unable to register as SMS listener.
+ * @retval  0   If success.
+ * @retval -EIO If unable to register as SMS listener.
  */
 int lwm2m_os_sms_client_register(lwm2m_os_sms_callback_t lib_callback, void *context);
 
@@ -436,32 +468,54 @@ void lwm2m_os_sms_client_deregister(int handle);
 /**
  * @brief Establish a connection with the server and download a file.
  *
- * @retval  0      If success.
+ *  @retval 0 If the operation was successful.
+ *            Otherwise, a negative error code is returned.
  */
-int lwm2m_os_download_get(const char *host, const struct lwm2m_os_download_cfg *cfg, size_t from);
+int lwm2m_os_download_get(const char *uri, const struct lwm2m_os_download_cfg *cfg, size_t from);
 
 /**
  * @brief Disconnect from the server.
  *
- * @retval  0      If success.
+ *  @retval 0 If the operation was successful.
+ *            Otherwise, a negative error code is returned.
  */
 int lwm2m_os_download_disconnect(void);
 
 /**
  * @brief Initialize the download client.
  *
- * @retval  0      If success.
+ *  @retval 0 If the operation was successful.
+ *            Otherwise, a negative error code is returned.
  */
 int lwm2m_os_download_init(lwm2m_os_download_callback_t lib_callback);
 
 /**
  * @brief Retrieve size of file being downloaded.
  *
- * @param size Size of the file being downloaded.
+ * @param[out] size Size of the file being downloaded.
  *
- * @retval  0      If success.
+ * @retval 0 If the operation was successful.
+ *           Otherwise, a negative error code is returned.
  */
 int lwm2m_os_download_file_size_get(size_t *size);
+
+/**
+ * @brief Check if UICC LwM2M bootstrap is enabled.
+ *
+ * @retval true  If enabled
+ * @retval false If disabled
+ */
+bool lwm2m_os_uicc_bootstrap_is_enabled(void);
+
+/**
+ * @brief Read UICC LwM2M bootstrap record.
+ *
+ * @param p_buffer    Buffer to store UICC LwM2M bootstrap record.
+ * @param buffer_size Size of the buffer in bytes.
+ *
+ * @retval Length of the record. On error, returns a negative value.
+ */
+int lwm2m_os_uicc_bootstrap_read(uint8_t *p_buffer, int buffer_size);
 
 /**
  * @brief get enabled system modes from modem.
@@ -470,7 +524,7 @@ int lwm2m_os_download_file_size_get(size_t *size);
  *                  LWM2M_OS_LTE_MODE_CAT_M1  Cat-M1 (LTE-FDD)
  *                  LWM2M_OS_LTE_MODE_CAT_NB1 Cat-NB1 (NB-IoT)
  *
- * @return Number of enabled modes:
+ * @return Number of enabled modes.
  */
 size_t lwm2m_os_lte_modes_get(int32_t *modes);
 
@@ -525,10 +579,10 @@ struct __attribute__((__packed__)) lwm2m_os_dfu_header {
 /**
  * @brief Find the image type for the buffer of bytes received.
  *
- * @param[in]  buf     A buffer of bytes which are the start of a binary firmware image.
- * @param[in]  len     The length of the provided buffer.
- * @param[out] header  DFU image header descriptor. Only applicable to MCUboot-style upgrades over
- *                     multiple files.
+ * @param[in]  buf    A buffer of bytes which are the start of a binary firmware image.
+ * @param[in]  len    The length of the provided buffer.
+ * @param[out] header DFU image header descriptor. Only applicable to MCUboot-style upgrades over
+ *                    multiple files.
  *
  * @return Identifier for a supported image type or LWM2M_OS_DFU_IMG_TYPE_NONE if
  *         image type is not recognized or not supported.
@@ -596,7 +650,10 @@ int lwm2m_os_dfu_pause(void);
 /**
  * @brief Schedule update for uploaded image.
  *
- * @retval  0  If success.
+ * @retval  0      If the update was scheduled successfully.
+ * @retval -EINVAL If the data needed to perform the update was incomplete.
+ * @retval -EACCES If the DFU process was not in progress.
+ * @retval -EIO    Internal error.
  */
 int lwm2m_os_dfu_schedule_update(void);
 
@@ -608,7 +665,8 @@ void lwm2m_os_dfu_reset(void);
 /**
  * @brief Validate the application image update.
  *
- * @retval  true  If the application image was updated successfully.
+ * @retval true  If the application image was updated successfully.
+ * @retval false If the application image was not updated successfully.
  */
 bool lwm2m_os_dfu_application_update_validate(void);
 

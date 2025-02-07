@@ -10,7 +10,7 @@
 #include <zephyr/kernel.h>
 #include <modem/nrf_modem_lib.h>
 #include <nrf_modem_at.h>
-#include "nrf_modem_dect_phy.h"
+#include <nrf_modem_dect_phy.h>
 
 #define DECT_MAX_TBS	  5600
 #define DECT_DATA_MAX_LEN (DECT_MAX_TBS / 8)
@@ -196,10 +196,6 @@ typedef struct {
 
 /************************************************************************************************/
 
-/* Not in dect specs. This sub GHz band only with custom modem */
-#define DECT_PHY_SUPPORTED_CHANNEL_BAND_868_FREE_ISM_MIN 479
-#define DECT_PHY_SUPPORTED_CHANNEL_BAND_868_FREE_ISM_MAX 485
-
 /* Supported DECT bands. See ETSI TS 103 636-2 v1.3.1 Table 5.4.2-1. (3rd column) */
 
 #define DECT_PHY_SUPPORTED_CHANNEL_BAND1_MIN 1657
@@ -208,7 +204,6 @@ typedef struct {
 #define DECT_PHY_SUPPORTED_CHANNEL_BAND2_MIN 1680
 #define DECT_PHY_SUPPORTED_CHANNEL_BAND2_MAX 1700
 
-/* This sub GHz band only with custom modem */
 #define DECT_PHY_SUPPORTED_CHANNEL_BAND4_MIN 524
 #define DECT_PHY_SUPPORTED_CHANNEL_BAND4_MAX 552
 
@@ -217,8 +212,6 @@ typedef struct {
 
 #define DECT_PHY_SUPPORTED_CHANNEL_BAND22_MIN 1691
 #define DECT_PHY_SUPPORTED_CHANNEL_BAND22_MAX 1711
-
-#define DECT_PHY_BAND_IS_CUSTOM_LOW(x) (x == 4 || x == 868)
 
 /************************************************************************************************/
 
@@ -233,6 +226,7 @@ typedef struct {
 
 #define DECT_RADIO_FRAME_SUBSLOT_COUNT_IN_SLOT (2)
 #define DECT_RADIO_FRAME_SLOT_COUNT	       (24)
+
 #define DECT_RADIO_FRAME_SUBSLOT_COUNT                                                             \
 	(DECT_RADIO_FRAME_SUBSLOT_COUNT_IN_SLOT * DECT_RADIO_FRAME_SLOT_COUNT)
 #define DECT_RADIO_FRAME_DURATION_US		(10000)
@@ -246,6 +240,12 @@ typedef struct {
 #define DECT_PHY_TX_RX_SCHEDULING_OFFSET_MDM_TICKS (2 * DECT_RADIO_SUBSLOT_DURATION_IN_MODEM_TICKS)
 
 #define MS_TO_SUBSLOTS(x) (((x) / 10) * 48)
+
+#define DECT_RADIO_FRAME_SYMBOL_COUNT \
+	((NRF_MODEM_DECT_MODEM_TIME_TICK_RATE_KHZ * 10) / NRF_MODEM_DECT_SYMBOL_DURATION)
+
+#define DECT_RADIO_SLOT_SYMBOL_COUNT (DECT_RADIO_FRAME_SYMBOL_COUNT / DECT_RADIO_FRAME_SLOT_COUNT)
+#define DECT_RADIO_SUBSLOT_SYMBOL_COUNT (DECT_RADIO_SLOT_SYMBOL_COUNT / 2)
 
 /******************************************************************************/
 #endif /* DECT_COMMON_H */

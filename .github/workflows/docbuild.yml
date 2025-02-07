@@ -27,7 +27,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     concurrency:
       group: ${{ github.workflow }}-${{ github.ref }}
       cancel-in-progress: true
@@ -54,8 +54,7 @@ jobs:
       - name: Install Python dependencies
         working-directory: ncs
         run: |
-          sudo pip3 install -U setuptools wheel pip
-          pip3 install -r nrf/doc/requirements.txt
+          pip install -r nrf/doc/requirements.txt
 
       - name: West zephyr-export
         working-directory: ncs
@@ -74,7 +73,7 @@ jobs:
 
       - name: Check version
         run: |
-          VERSION_REGEX="^v([0-9a-z\.\-]+)$"
+          VERSION_REGEX="^v([0-9a-zA-Z\.\-]+)$"
           if [[ ${GITHUB_REF#refs/tags/} =~ $VERSION_REGEX ]]; then
             VERSION=${BASH_REMATCH[1]}
           elif [[ ${GITHUB_REF#refs/heads/} == "main" ]]; then

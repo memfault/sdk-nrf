@@ -7,6 +7,8 @@ Zigbee quick start guide
    :local:
    :depth: 2
 
+.. include:: /includes/zigbee_deprecation.txt
+
 This guide demonstrates some of the basic concepts of the Zigbee network using the |NCS| and the |nRFVSC|.
 It guides you through the installation of the required tools and programming of the required samples.
 
@@ -101,7 +103,6 @@ For this quick start guide, we will install the following software:
 * Toolchain Manager - An application for installing the full |NCS| toolchain.
 * Microsoft's |VSC| - The recommended IDE for the |NCS|.
 * |nRFVSC| - An add-on for |VSC| that allows you to develop applications for the |NCS|.
-* nRF Command Line Tools - A set of mandatory tools for working with the |NCS|.
 * SEGGER J-Link - Tool for handling the serial connection.
 
 .. rst-class:: numbered-step

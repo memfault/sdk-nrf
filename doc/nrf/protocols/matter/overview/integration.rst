@@ -27,7 +27,7 @@ Matter stack in the |NCS|
 *************************
 
 Matter is located on the top application layer of the integration model, looking from the networking point of view.
-The |NCS| and Zephyr provide the Bluetooth® LE, Thread, and Wi-Fi stacks, which must be integrated with the Matter stack using a special intermediate layer.
+The |NCS| and Zephyr provide the Bluetooth® LE, Thread, and Wi-Fi® stacks, which must be integrated with the Matter stack using a special intermediate layer.
 In case of Matter over Thread, the |NCS|'s Multiprotocol Service Layer (MPSL) driver allows running Bluetooth LE and Thread concurrently on the same radio chip.
 
 .. figure:: images/matter_nrfconnect_overview_simplified_ncs.svg
@@ -56,7 +56,7 @@ This platform design is suitable for the following development kits:
 
 .. table-from-rows:: /includes/sample_board_rows.txt
    :header: heading
-   :rows: nrf52840dk_nrf52840, nrf5340dk_nrf5340_cpuapp_and_cpuapp_ns, nrf54l15dk_nrf54l15_cpuapp
+   :rows: nrf52840dk_nrf52840, nrf5340dk_nrf5340_cpuapp, nrf54l15dk_nrf54l15_cpuapp_and_cpuapp_ns
 
 The design differences between the supported SoCs are the following:
 

@@ -31,10 +31,16 @@ It provides an abstraction of the following modules:
   .. lwm2m_osal_mod_list_start
 
   * :ref:`at_monitor_readme`
-  * :ref:`lib_download_client`
+  * :ref:`lib_downloader`
   * :ref:`sms_readme`
   * :ref:`pdn_readme`
   * :ref:`lib_dfu_target`
+  * :ref:`lib_uicc_lwm2m`
+
+  The inclusion of the :ref:`lib_uicc_lwm2m` library is optional and is added using the :kconfig:option:`CONFIG_UICC_LWM2M` Kconfig option.
+  This module allows the LwM2M carrier library to use the bootstrap information stored on the SIM card.
+  If present, the configuration in the SIM will take precedence over any other configuration.
+  For example, if a bootstrap server URI is fetched from the SIM, the configuration set by the :kconfig:option:`CONFIG_LWM2M_CARRIER_CUSTOM_URI` Kconfig option is ignored.
 
   .. lwm2m_osal_mod_list_end
 
@@ -67,12 +73,6 @@ General options
 ===============
 
 Following are some of the general Kconfig options that you can configure:
-
-* :kconfig:option:`CONFIG_LWM2M_CARRIER_BOOTSTRAP_SMARTCARD`:
-
-  * This configuration allows the LwM2M carrier library to use the bootstrap information stored on the SIM card.
-    The configuration in the SIM will take precedence over any other configuration.
-    For example, if a bootstrap server URI is fetched from the SIM, the configuration set by the :kconfig:option:`CONFIG_LWM2M_CARRIER_CUSTOM_URI` Kconfig option is ignored.
 
 * :kconfig:option:`CONFIG_LWM2M_CARRIER_SESSION_IDLE_TIMEOUT`:
 
@@ -408,8 +408,13 @@ Currently, the following types of firmware upgrades are supported:
 
 * MCUboot-style upgrades (:c:macro:`LWM2M_OS_DFU_IMG_TYPE_APPLICATION`)
 * Modem delta upgrades (:c:macro:`LWM2M_OS_DFU_IMG_TYPE_MODEM_DELTA`)
+* Proprietary application upgrades over multiple files (:c:macro:`LWM2M_OS_DFU_IMG_TYPE_APPLICATION_FILE`)
 
 The type of upgrade is determined when the library calls the :c:func:`lwm2m_os_dfu_img_type` function in the abstraction layer upon receiving a new firmware image.
 
 If MCUboot-style upgrades are enabled, the LwM2M carrier library uses the function :c:func:`lwm2m_os_dfu_application_update_validate` to validate the application image update.
 A ``__weak`` implementation of the function is included, which checks if the currently running image is not yet confirmed as valid (which is the case after an upgrade) and marks it appropriately.
+
+The proprietary application upgrades over multiple files are currently only supported if the :kconfig:option:`CONFIG_LWM2M_CARRIER_SOFTBANK_DIVIDED_FOTA` Kconfig option is enabled.
+This allows the library to perform the non-standard divided FOTA procedure in the SoftBank network.
+The application update files required for this type of firmware upgrade can be generated during the building process by enabling the ``SB_CONFIG_LWM2M_CARRIER_DIVIDED_DFU`` sysbuild Kconfig option.

@@ -11,10 +11,10 @@ Board names
 The following tables list all boards and corresponding board targets for Nordic Semiconductor's hardware platforms.
 
 The board targets follow Zephyr's :ref:`zephyr:board_terminology` scheme and are used mostly when :ref:`building`.
-For example, the board target ``nrf54l15pdk@0.2.1/nrf54l15/cpuapp`` can be read as made of the following elements:
+For example, the board target ``nrf54l15dk/nrf54l15/cpuapp`` can be read as made of the following elements:
 
 +-------------+----------------+-------------------------+---------------------------------+--------------------------------------------------+
-| nrf54l15pdk |     @0.2.1     |        /nrf54l15        |             /cpuapp             |                                                  |
+| nrf54l15dk  |                |        /nrf54l15        |             /cpuapp             |                                                  |
 +=============+================+=========================+=================================+==================================================+
 | Board name  | Board revision | Board qualifier for SoC | Board qualifier for CPU cluster | Board qualifier for variant (empty in this case) |
 +-------------+----------------+-------------------------+---------------------------------+--------------------------------------------------+
@@ -87,13 +87,11 @@ Also see the :ref:`zephyr:boards` section in the Zephyr documentation.
 |                   |            |                                                                   |                                       |
 |                   |            |                                                                   | ``nrf54h20dk/nrf54h20/cpuppr``        |
 +-------------------+------------+-------------------------------------------------------------------+---------------------------------------+
-| nRF54L15 PDK      | PCA10156   | :ref:`nrf54l15pdk <zephyr:nrf54l15pdk_nrf54l15>`                  | ``nrf54l15pdk/nrf54l15/cpuapp``       |
-|                   |            |                                                                   |                                       |
-|                   |            |                                                                   | ``nrf54l15pdk@0.2.1/nrf54l15/cpuapp`` |
-+-------------------+------------+-------------------------------------------------------------------+---------------------------------------+
 | nRF54L15 DK       | PCA10156   | :ref:`nrf54l15dk <zephyr:nrf54l15dk_nrf54l15>`                    | ``nrf54l15dk/nrf54l15/cpuapp``        |
 |                   |            |                                                                   |                                       |
 |                   |            |                                                                   | ``nrf54l15dk/nrf54l15/cpuapp/ns``     |
+|                   |            |                                                                   |                                       |
+|                   |            |                                                                   | ``nrf54l15dk/nrf54l15/cpuflpr``       |
 +-------------------+------------+-------------------------------------------------------------------+---------------------------------------+
 | nRF5340 DK        | PCA10095   | :ref:`nrf5340dk <zephyr:nrf5340dk_nrf5340>`                       | ``nrf5340dk/nrf5340/cpunet``          |
 |                   |            |                                                                   |                                       |
@@ -126,6 +124,12 @@ Also see the :ref:`zephyr:boards` section in the Zephyr documentation.
 |                   |            | :ref:`nrf52dk <zephyr:nrf52dk_nrf52805>`                          | ``nrf52dk/nrf52805``                  |
 +-------------------+------------+-------------------------------------------------------------------+---------------------------------------+
 | nRF21540 DK       | PCA10112   | :ref:`nrf21540dk <zephyr:nrf21540dk_nrf52840>`                    | ``nrf21540dk/nrf52840``               |
++-------------------+------------+-------------------------------------------------------------------+---------------------------------------+
+| nRF7002 DK        | PCA10143   | :ref:`nrf7002dk <nrf7002dk_nrf5340>`                              | ``nrf7002dk/nrf5340/cpunet``          |
+|                   |            |                                                                   |                                       |
+|                   |            |                                                                   | ``nrf7002dk/nrf5340/cpuapp``          |
+|                   |            |                                                                   |                                       |
+|                   |            |                                                                   | ``nrf7002dk/nrf5340/cpuapp/ns``       |
 +-------------------+------------+-------------------------------------------------------------------+---------------------------------------+
 
 .. note::
@@ -168,17 +172,15 @@ The following boards are defined in the :file:`nrf/boards/nordic/` folder.
 |                   |            +----------------------------------------------------------+---------------------------------------+
 |                   |            | :ref:`thingy91 <ug_thingy91>`                            | ``thingy91/nrf52840``                 |
 +-------------------+------------+----------------------------------------------------------+---------------------------------------+
-| Thingy:91 X       | PCA20065   | :ref:`thingy91x <ug_nrf91>`                              | ``thingy91x/nrf9151``                 |
+| Thingy:91 X       | PCA20065   | :ref:`thingy91x <ug_thingy91x>`                          | ``thingy91x/nrf9151``                 |
 |                   |            |                                                          |                                       |
 |                   |            |                                                          | ``thingy91x/nrf9151/ns``              |
 |                   |            +----------------------------------------------------------+---------------------------------------+
-|                   |            | :ref:`thingy91x <ug_nrf91>`                              | ``thingy91x/nrf5340/cpuapp``          |
-+-------------------+------------+----------------------------------------------------------+---------------------------------------+
-| nRF7002 DK        | PCA10143   | :ref:`nrf7002dk <nrf7002dk_nrf5340>`                     | ``nrf7002dk/nrf5340/cpunet``          |
+|                   |            | :ref:`thingy91x <ug_thingy91x>`                          | ``thingy91x/nrf5340/cpuapp``          |
 |                   |            |                                                          |                                       |
-|                   |            |                                                          | ``nrf7002dk/nrf5340/cpuapp``          |
+|                   |            |                                                          | ``thingy91x/nrf5340/cpuapp/ns``       |
 |                   |            |                                                          |                                       |
-|                   |            |                                                          | ``nrf7002dk/nrf5340/cpuapp/ns``       |
+|                   |            |                                                          | ``thingy91x/nrf5340/cpunet``          |
 +-------------------+------------+----------------------------------------------------------+---------------------------------------+
 
 .. _shield_names_nrf:

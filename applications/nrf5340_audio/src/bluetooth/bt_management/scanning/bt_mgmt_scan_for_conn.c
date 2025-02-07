@@ -43,7 +43,7 @@ static void bond_connect(const struct bt_bond_info *bond_info, void *user_data)
 {
 	int ret;
 	const bt_addr_le_t *adv_addr = user_data;
-	struct bt_conn *conn;
+	struct bt_conn *conn = NULL;
 	char addr_string[BT_ADDR_LE_STR_LEN];
 
 	if (!bt_addr_le_cmp(&bond_info->addr, adv_addr)) {
@@ -137,14 +137,14 @@ static bool device_name_check(struct bt_data *data, void *user_data)
 {
 	int ret;
 	bt_addr_le_t *addr = user_data;
-	struct bt_conn *conn;
+	struct bt_conn *conn = NULL;
 	char addr_string[BT_ADDR_LE_STR_LEN];
 
 	/* We only care about LTVs with name */
 	if (data->type == BT_DATA_NAME_COMPLETE || data->type == BT_DATA_NAME_SHORTENED) {
 		size_t srch_name_size = strlen(srch_name);
 		if ((data->data_len == srch_name_size) &&
-		    (strncmp(srch_name, data->data, srch_name_size) == 0)) {
+		    (memcmp(srch_name, data->data, srch_name_size) == 0)) {
 			/* Check if the device is still connected due to waiting for ACL timeout */
 			if (conn_exist_check(addr)) {
 				/* Device is already connected, stop parsing the adv data */
@@ -197,7 +197,7 @@ static bool csip_found(struct bt_data *data, void *user_data)
 {
 	int ret;
 	bt_addr_le_t *addr = user_data;
-	struct bt_conn *conn;
+	struct bt_conn *conn = NULL;
 	char addr_string[BT_ADDR_LE_STR_LEN];
 
 	if (!bt_csip_set_coordinator_is_set_member(server_sirk, data)) {

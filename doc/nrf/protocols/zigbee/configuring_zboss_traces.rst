@@ -7,6 +7,8 @@ Configuring ZBOSS traces in |NCS|
    :local:
    :depth: 2
 
+.. include:: /includes/zigbee_deprecation.txt
+
 The :ref:`nrfxlib:zboss` (ZBOSS stack) comes included in the |NCS| in a set of precompiled libraries, which can complicate the debugging process.
 To help with that, the ZBOSS stack can be configured to print trace logs that allow you to trace the stack behavior.
 This page describes how to enable and configure ZBOSS trace logs.
@@ -213,7 +215,7 @@ See the :ref:`Zigbee NCP <zigbee_ncp_sample>` sample page for how to configure t
 
 .. note::
    Before proceeding with the following steps, first check if your Zigbee application already has USB enabled or is currently using a USB.
-   If your application is already using a virtual COM port via native USB, use a device name that is different than the default ``CDC_ACM_0`` to create new virtual COM port for printing trace logs.
+   If your application is already using a virtual COM port using native USB, use a device name that is different than the default ``CDC_ACM_0`` to create new virtual COM port for printing trace logs.
    For example, if ``CDC_ACM_0`` is already present, then create a virtual COM port named ``CDC_ACM_1``, and so on.
    Additionally, the Kconfig option :kconfig:option:`CONFIG_USB_COMPOSITE_DEVICE` must be set if there are multiple virtual COM ports configured.
 

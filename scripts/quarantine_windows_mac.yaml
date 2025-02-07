@@ -8,8 +8,7 @@
 #    - None
 
 - platforms:
-    - native_posix
-    - native_sim
+    - native_.*
     - qemu_cortex_m3
     - qemu_x86
   comment: "Cannot build samples for Native POSIX and QEMU on Windows OS"
@@ -31,3 +30,37 @@
   platforms:
     - nrf9160dk/nrf9160/ns
   comment: "https://nordicsemi.atlassian.net/browse/NCSDK-26461"
+
+- scenarios:
+    - sample.nrf7001_eks.ble-wifi-provision
+    - sample.nrf7002_eks.ble-wifi-provision
+    - sample.nrf7002.ble-wifi-provision
+    - sample.nrf7002_eb.thingy53.ble-wifi-provision
+    - sample.softap.wifi.provision
+  platforms:
+    - nrf5340dk/nrf5340/cpuapp
+    - nrf5340dk/nrf5340/cpuapp/ns
+    - nrf7002dk/nrf5340/cpuapp
+    - nrf7002dk/nrf5340/cpuapp/ns
+    - thingy53/nrf5340/cpuapp/ns
+    - thingy53/nrf5340/cpuapp
+  comment: "https://nordicsemi.atlassian.net/browse/SHEL-3161"
+
+- scenarios:
+    - sample.benchmark.coremark.heap_memory
+    - sample.benchmark.coremark.multiple_threads
+  platforms:
+    - nrf54h20dk/nrf54h20/cpuapp
+  comment: "https://nordicsemi.atlassian.net/browse/NCSDK-31409"
+
+- scenarios:
+    - applications.matter_bridge.lto
+    - applications.matter_bridge.lto.br_ble
+    - applications.matter_bridge.lto.br_ble.memory_profiling
+    - applications.matter_bridge.release
+    - applications.matter_bridge.release.br_ble
+    - sample.openthread.cli
+    - sample.openthread.cli.singleprotocol
+  platforms:
+    - nrf54h20dk/nrf54h20/cpuapp
+  comment: "https://nordicsemi.atlassian.net/browse/NCSDK-31493"

@@ -121,7 +121,7 @@ Overlay configurations files that enable specific features:
 * :file:`overlay-azure.conf` - Configuration file that enables communication with Azure IoT Hub.
 * :file:`overlay-lwm2m.conf` - Configuration file that enables communication with AVSystem's Coiote IoT Device Management.
 * :file:`overlay-pgps.conf` - Configuration file that enables P-GPS.
-* :file:`overlay-nrf7002ek-wifi-scan-only.conf` - Configuration file that enables Wi-Fi scanning with nRF7002 EK.
+* :file:`overlay-nrf7002ek-wifi-scan-only.conf` - Configuration file that enables Wi-Fi® scanning with nRF7002 EK.
 * :file:`overlay-low-power.conf` - Configuration file that achieves the lowest power consumption by disabling features that consume extra power, such as LED control and logging.
 * :file:`overlay-debug.conf` - Configuration file that adds additional verbose logging capabilities and enables the debug module.
 * :file:`overlay-memfault.conf` - Configuration file that enables `Memfault`_.
@@ -180,9 +180,9 @@ Testing
 After programming the application and all the prerequisites to your development kit, test the application by performing the following steps:
 
 1. |connect_kit|
-#. Connect to the kit with a terminal emulator (for example, `nRF Connect Serial Terminal`_).
-   You can also use the :guilabel:`Open Serial Terminal` option of the `Cellular Monitor`_ app to open the Serial Terminal.
-   Using the Cellular Monitor app in combination with the nRF Connect Serial Terminal shows how the modem responds to the different modem commands.
+#. Connect to the kit with a terminal emulator (for example, the `Serial Terminal app`_).
+   You can also use the :guilabel:`Open Serial Terminal` option of the `Cellular Monitor app`_ to open the Serial Terminal app.
+   Using the Cellular Monitor app in combination with the Serial Terminal app shows how the modem responds to the different modem commands.
 #. Reset the development kit.
 #. Observe in the terminal window that application boots as shown in the following output::
 
@@ -235,7 +235,7 @@ This application uses the following |NCS| libraries and drivers:
 * :ref:`lib_date_time`
 * :ref:`lte_lc_readme`
 * :ref:`modem_info_readme`
-* :ref:`lib_download_client`
+* :ref:`lib_downloader`
 * :ref:`lib_fota_download`
 * :ref:`caf_leds`
 

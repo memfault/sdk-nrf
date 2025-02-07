@@ -15,6 +15,8 @@
 
 #include <openthread/coap.h>
 
+#include "common_fakes.h"
+
 /* Message address used when testing serialization of a function that takes otMessage* */
 #define MSG_ADDR UINT32_MAX
 
@@ -28,12 +30,6 @@
 
 /* Fake functions */
 
-FAKE_VALUE_FUNC(otMessage *, otUdpNewMessage, otInstance *, const otMessageSettings *);
-FAKE_VALUE_FUNC(uint16_t, otMessageGetLength, const otMessage *);
-FAKE_VALUE_FUNC(uint16_t, otMessageGetOffset, const otMessage *);
-FAKE_VALUE_FUNC(uint16_t, otMessageRead, const otMessage *, uint16_t, void *, uint16_t);
-FAKE_VOID_FUNC(otMessageFree, otMessage *);
-FAKE_VALUE_FUNC(otError, otMessageAppend, otMessage *, const void *, uint16_t);
 FAKE_VALUE_FUNC(otMessage *, otCoapNewMessage, otInstance *, const otMessageSettings *);
 FAKE_VOID_FUNC(otCoapMessageInit, otMessage *, otCoapType, otCoapCode);
 FAKE_VALUE_FUNC(otError, otCoapMessageInitResponse, otMessage *, const otMessage *, otCoapType,
@@ -56,7 +52,6 @@ FAKE_VALUE_FUNC(otError, otCoapSendResponseWithParameters, otInstance *, otMessa
 		const otMessageInfo *, const otCoapTxParameters *);
 
 #define FOREACH_FAKE(f)                                                                            \
-	f(otUdpNewMessage);                                                                        \
 	f(otMessageGetLength);                                                                     \
 	f(otMessageGetOffset);                                                                     \
 	f(otMessageRead);                                                                          \
@@ -179,12 +174,21 @@ ZTEST(ot_rpc_coap, test_otCoapMessageInitResponse)
  * Test reception of otCoapMessageAppendUriPathOptions() command.
  * Test serialization of the result: OT_ERROR_INVALID_ARGS.
  */
+otError append_uri_path_options_fake(otMessage *message, const char *uri_path)
+{
+	char uri[] = {URI, '\0'};
+
+	zassert_equal(message, (otMessage *)MSG_ADDR);
+	zassert_str_equal(uri_path, uri);
+
+	return OT_ERROR_INVALID_ARGS;
+}
+
 ZTEST(ot_rpc_coap, test_otCoapMessageAppendUriPathOptions)
 {
 	ot_msg_key message_rep = ot_reg_msg_alloc((otMessage *)MSG_ADDR);
-	char uri[] = {URI, '\0'};
 
-	otCoapMessageAppendUriPathOptions_fake.return_val = OT_ERROR_INVALID_ARGS;
+	otCoapMessageAppendUriPathOptions_fake.custom_fake = append_uri_path_options_fake;
 
 	mock_nrf_rpc_tr_expect_add(RPC_RSP(OT_ERROR_INVALID_ARGS), NO_RSP);
 	mock_nrf_rpc_tr_receive(
@@ -192,8 +196,6 @@ ZTEST(ot_rpc_coap, test_otCoapMessageAppendUriPathOptions)
 	mock_nrf_rpc_tr_expect_done();
 
 	zassert_equal(otCoapMessageAppendUriPathOptions_fake.call_count, 1);
-	zassert_equal(otCoapMessageAppendUriPathOptions_fake.arg0_val, (otMessage *)MSG_ADDR);
-	zassert_str_equal(otCoapMessageAppendUriPathOptions_fake.arg1_val, uri);
 }
 
 /*

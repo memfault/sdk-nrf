@@ -41,7 +41,7 @@ The following table lists the available companion components:
      - :ref:`mcuboot:mcuboot_ncs`
    * - `Trusted Firmware-M (TF-M) <TF-M documentation_>`_
      - Platform security architecture reference implementation aligning with PSA Certified guidelines, enabling chips, Real Time Operating Systems and devices to become PSA Certified.
-     - :ref:`nRF91 Series devices <ug_nrf91>`, :ref:`nRF54L15 PDK <ug_nrf54l>`, :ref:`nRF54H20 DK <ug_nrf54h20_gs>`, :ref:`nRF5340 DK <ug_nrf5340>`, :ref:`Thingy:53 <ug_thingy53>`
+     - :ref:`nRF91 Series devices <ug_nrf91>`, :ref:`nRF54L15 DK <ug_nrf54l>`, :ref:`nRF54H20 DK <ug_nrf54h20_gs>`, :ref:`nRF5340 DK <ug_nrf5340>`, :ref:`Thingy:53 <ug_thingy53>`
      - :file:`ncs/modules/tee/tf-m` (external module), :file:`ncs/nrf/modules/trusted-firmware-m` (integration files)
      - :ref:`ug_tfm`
    * - :ref:`bootloader`
@@ -59,3 +59,13 @@ The following table lists the available companion components:
      - :ref:`Sample requirements <suit_recovery_reqs>`
      - :file:`samples/suit/recovery`
      - :ref:`Sample's building and running section <suit_recovery_build_run>`
+   * - :ref:`Secure Domain Firmware <ug_nrf54h20_secure_domain>`
+     - Secure Domain Firmware exposes security services to the other cores through an IPC interface and is part of Platform Root of Trust (PRoT).
+     - :ref:`nRF54H20 DK <ug_nrf54h20_gs>`
+     - :file:`nrf54h20_soc_binaries_v0.6.5.zip` (This component is not yet fully integrated in the |NCS| and is currently distributed as a bundle.)
+     - :ref:`ug_nrf54h20_SoC_binaries`
+   * - :ref:`System Controller Firmware <ug_nrf54h20_sys_ctrl>`
+     - System Controller Firmware performs system clock and power management operations delegated by Secure Domain and is part of Platform Root of Trust (PRoT).
+     - :ref:`nRF54H20 DK <ug_nrf54h20_gs>`
+     - :file:`nrf54h20_soc_binaries_v0.6.5.zip` (This component is not yet fully integrated in the |NCS| and is currently distributed as a bundle.)
+     - :ref:`ug_nrf54h20_SoC_binaries`

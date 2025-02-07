@@ -7,6 +7,9 @@ Bluetooth qualification
    :local:
    :depth: 2
 
+.. note::
+   This page has not been updated to reflect the new process defined in Qualification Program Reference Document (QPRD) v3.
+
 Every product using the *Bluetooth®* Low Energy technology must be certified (qualified) by Bluetooth Special Interest Group (SIG).
 Only when your product is qualified, you will be authorized to do the following:
 
@@ -134,4 +137,4 @@ Support
 
 For details about the qualification process, see the `Qualifications and listings`_ page or ask `Bluetooth Qualification Consultants`_ for advice.
 
-In case of any questions regarding Nordic Semicondutor's qualified designs and their use in your products, contact Nordic Semiconductor's technical support on `DevZone`_.
+In case of any questions regarding Nordic Semiconductor's qualified designs and their use in your products, contact Nordic Semiconductor's technical support on `DevZone`_.

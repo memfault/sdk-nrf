@@ -149,6 +149,7 @@ int suit_mci_invoke_order_get(const suit_manifest_class_id_t **class_id, size_t 
 		class_id[0] = &nordic_root_manifest_class_id;
 		*size = output_size;
 		break;
+	case EXECUTION_MODE_INVOKE_FOREGROUND_DFU:
 	case EXECUTION_MODE_INVOKE_RECOVERY:
 		class_id[0] = &nordic_recovery_manifest_class_id;
 		*size = output_size;
@@ -198,6 +199,9 @@ mci_err_t suit_mci_independent_update_policy_get(const suit_manifest_class_id_t 
 	 * update candidate before resetting the SoC.
 	 */
 	switch (suit_execution_mode_get()) {
+	case EXECUTION_MODE_INVOKE_FOREGROUND_DFU:
+	case EXECUTION_MODE_INSTALL_FOREGROUND_DFU:
+	case EXECUTION_MODE_POST_INVOKE_FOREGROUND_DFU:
 	case EXECUTION_MODE_INVOKE_RECOVERY:
 	case EXECUTION_MODE_INSTALL_RECOVERY:
 	case EXECUTION_MODE_POST_INVOKE_RECOVERY:
@@ -277,6 +281,16 @@ int suit_mci_signing_key_id_get(const suit_manifest_class_id_t *class_id, uint32
 	return SUIT_PLAT_SUCCESS;
 }
 #endif /* CONFIG_ZTEST */
+
+mci_err_t suit_mci_fw_encryption_key_id_validate(const suit_manifest_class_id_t *class_id,
+						 uint32_t key_id)
+{
+	if (NULL == class_id) {
+		return SUIT_PLAT_ERR_INVAL;
+	}
+
+	return SUIT_PLAT_SUCCESS;
+}
 
 int suit_mci_processor_start_rights_validate(const suit_manifest_class_id_t *class_id,
 					     int processor_id)

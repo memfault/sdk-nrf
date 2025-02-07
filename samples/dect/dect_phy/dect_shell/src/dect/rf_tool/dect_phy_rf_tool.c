@@ -13,10 +13,10 @@
 #include <zephyr/sys/byteorder.h>
 
 #include <dk_buttons_and_leds.h>
+#include <nrf_modem_dect_phy.h>
 
 #include "desh_defines.h"
 #include "desh_print.h"
-#include "nrf_modem_dect_phy.h"
 #include "dect_phy_common_rx.h"
 #include "dect_common_utils.h"
 #include "dect_phy_api_scheduler.h"
@@ -164,15 +164,10 @@ static void dect_phy_rf_tool_op_complete_cb(uint64_t const *time, int16_t temper
 		.status = status,
 		.time = *time,
 	};
-	struct dect_phy_api_scheduler_op_completed_params op_completed_params = {
-		.handle = handle,
-		.status = status,
-		.time = *time,
-	};
 
 	dect_app_modem_time_save(time);
 
-	dect_phy_api_scheduler_mdm_op_completed(&op_completed_params);
+	dect_phy_api_scheduler_mdm_op_completed(&rf_tool_op_completed_params);
 	dect_phy_rf_tool_msgq_data_op_add(DECT_PHY_RF_TOOL_EVT_MDM_OP_COMPLETED,
 					  (void *)&rf_tool_op_completed_params,
 					  sizeof(struct dect_phy_common_op_completed_params));
@@ -183,6 +178,7 @@ static void dect_phy_rf_tool_rx_pcc_cb(uint64_t const *time,
 				       union nrf_modem_dect_phy_hdr const *p_phy_header)
 {
 	struct dect_phy_common_op_pcc_rcv_params ctrl_pcc_op_params;
+	struct dect_phy_header_type2_format0_t *header = (void *)p_phy_header;
 
 	dect_app_modem_time_save(time);
 
@@ -190,6 +186,8 @@ static void dect_phy_rf_tool_rx_pcc_cb(uint64_t const *time,
 	ctrl_pcc_op_params.phy_header = *p_phy_header;
 	ctrl_pcc_op_params.time = *time;
 	ctrl_pcc_op_params.stf_start_time = p_rx_status->stf_start_time;
+	ctrl_pcc_op_params.phy_len = header->packet_length;
+	ctrl_pcc_op_params.phy_len_type = header->packet_length_type;
 
 	dect_phy_rf_tool_msgq_data_op_add(DECT_PHY_RF_TOOL_EVT_RX_PCC,
 					  (void *)&ctrl_pcc_op_params,
@@ -227,6 +225,7 @@ static void dect_phy_rf_tool_rx_pdc_cb(uint64_t const *time,
 
 	rf_tool_pdc_op_params.rx_pwr_dbm = 0;		      /* Taken from PCC */
 	rf_tool_pdc_op_params.rx_rssi_level_dbm = rssi_level; /* Used from PCC */
+	rf_tool_pdc_op_params.last_rx_op_channel = rf_tool_data.cmd_params.channel;
 
 	if (length <= sizeof(rf_tool_pdc_op_params.data)) {
 		memcpy(rf_tool_pdc_op_params.data, p_data, length);
@@ -284,8 +283,10 @@ static void dect_phy_rf_tool_stf_cover_seq_control_cb(
 	printk("WARN: Unexpectedly in %s\n", (__func__));
 }
 
+extern struct k_sem dect_phy_ctrl_mdm_api_deinit_sema;
 static void dect_phy_rf_tool_deinit_cb(const uint64_t *time, enum nrf_modem_dect_phy_err err)
 {
+	k_sem_give(&dect_phy_ctrl_mdm_api_deinit_sema);
 	dect_phy_rf_tool_msgq_non_data_op_add(DECT_PHY_RF_TOOL_EVT_MDM_DEINITIALIZED);
 }
 
@@ -479,15 +480,11 @@ void dect_phy_rf_tool_print_results(void)
 
 static void dect_phy_rf_tool_cmd_done(void)
 {
-	int ret = 0;
-
 	dect_phy_rf_tool_msgq_non_data_op_add(DECT_PHY_RF_TOOL_EVT_STATUS_REPORT);
-	ret = nrf_modem_dect_phy_deinit();
-	desh_print("RF tool command exiting: deiniting modem phy api");
-	if (ret) {
-		desh_error("nrf_modem_dect_phy_deinit failed, err=%d", ret);
-		dect_phy_ctrl_msgq_non_data_op_add(DECT_PHY_CTRL_OP_RF_TOOL_CMD_DONE);
-	}
+
+	/* Mdm phy api deinit is done by dect_phy_ctrl */
+	dect_phy_ctrl_msgq_non_data_op_add(DECT_PHY_CTRL_OP_RF_TOOL_CMD_DONE);
+
 	rf_tool_data.on_going = false;
 }
 
@@ -535,7 +532,6 @@ static void dect_phy_rf_tool_thread_fn(void)
 		case DECT_PHY_RF_TOOL_EVT_MDM_DEINITIALIZED: {
 			desh_print("dect phy api deinitialized for RF tool command.");
 			desh_print("rf_tool command done.");
-			dect_phy_ctrl_msgq_non_data_op_add(DECT_PHY_CTRL_OP_RF_TOOL_CMD_DONE);
 			break;
 		}
 		case DECT_PHY_RF_TOOL_EVT_MDM_OP_COMPLETED: {
@@ -885,6 +881,8 @@ static void dect_phy_rf_tool_phy_init(void)
 	struct nrf_modem_dect_phy_init_params rf_tool_phy_init_params = {
 		.harq_rx_expiry_time_us = current_settings->harq.mdm_init_harq_expiry_time_us,
 		.harq_rx_process_count = current_settings->harq.mdm_init_harq_process_count,
+		.reserved = 0,
+		.band4_support = ((current_settings->common.band_nbr == 4) ? 1 : 0),
 	};
 	int ret = nrf_modem_dect_phy_callback_set(&rf_tool_phy_api_config);
 
@@ -906,9 +904,10 @@ static void dect_phy_rf_tool_phy_init(void)
 
 /**************************************************************************************************/
 
-static void dect_phy_rf_tool_rx_to_mdm_cb(uint64_t start_time, uint64_t frame_time, int err)
+static void dect_phy_rf_tool_rx_to_mdm_cb(
+	struct dect_phy_common_op_completed_params *params, uint64_t frame_time)
 {
-	if (!err) {
+	if (params->status == NRF_MODEM_DECT_PHY_SUCCESS) {
 		if (rf_tool_data.rx_metrics.rx_op_to_mdm_ok_count == 0) {
 			rf_tool_data.rx_metrics.first_rx_mdm_op_frame_time = frame_time;
 		}
@@ -918,9 +917,10 @@ static void dect_phy_rf_tool_rx_to_mdm_cb(uint64_t start_time, uint64_t frame_ti
 	}
 }
 
-static void dect_phy_rf_tool_tx_to_mdm_cb(uint64_t start_time, uint64_t frame_time, int err)
+static void dect_phy_rf_tool_tx_to_mdm_cb(
+	struct dect_phy_common_op_completed_params *params, uint64_t frame_time)
 {
-	if (!err) {
+	if (params->status == NRF_MODEM_DECT_PHY_SUCCESS) {
 		rf_tool_data.tx_metrics.tx_last_tx_scheduled_frame_time_mdm_ticks = frame_time;
 		rf_tool_data.tx_metrics.tx_last_tx_scheduled_frame_time_mdm_ticks = frame_time;
 	} else {
@@ -1194,7 +1194,11 @@ static int dect_phy_rf_tool_start(struct dect_phy_rf_tool_params *params, bool r
 			dect_common_utils_subslots_in_bytes(len_subslots, params->tx_mcs);
 
 		if (len_bytes <= 0) {
-			desh_error("Unsupported slot/mcs combination");
+			desh_error("%s: Unsupported slot/mcs combination", __func__);
+			return -1;
+		}
+		if (len_bytes > DECT_DATA_MAX_LEN) {
+			desh_error("%s: Too long TX data: %d bytes", __func__, len_bytes);
 			return -1;
 		}
 

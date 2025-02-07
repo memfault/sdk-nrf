@@ -5,6 +5,9 @@
  */
 
 #include "common.h"
+#ifdef CONFIG_PSA_NEED_CRACEN_PLATFORM_KEYS
+#include "platform_keys/platform_keys.h"
+#endif
 
 #include <cracen/lib_kmu.h>
 #include <cracen/mem_helpers.h>
@@ -28,7 +31,7 @@
 #define NOT_ENABLED_CURVE    (0)
 #define NOT_ENABLED_HASH_ALG (0)
 
-#ifdef NRF54H_SERIES
+#ifdef CONFIG_PSA_NEED_CRACEN_PLATFORM_KEYS
 /* Address from the IPS. May come from the MDK in the future. */
 #define DEVICE_SECRET_LENGTH 4
 #define DEVICE_SECRET_ADDRESS ((uint32_t *)0x0E001620)
@@ -672,7 +675,7 @@ int cracen_prepare_ik_key(const uint8_t *user_data)
 
 	struct sx_pk_config_ik cfg = {};
 
-#ifdef NRF54H_SERIES
+#ifdef CONFIG_PSA_NEED_CRACEN_PLATFORM_KEYS
 	cfg.device_secret = DEVICE_SECRET_ADDRESS;
 	cfg.device_secret_sz = DEVICE_SECRET_LENGTH;
 
@@ -801,4 +804,52 @@ psa_status_t cracen_load_keyref(const psa_key_attributes_t *attributes, const ui
 	}
 
 	return PSA_SUCCESS;
+}
+
+psa_status_t cracen_get_opaque_size(const psa_key_attributes_t *attributes, size_t *key_size)
+{
+	if (PSA_KEY_LIFETIME_GET_LOCATION(psa_get_key_lifetime(attributes)) ==
+	    PSA_KEY_LOCATION_CRACEN) {
+		switch (MBEDTLS_SVC_KEY_ID_GET_KEY_ID(psa_get_key_id(attributes))) {
+		case CRACEN_BUILTIN_IDENTITY_KEY_ID:
+			if (psa_get_key_type(attributes) ==
+			    PSA_KEY_TYPE_ECC_KEY_PAIR(PSA_ECC_FAMILY_SECP_R1)) {
+				*key_size = sizeof(ikg_opaque_key);
+				return PSA_SUCCESS;
+			}
+			break;
+		case CRACEN_BUILTIN_MEXT_ID:
+		case CRACEN_BUILTIN_MKEK_ID:
+			if (psa_get_key_type(attributes) == PSA_KEY_TYPE_AES) {
+				*key_size = sizeof(ikg_opaque_key);
+				return PSA_SUCCESS;
+			}
+			break;
+#ifdef CONFIG_PSA_NEED_CRACEN_PLATFORM_KEYS
+		default:
+			return cracen_platform_keys_get_size(attributes, key_size);
+#endif
+		}
+	}
+
+	if (PSA_KEY_LIFETIME_GET_LOCATION(psa_get_key_lifetime(attributes)) ==
+	    PSA_KEY_LOCATION_CRACEN_KMU) {
+		if (PSA_KEY_TYPE_IS_ECC(psa_get_key_type(attributes))) {
+			if (psa_get_key_type(attributes) ==
+			    PSA_KEY_TYPE_ECC_PUBLIC_KEY(PSA_ECC_FAMILY_SECP_R1)) {
+				*key_size = PSA_EXPORT_PUBLIC_KEY_OUTPUT_SIZE(
+					psa_get_key_type(attributes), psa_get_key_bits(attributes));
+			} else {
+				*key_size = PSA_BITS_TO_BYTES(psa_get_key_bits(attributes));
+			}
+		} else if (psa_get_key_type(attributes) == PSA_KEY_TYPE_HMAC) {
+			*key_size = PSA_BITS_TO_BYTES(psa_get_key_bits(attributes));
+		} else {
+			*key_size = sizeof(kmu_opaque_key_buffer);
+		}
+
+		return PSA_SUCCESS;
+	}
+
+	return PSA_ERROR_INVALID_ARGUMENT;
 }

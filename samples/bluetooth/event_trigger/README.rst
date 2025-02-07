@@ -29,12 +29,15 @@ Building and running
 
 .. include:: /includes/build_and_run.txt
 
+.. note::
+   |54H_engb_2_8|
+
 Testing
 =======
 
 After programming the sample to both development kits, test it by performing the following steps:
 
-1. Connect to both kits with a terminal emulator (for example, `nRF Connect Serial Terminal`_).
+1. Connect to both kits with a terminal emulator (for example, the `Serial Terminal app`_).
    See :ref:`test_and_optimize` for the required settings and steps.
 #. Reset both kits.
 
@@ -68,7 +71,7 @@ Sample output
 The sample displays the data in the following format::
 
    *** Booting nRF Connect SDK v3.4.99-ncs1-4802-g41e34920abf4 ***
-   Starting Event Trigger Example.
+   Starting Event Trigger Sample.
    I: SoftDevice Controller build revision:
    I: ba cb 53 9c e2 c9 de b6 |..S.....
    I: 82 1d 9c b3 eb de c5 1f |........

@@ -83,8 +83,11 @@ Before using the trusted storage library with its default settings and options, 
 * The hardware unique key (HUK) :ref:`library <lib_hw_unique_key>` and :ref:`sample <hw_unique_key_usage>` are enabled and ready for use to derive an AEAD key.
 * Zephyr's settings subsystem has to be enabled for use by setting the Kconfig option :kconfig:option:`CONFIG_SETTINGS`.
 
-  * The settings subsystem uses the :ref:`zephyr:nvs_api` file system by default.
-    This file system has to be mounted to a mount point at application startup. For more information about this, see :ref:`zephyr:file_system_api`.
+  * The library supports two storage options for the settings subsystem, :ref:`zephyr:zms_api` and :ref:`zephyr:nvs_api`.
+    ZMS is the only allowed storage option for nRF54L Series devices, while other devices using the trusted storage library can choose between the two options.
+  * You have to mount the file system to a mount point at application startup.
+    For more information about how to do this, see :ref:`zephyr:file_system_api`.
+    Also, see the Mounting the Storage system section of the :ref:`ZMS documentation <zephyr:zms_api>`.
 
 .. _trusted_storage_configuration:
 
@@ -107,7 +110,7 @@ The following options are used to configure the AEAD backend and its behavior:
 
 :kconfig:option:`CONFIG_TRUSTED_STORAGE_BACKEND_AEAD_CRYPTO`
    Selects what implementation is used to perform the AEAD cryptographic operations.
-   This option defaults to :kconfig:option:`CONFIG_TRUSTED_STORAGE_BACKEND_AEAD_CRYPTO_PSA_CHACHAPOLY` using the ChaCha20Poly1305 AEAD scheme via PSA APIs.
+   This option defaults to :kconfig:option:`CONFIG_TRUSTED_STORAGE_BACKEND_AEAD_CRYPTO_PSA_CHACHAPOLY` using the ChaCha20Poly1305 AEAD scheme using PSA APIs.
 
 :kconfig:option:`CONFIG_TRUSTED_STORAGE_BACKEND_AEAD_NONCE`
    Selects what implementation provides AEAD nonce.

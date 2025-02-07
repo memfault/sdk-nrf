@@ -35,28 +35,28 @@ Zephyr and the |NCS| provide support for developing networking applications with
      - PCA10095
      - ``nrf5340dk/nrf5340/cpuapp``
      - | `Product Specification <nRF5340 Product Specification_>`_
-       | `Quick Start`_
+       | `Quick Start app`_
        | `User Guide <nRF5340 DK User Guide_>`_
    * - :ref:`zephyr:nrf52840dk_nrf52840`
      - nRF7002 EK
      - PCA10056
      - ``nrf52840dk/nrf52840``
      - | `Product Specification <nRF52840 Product Specification_>`_
-       | `Quick Start`_
+       | `Quick Start app`_
        | `User Guide <nRF52840 DK User Guide_>`_
    * - :ref:`zephyr:nrf9151dk_nrf9151`
      - nRF7002 EK
      - PCA10171
      - ``nrf9151dk/nrf9151/ns``
      - | `Product Specification <nRF9151 Product Specification_>`_
-       | `Quick Start`_
+       | `Quick Start app`_
        | `User Guide <nRF9151 DK Hardware_>`_
    * - :ref:`zephyr:nrf9161dk_nrf9161`
      - nRF7002 EK
      - PCA10153
      - ``nrf9161dk/nrf9161/ns``
      - | `Product Specification <nRF9161 Product Specification_>`_
-       | `Quick Start`_
+       | `Quick Start app`_
        | `User Guide <nRF9161 DK Hardware_>`_
    * - :ref:`zephyr:nrf9160dk_nrf9160`
      - nRF7002 EK
@@ -77,11 +77,13 @@ Zephyr and the |NCS| provide support for developing networking applications with
      - ``nrf54h20dk/nrf54h20/cpuapp``
      - | `nRF54H20 Objective Product Specification 0.3.1`_
        | :ref:`Getting started <ug_nrf54h20_gs>`
-   * - :ref:`zephyr:nrf54l15pdk_nrf54l15`
+   * - :ref:`zephyr:nrf54l15dk_nrf54l15`
      - nRF7002 EB
      - PCA20053
-     - ``nrf54l15pdk/nrf54l15/cpuapp``
-     - :ref:`Getting started <ug_nrf54l15_gs>`
+     - ``nrf54l15dk/nrf54l15/cpuapp``
+     - | `Quick Start app`_
+       | :ref:`Developing with nRF54L Series <ug_nrf54l15_gs>`
+
 
 
 The following nRF70 Series shields are available and defined in the :file:`nrf/boards/shields` folder:
@@ -110,7 +112,7 @@ The following nRF70 Series shields are available and defined in the :file:`nrf/b
        | `User Guide <nRF7002 EK User Guide_>`_
    * - nRF7002 :term:`Expansion Board (EB)`
      - PCA63561
-     - ``nrf7002eb``, ``nrf700x_nrf54h20dk``, ``nrf700x_nrf54l15pdk``
+     - ``nrf7002eb``, ``nrf7002eb_interposer_p1`` (nRF54 Series)
      - | :ref:`Development guide <ug_nrf7002eb_gs>`
        | `User Guide <nRF7002 EB User Guide_>`_
 
@@ -130,3 +132,4 @@ The following subpages cover topics related to developing applications with the 
    power_profiling
    nrf7002ek_dev_guide
    nrf7002eb_dev_guide
+   wifi_advanced_security_modes
