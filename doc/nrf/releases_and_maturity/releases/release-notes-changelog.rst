@@ -23,7 +23,7 @@ Known issues
 ************
 
 Known issues are only tracked for the latest official release.
-See `known issues for nRF Connect SDK v2.9.0-nRF54H20-rc1`_ for the list of issues valid for the latest release.
+See `known issues for nRF Connect SDK v2.9.0-nRF54H20-1`_ for the list of issues valid for the latest release.
 
 Changelog
 *********
@@ -33,10 +33,7 @@ The following sections provide detailed lists of changes by component.
 IDE, OS, and tool support
 =========================
 
-* Updated:
-
-  * The required `SEGGER J-Link`_ version to v8.10f.
-  * The :ref:`installing_vsc` section on the :ref:`installation` page with the Windows-only requirement to install SEGGER USB Driver for J-Link.
+|no_changes_yet_note|
 
 Board support
 =============
@@ -63,16 +60,15 @@ Developing with nRF70 Series
 
 |no_changes_yet_note|
 
-Working with nRF54H Series
-==========================
-
-* Removed the note on installing SEGGER USB Driver for J-Link on Windows from the :ref:`ug_nrf54h20_gs` page and moved its contents to the `nRF Util prerequisites`_ documentation.
-  The Windows-only requirement to install the SEGGER USB Driver for J-Link is now mentioned in the :ref:`installing_vsc` section on the :ref:`installation` page.
-
 Developing with nRF54L Series
 =============================
 
-* Added HMAC SHA-256 with a 128-bit key type to KMU, as detailed in the :ref:`ug_nrf54l_crypto_kmu_supported_key_types` documentation section.
+|no_changes_yet_note|
+
+Developing with nRF54H Series
+=============================
+
+|no_changes_yet_note|
 
 Developing with nRF53 Series
 ============================
@@ -84,8 +80,18 @@ Developing with nRF52 Series
 
 |no_changes_yet_note|
 
-Developing with Front-End Modules
-=================================
+Developing with Thingy:91 X
+===========================
+
+|no_changes_yet_note|
+
+Developing with Thingy:91
+=========================
+
+|no_changes_yet_note|
+
+Developing with Thingy:53
+=========================
 
 |no_changes_yet_note|
 
@@ -94,11 +100,20 @@ Developing with PMICs
 
 |no_changes_yet_note|
 
+Developing with Front-End Modules
+=================================
+
+|no_changes_yet_note|
+
+Developing with custom boards
+=============================
+
+|no_changes_yet_note|
+
 Security
 ========
 
-  * Added support for HKDF-Expand and HKDF-Extract in CRACEN.
-  * Added support for Ed25519ph(HashEdDSA) to CRACEN
+|no_changes_yet_note|
 
 Protocols
 =========
@@ -113,8 +128,7 @@ Amazon Sidewalk
 Bluetooth® LE
 -------------
 
-* Fixed an issue where a flash operation executed on the system workqueue might result in ``-ETIMEDOUT``, if there is an active Bluetooth LE connection.
-* Fixed an issue where Bluetooth applications built with the ``nordic-bt-rpc`` snippet (in the :ref:`ble_rpc` configuration) did not work on the nRF54H20 devices due to incorrect memory mapping.
+|no_changes_yet_note|
 
 Bluetooth Mesh
 --------------
@@ -129,7 +143,7 @@ DECT NR+
 Enhanced ShockBurst (ESB)
 -------------------------
 
-* Added loading of radio trims and a fix of a hardware errata for the nRF54H20 SoC to improve the RF performance.
+|no_changes_yet_note|
 
 Gazell
 ------
@@ -139,10 +153,7 @@ Gazell
 Matter
 ------
 
-* Added a new documentation page :ref:`ug_matter_group_communication` in the :ref:`ug_matter_intro_overview`.
-
-* Disabled the :ref:`mpsl` before performing factory reset to speed up the process.
-* Added :ref:`ug_matter_debug_snippet`.
+|no_changes_yet_note|
 
 Matter fork
 +++++++++++
@@ -159,32 +170,18 @@ Thread
 
 |no_changes_yet_note|
 
-Zigbee
+
+Wi-Fi®
 ------
-
-* Fixed the :file:`zb_add_ota_header.py` script to allow a patch version higher than 9 in an ``APPLICATION_VERSION_STRING``.
-
-Wi-Fi
------
 
 |no_changes_yet_note|
 
 Applications
 ============
 
-This section provides detailed lists of changes by :ref:`application <applications>`.
-
-Machine learning
-----------------
-
 |no_changes_yet_note|
 
-Asset Tracker v2
-----------------
-
-* Updated the application to use the :ref:`lib_downloader` library instead of the deprecated :ref:`lib_download_client` library.
-
-Connectivity Bridge
+Connectivity bridge
 -------------------
 
 |no_changes_yet_note|
@@ -194,11 +191,10 @@ IPC radio firmware
 
 |no_changes_yet_note|
 
-Matter Bridge
+Matter bridge
 -------------
 
-* Enabled SUIT DFU support for the :ref:`matter_bridge_app` application.
-  Currently, only the Matter OTA protocol is fully supported for SUIT DFU purposes.
+|no_changes_yet_note|
 
 nRF5340 Audio
 -------------
@@ -208,20 +204,7 @@ nRF5340 Audio
 nRF Desktop
 -----------
 
-* Updated:
-
-  * The :ref:`nrf_desktop_failsafe` to use the Zephyr :ref:`zephyr:hwinfo_api` driver for getting and clearing the reset reason information (see the :c:func:`hwinfo_get_reset_cause` and :c:func:`hwinfo_clear_reset_cause` functions).
-    The Zephyr :ref:`zephyr:hwinfo_api` driver replaces the dependency on the nrfx reset reason helper (see the :c:func:`nrfx_reset_reason_get` and :c:func:`nrfx_reset_reason_clear` functions).
-  * The release configuration for the :ref:`zephyr:nrf54h20dk_nrf54h20` board target to enable the :ref:`nrf_desktop_failsafe` (see the :ref:`CONFIG_DESKTOP_FAILSAFE_ENABLE <config_desktop_app_options>` Kconfig option).
-
-* Added:
-
-  * System Power Management for the :ref:`zephyr:nrf54h20dk_nrf54h20` board target on the application and radio cores.
-    The application still has high power consumption as the Bluetooth LE controller running on the radio core requires disabling MRAM latency (:kconfig:option:`CONFIG_MRAM_LATENCY_AUTO_REQ`).
-    Enabling MRAM latency makes the Bluetooth LE controller unstable.
-  * Application configurations for the nRF54L05 and nRF54L10 SoCs (emulated on the nRF54L15 DK).
-    The configurations are supported through ``nrf54l15dk/nrf54l10/cpuapp`` and ``nrf54l15dk/nrf54l05/cpuapp`` board targets.
-    For details, see the :ref:`nrf_desktop_board_configuration`.
+|no_changes_yet_note|
 
 nRF Machine Learning (Edge Impulse)
 -----------------------------------
@@ -231,7 +214,7 @@ nRF Machine Learning (Edge Impulse)
 Serial LTE modem
 ----------------
 
-* Updated the application to use the :ref:`lib_downloader` library instead of the deprecated :ref:`lib_download_client` library.
+|no_changes_yet_note|
 
 Thingy:53: Matter weather station
 ---------------------------------
@@ -251,79 +234,22 @@ Amazon Sidewalk samples
 Bluetooth samples
 -----------------
 
-* :ref:`direct_test_mode` sample:
-
-  * Added loading of radio trims and a fix of a hardware errata for the nRF54H20 SoC to improve the RF performance.
-
-Bluetooth Fast Pair samples
----------------------------
-
-* :ref:`fast_pair_locator_tag` sample:
-
-  * Added support for the :ref:`zephyr:nrf54h20dk_nrf54h20` board target.
+|no_changes_yet_note|
 
 Bluetooth Mesh samples
 ----------------------
 
-* Added:
+|no_changes_yet_note|
 
-  * Support for nRF54L10 in the following samples:
+Bluetooth Fast Pair samples
+---------------------------
 
-    * :ref:`bluetooth_mesh_sensor_client`
-    * :ref:`bluetooth_mesh_sensor_server`
-    * :ref:`bluetooth_ble_peripheral_lbs_coex`
-    * :ref:`bt_mesh_chat`
-    * :ref:`bluetooth_mesh_light_switch`
-    * :ref:`bluetooth_mesh_silvair_enocean`
-    * :ref:`bluetooth_mesh_light_dim`
-    * :ref:`bluetooth_mesh_light`
-    * :ref:`ble_mesh_dfu_target`
-    * :ref:`bluetooth_mesh_light_lc`
-    * :ref:`ble_mesh_dfu_distributor`
-
-  * Support for nRF54L05 in the following samples:
-
-    * :ref:`bluetooth_mesh_sensor_client`
-    * :ref:`bluetooth_mesh_sensor_server`
-    * :ref:`bluetooth_ble_peripheral_lbs_coex`
-    * :ref:`bt_mesh_chat`
-    * :ref:`bluetooth_mesh_light_switch`
-    * :ref:`bluetooth_mesh_silvair_enocean`
-    * :ref:`bluetooth_mesh_light_dim`
-    * :ref:`bluetooth_mesh_light`
-    * :ref:`bluetooth_mesh_light_lc`
+|no_changes_yet_note|
 
 Cellular samples
 ----------------
 
-* Updated the following samples to use the :ref:`lib_downloader` library instead of the :ref:`lib_download_client` library:
-
-  * :ref:`http_application_update_sample`
-  * :ref:`http_modem_delta_update_sample`
-  * :ref:`http_modem_full_update_sample`
-  * :ref:`location_sample`
-  * :ref:`lwm2m_carrier`
-  * :ref:`lwm2m_client`
-  * :ref:`modem_shell_application`
-  * :ref:`nrf_cloud_multi_service`
-  * :ref:`nrf_cloud_rest_fota`
-
-* :ref:`modem_shell_application` sample:
-
-  * Removed the ``CONFIG_MOSH_LINK`` Kconfig option.
-    The link control functionality is now always enabled and cannot be disabled.
-
-* :ref:`nrf_cloud_multi_service` sample:
-
-  * Fixed:
-
-    * An issue with an uninitialized variable in the :c:func:`handle_at_cmd_requests` function.
-    * An issue with the too small :kconfig:option:`CONFIG_COAP_EXTENDED_OPTIONS_LEN_VALUE` Kconfig value
-      in the :file:`overlay-coap_nrf_provisioning.conf` file.
-
-* :ref:`lte_sensor_gateway` sample:
-
-   * Fixed an issue with devicetree configuration after HCI updates in `sdk-zephyr`_.
+|no_changes_yet_note|
 
 Cryptography samples
 --------------------
@@ -363,18 +289,12 @@ Keys samples
 Matter samples
 --------------
 
-* Updated the :ref:`matter_template_sample` sample document with the instructions on how to build the sample on the nRF54L15 DK with support for Matter OTA DFU and DFU over Bluetooth SMP, and using internal MRAM only.
-* Enabled SUIT DFU support for the :ref:`matter_lock_sample`, and :ref:`matter_template_sample` samples.
-  Currently, only the Matter OTA protocol is fully supported for SUIT DFU purposes.
+|no_changes_yet_note|
 
 Networking samples
 ------------------
 
-* Updated the following samples to use the :ref:`lib_downloader` library instead of the :ref:`lib_download_client` library:
-
-  * :ref:`aws_iot`
-  * :ref:`azure_iot_hub`
-  * :ref:`download_sample`
+|no_changes_yet_note|
 
 NFC samples
 -----------
@@ -384,15 +304,12 @@ NFC samples
 nRF5340 samples
 ---------------
 
-* Removed the ``nRF5340: Multiprotocol RPMsg`` sample.
-  Use the :ref:`ipc_radio` application instead.
+|no_changes_yet_note|
 
 Peripheral samples
 ------------------
 
-* :ref:`radio_test` sample:
-
-  * Added loading of radio trims and a fix of a hardware errata for the nRF54H20 SoC to improve the RF performance.
+|no_changes_yet_note|
 
 PMIC samples
 ------------
@@ -407,7 +324,7 @@ Protocol serialization samples
 SDFW samples
 ------------
 
-* Removed the SDFW: Service Framework Client sample as all services demonstrated by the sample have been removed.
+|no_changes_yet_note|
 
 Sensor samples
 --------------
@@ -424,13 +341,7 @@ Trusted Firmware-M (TF-M) samples
 
 |no_changes_yet_note|
 
-
 Thread samples
---------------
-
-|no_changes_yet_note|
-
-Zigbee samples
 --------------
 
 |no_changes_yet_note|
@@ -438,16 +349,12 @@ Zigbee samples
 Wi-Fi samples
 -------------
 
-* :ref:`wifi_station_sample` sample:
-
-  * Added an ``overlay-zperf.conf`` overlay for :ref:`performance benchmarking and memory footprint analysis <wifi_sta_performance_testing_memory_footprint>`.
+|no_changes_yet_note|
 
 Other samples
 -------------
 
-* :ref:`coremark_sample` sample:
-
-  * Added support for the nRF54L05 and nRF54L10 SoCs (emulated on nRF54L15 DK).
+|no_changes_yet_note|
 
 Drivers
 =======
@@ -461,6 +368,11 @@ Wi-Fi drivers
 
 |no_changes_yet_note|
 
+Flash drivers
+-------------
+
+|no_changes_yet_note|
+
 Libraries
 =========
 
@@ -469,16 +381,12 @@ This section provides detailed lists of changes by :ref:`library <libraries>`.
 Binary libraries
 ----------------
 
-* :ref:`liblwm2m_carrier_readme` library:
-
-  * Updated the glue to use the :ref:`lib_downloader` library instead of the deprecated :ref:`lib_download_client` library.
+|no_changes_yet_note|
 
 Bluetooth libraries and services
 --------------------------------
 
-* :ref:`bt_mesh` library:
-
-  * Fixed an issue in the :ref:`bt_mesh_light_ctrl_srv_readme` model to automatically resume the Lightness Controller after recalling a scene (``NCSDK-30033`` known issue).
+|no_changes_yet_note|
 
 Common Application Framework
 ----------------------------
@@ -495,10 +403,6 @@ DFU libraries
 
 |no_changes_yet_note|
 
-* :ref:`lib_fmfu_fdev`:
-
-  * Regenerated the zcbor-generated code files using v0.9.0.
-
 Gazell libraries
 ----------------
 
@@ -512,21 +416,15 @@ Security libraries
 Modem libraries
 ---------------
 
-* :ref:`pdn_readme` library:
-
-  * Deprecated the :c:func:`pdn_dynamic_params_get` function.
-    Use the new function :c:func:`pdn_dynamic_info_get` instead.
-
 * :ref:`lte_lc_readme` library:
 
-  * Fixed handling of ``%NCELLMEAS`` notification with status 2 (measurement interrupted) and no cells.
-  * Added sending of ``LTE_LC_EVT_NEIGHBOR_CELL_MEAS`` event with ``current_cell`` set to ``LTE_LC_CELL_EUTRAN_ID_INVALID`` in case an error occurs while parsing the ``%NCELLMEAS`` notification.
-
-* :ref:`modem_key_mgmt` library:
-
-  * Fixed an issue with the :c:func:`modem_key_mgmt_clear` function where it returned ``-ENOENT`` when the credential was cleared.
-
-* Updated the :ref:`nrf_modem_lib_lte_net_if` to automatically set the actual link :term:`Maximum Transmission Unit (MTU)` on the network interface when PDN connectivity is gained.
+  * Added the :kconfig:option:`CONFIG_LTE_LC_DNS_FALLBACK_MODULE` and :kconfig:option:`CONFIG_LTE_LC_DNS_FALLBACK_ADDRESS` Kconfig options to enable setting a fallback DNS address.
+    The :kconfig:option:`CONFIG_LTE_LC_DNS_FALLBACK_MODULE` Kconfig option is enabled by default.
+    If the application has configured a DNS server address in Zephyr's native networking stack, using the :kconfig:option:`CONFIG_DNS_SERVER1` Kconfig option, the same server is set as the fallback address for DNS queries offloaded to the nRF91 Series modem.
+    Otherwise, the :kconfig:option:`CONFIG_LTE_LC_DNS_FALLBACK_ADDRESS` Kconfig option controls the fallback DNS server address that is set to Cloudflare's DNS server: 1.1.1.1 by default.
+    The device might or might not receive a DNS address by the network during PDN connection.
+    Even within the same network, the PDN connection establishment method (PCO vs ePCO) might change when the device operates in NB-IoT or LTE Cat-M1, resulting in missing DNS addresses when one method is used, but not the other.
+    Having a fallback DNS address ensures that the device always has a DNS to fallback to.
 
 Multiprotocol Service Layer libraries
 -------------------------------------
@@ -536,32 +434,7 @@ Multiprotocol Service Layer libraries
 Libraries for networking
 ------------------------
 
-* Added the :ref:`lib_downloader` library.
-* Deprecated the :ref:`lib_download_client` library.
-  See the :ref:`migration guide <migration_3.0_recommended>` for recommended changes.
-
-* Updated the following libraries to use the :ref:`lib_downloader` library instead of the :ref:`lib_download_client` library:
-
-  * :ref:`lib_nrf_cloud`
-  * :ref:`lib_aws_fota`
-  * :ref:`lib_azure_fota`
-  * :ref:`lib_fota_download`
-
-* :ref:`lib_nrf_cloud_pgps` library:
-
-  * Fixed the warning due to missing ``https`` download protocol.
-
-* :ref:`lib_downloader` library:
-
-  * Updated to support Proxy-URI option and an authentication callback after connecting.
-
-* :ref:`lib_fota_download` library:
-
-  * Updated to use the :ref:`lib_downloader` library for CoAP downloads.
-
-* :ref:`lib_nrf_cloud` library:
-
-  * Updated to use the :ref:`lib_downloader` library for CoAP downloads.
+|no_changes_yet_note|
 
 Libraries for NFC
 -----------------
@@ -576,20 +449,10 @@ nRF RPC libraries
 Other libraries
 ---------------
 
-* Removed the following unused SDFW services: ``echo_service``, ``reset_evt_service``, and ``sdfw_update_service``.
-
-Security libraries
-------------------
-
 |no_changes_yet_note|
 
 Shell libraries
 ---------------
-
-|no_changes_yet_note|
-
-Libraries for Zigbee
---------------------
 
 |no_changes_yet_note|
 
@@ -600,8 +463,6 @@ See the changelog for each library in the :doc:`nrfxlib documentation <nrfxlib:R
 
 Scripts
 =======
-
-This section provides detailed lists of changes by :ref:`script <scripts>`.
 
 |no_changes_yet_note|
 
@@ -648,7 +509,7 @@ DULT integration
 MCUboot
 =======
 
-The MCUboot fork in |NCS| (``sdk-mcuboot``) contains all commits from the upstream MCUboot repository up to and including ``a4eda30f5b0cfd0cf15512be9dcd559239dbfc91``, with some |NCS| specific additions.
+The MCUboot fork in |NCS| (``sdk-mcuboot``) contains all commits from the upstream MCUboot repository up to and including ``a2bc982b3379d51fefda3e17a6a067342dce1a8b``, with some |NCS| specific additions.
 
 The code for integrating MCUboot into |NCS| is located in the :file:`ncs/nrf/modules/mcuboot` folder.
 
@@ -661,21 +522,21 @@ Zephyr
 
 .. NOTE TO MAINTAINERS: All the Zephyr commits in the below git commands must be handled specially after each upmerge and each nRF Connect SDK release.
 
-The Zephyr fork in |NCS| (``sdk-zephyr``) contains all commits from the upstream Zephyr repository up to and including ``beb733919d8d64a778a11bd5e7d5cbe5ae27b8ee``, with some |NCS| specific additions.
+The Zephyr fork in |NCS| (``sdk-zephyr``) contains all commits from the upstream Zephyr repository up to and including ``fdeb7350171279d4637c536fcceaad3fbb775392``, with some |NCS| specific additions.
 
 For the list of upstream Zephyr commits (not including cherry-picked commits) incorporated into nRF Connect SDK since the most recent release, run the following command from the :file:`ncs/zephyr` repository (after running ``west update``):
 
 .. code-block:: none
 
-   git log --oneline beb733919d ^ea02b93eea
+   git log --oneline fdeb735017 ^beb733919d
 
 For the list of |NCS| specific commits, including commits cherry-picked from upstream, run:
 
 .. code-block:: none
 
-   git log --oneline manifest-rev ^beb733919d
+   git log --oneline manifest-rev ^fdeb735017
 
-The current |NCS| main branch is based on revision ``beb733919d`` of Zephyr.
+The current |NCS| main branch is based on revision ``fdeb735017`` of Zephyr.
 
 .. note::
    For possible breaking changes and changes between the latest Zephyr release and the current Zephyr version, refer to the :ref:`Zephyr release notes <zephyr_release_notes>`.
@@ -703,19 +564,4 @@ cJSON
 Documentation
 =============
 
-* Added:
-
-  * New section :ref:`ug_custom_board`.
-    This section includes the following pages:
-
-    * :ref:`defining_custom_board` - Previously located under :ref:`app_boards`.
-    * :ref:`programming_custom_board` - New page.
-
-  * New page :ref:`thingy53_precompiled` under :ref:`ug_thingy53`.
-    This page includes some of the information previously located on the standalone page for getting started with Nordic Thingy:53.
-  * New page :ref:`add_new_led_example` under :ref:`configuring_devicetree`.
-    This page includes information previously located in the |nRFVSC| documentation.
-
-* Updated the :ref:`create_application` page with the :ref:`creating_add_on_index` section.
-* Removed the standalone page for getting started with Nordic Thingy:53.
-  The contents of this page have been moved to the :ref:`thingy53_precompiled` page and to the `Programmer app <Programming Nordic Thingy:53_>`_ documentation.
+|no_changes_yet_note|

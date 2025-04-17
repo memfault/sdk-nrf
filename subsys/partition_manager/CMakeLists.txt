@@ -53,7 +53,7 @@ if (CONFIG_BOARD_HAS_NRF5_BOOTLOADER)
   ncs_add_partition_manager_config(pm.yml.nrf5_mbr)
 endif()
 
-if (CONFIG_SETTINGS_FCB OR CONFIG_SETTINGS_NVS OR CONFIG_SETTINGS_ZMS)
+if (CONFIG_SETTINGS_FCB OR CONFIG_SETTINGS_NVS OR CONFIG_SETTINGS_ZMS OR CONFIG_SETTINGS_ZMS_LEGACY)
   ncs_add_partition_manager_config(pm.yml.settings)
 endif()
 
@@ -61,20 +61,20 @@ if (CONFIG_FILE_SYSTEM_LITTLEFS)
   ncs_add_partition_manager_config(pm.yml.file_system)
 endif()
 
-if (CONFIG_ZIGBEE)
-  ncs_add_partition_manager_config(pm.yml.zboss)
-endif()
-
 if (CONFIG_NVS AND NOT CONFIG_SETTINGS_NVS)
   ncs_add_partition_manager_config(pm.yml.nvs)
 endif()
 
-if (CONFIG_ZMS AND NOT CONFIG_SETTINGS_ZMS)
+if (CONFIG_ZMS AND NOT (CONFIG_SETTINGS_ZMS OR CONFIG_SETTINGS_ZMS_LEGACY))
   ncs_add_partition_manager_config(pm.yml.zms)
 endif()
 
 if (CONFIG_NRF_MODEM_LIB)
   ncs_add_partition_manager_config(pm.yml.libmodem)
+endif()
+
+if(CONFIG_SOC_NRF54L15_CPUAPP)
+  ncs_add_partition_manager_config(pm.yml.bootconf)
 endif()
 
 # The default DTS configuration for the nRF5340 CPUAPP includes the
@@ -127,8 +127,16 @@ if (CONFIG_NRF_MODEM_LIB_TRACE_BACKEND_FLASH)
   ncs_add_partition_manager_config(pm.yml.modem_trace)
 endif()
 
-if (CONFIG_SOC_NRF54L15_CPUFLPR)
+if (CONFIG_SOC_NRF54L15_CPUFLPR OR CONFIG_SOC_NRF54L09_ENGA_CPUFLPR OR CONFIG_SOC_NRF54L20_ENGA_CPUFLPR OR CONFIG_SOC_NRF7120_ENGA_CPUFLPR)
   ncs_add_partition_manager_config(pm.yml.vpr_launcher)
+endif()
+
+if(CONFIG_WIFI_NRF70 AND CONFIG_NRF_WIFI_PATCHES_EXT_FLASH_STORE)
+  ncs_add_partition_manager_config(pm.yml.wifi)
+endif()
+
+if(CONFIG_LOG_BACKEND_RPC_HISTORY_STORAGE_FCB)
+  ncs_add_partition_manager_config(pm.yml.log_history)
 endif()
 
 # We are using partition manager if we are a child image or if we are

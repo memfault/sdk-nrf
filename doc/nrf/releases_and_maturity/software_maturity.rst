@@ -198,7 +198,7 @@ The following table indicates the software maturity levels of the support for ea
      - Supported
      - Supported
      - Supported
-     - Experimental
+     - Supported
      - Supported
      - Supported
      - Supported
@@ -262,7 +262,7 @@ The following table indicates the software maturity levels of the support for ea
      - --
      - Supported
      - Supported
-     - Experimental
+     - --
      - --
      - Supported
      - Supported
@@ -310,7 +310,7 @@ The following table indicates the software maturity levels of the support for ea
      - Supported
      - Supported
      - Supported
-     - Experimental
+     - --
      - Supported
      - Supported
      - Supported
@@ -326,10 +326,10 @@ The following table indicates the software maturity levels of the support for ea
      - --
      - Supported\ :sup:`1`
      - Supported\ :sup:`2`
-     - Experimental
+     - Experimental\ :sup:`3`
      - --
      - --
-     - Experimental
+     - Experimental\ :sup:`3`
      - --
      - Supported\ :sup:`1`
      - Supported\ :sup:`1`
@@ -353,6 +353,7 @@ The following table indicates the software maturity levels of the support for ea
 
 | [1]: Only with nRF7002 EK, nRF7002 EK in nRF7000 emulation mode or nRF7002 EK in nRF7001 emulation mode
 | [2]: Only with nRF7002 DK, nRF7002 DK in nRF7001 emulation mode, nRF7002 EB, nRF7002 EK, nRF7002 EK in nRF7000 emulation mode or nRF7002 EK in nRF7001 emulation mode
+| [3]: Only with nRF7002-EB II
 
 Amazon Sidewalk features support
 ********************************
@@ -529,7 +530,7 @@ The following table indicates the software maturity levels of the support for ea
         - Supported
         - Supported
         - Supported
-        - Experimental
+        - Supported
         - Supported
         - Supported
         - Supported
@@ -545,7 +546,7 @@ The following table indicates the software maturity levels of the support for ea
         - Supported
         - Supported
         - Supported
-        - Experimental
+        - Supported
         - Supported
         - Supported
         - Supported
@@ -561,7 +562,7 @@ The following table indicates the software maturity levels of the support for ea
         - Supported
         - Supported
         - Supported
-        - Experimental
+        - Supported
         - Supported
         - Supported
         - Supported
@@ -577,7 +578,7 @@ The following table indicates the software maturity levels of the support for ea
         - Supported
         - Supported
         - Supported
-        - Experimental
+        - Supported
         - Supported
         - Supported
         - Supported
@@ -593,7 +594,7 @@ The following table indicates the software maturity levels of the support for ea
         - Supported
         - Supported
         - Supported
-        - Experimental
+        - Supported
         - Supported
         - Supported
         - Supported
@@ -609,7 +610,7 @@ The following table indicates the software maturity levels of the support for ea
         - Supported
         - Supported
         - Supported
-        - Experimental
+        - Supported
         - Supported
         - Supported
         - Supported
@@ -625,7 +626,7 @@ The following table indicates the software maturity levels of the support for ea
         - Supported
         - Supported
         - Supported
-        - Experimental
+        - Supported
         - Supported
         - Supported
         - Supported
@@ -641,7 +642,7 @@ The following table indicates the software maturity levels of the support for ea
         - Supported
         - Supported\ :sup:`2`
         - Supported
-        - Experimental
+        - Supported
         - Supported
         - Supported
         - Supported
@@ -657,7 +658,7 @@ The following table indicates the software maturity levels of the support for ea
         - Supported
         - --
         - Supported
-        - Experimental
+        - Supported
         - Experimental
         - Experimental
         - Experimental
@@ -673,7 +674,7 @@ The following table indicates the software maturity levels of the support for ea
         - Supported
         - Supported
         - Supported
-        - Experimental
+        - Supported
         - Supported
         - Supported
         - Supported
@@ -689,7 +690,7 @@ The following table indicates the software maturity levels of the support for ea
         - Supported
         - Supported
         - Supported
-        - Experimental
+        - Supported
         - Supported
         - Supported
         - Supported
@@ -708,7 +709,7 @@ The following table indicates the software maturity levels of the support for ea
         - --
         - --
         - --
-        - Experimental
+        - Supported
         - --
         - --
         - --
@@ -721,7 +722,7 @@ The following table indicates the software maturity levels of the support for ea
         - Supported
         - Supported
         - Supported
-        - Experimental
+        - Supported
         - Supported
         - Supported
         - Supported
@@ -737,7 +738,7 @@ The following table indicates the software maturity levels of the support for ea
         - Supported
         - Supported
         - Supported
-        - Experimental
+        - Supported
         - Supported
         - Supported
         - Supported
@@ -753,7 +754,7 @@ The following table indicates the software maturity levels of the support for ea
         - Supported
         - Supported
         - Supported
-        - Experimental
+        - Supported
         - Supported
         - Supported
         - Supported
@@ -798,7 +799,7 @@ The following table indicates the software maturity levels of the support for ea
         - Supported
         - Supported
         - --
-        - Experimental
+        - Supported
         - Supported
         - Supported
         - Supported
@@ -814,7 +815,7 @@ The following table indicates the software maturity levels of the support for ea
         - Supported
         - Supported
         - Supported
-        - Experimental
+        - Supported
         - Supported
         - Supported
         - Supported
@@ -830,7 +831,7 @@ The following table indicates the software maturity levels of the support for ea
         - Supported
         - Supported
         - Supported
-        - Experimental
+        - Supported
         - Supported
         - Supported
         - Supported
@@ -862,7 +863,7 @@ The following table indicates the software maturity levels of the support for ea
         - Supported
         - Supported
         - Supported
-        - Experimental
+        - Supported
         - Supported
         - Supported
         - Supported
@@ -922,7 +923,7 @@ The following table indicates the software maturity levels of the support for ea
         - Supported
         - Supported
         - Supported
-        - Experimental
+        - --
         - --
         - Supported
         - Supported
@@ -938,7 +939,7 @@ The following table indicates the software maturity levels of the support for ea
         - --
         - Supported
         - Supported
-        - Experimental
+        - --
         - --
         - Supported
         - Supported
@@ -954,7 +955,7 @@ The following table indicates the software maturity levels of the support for ea
         - Supported
         - Supported
         - Supported
-        - Experimental
+        - --
         - --
         - Supported
         - Supported
@@ -970,7 +971,7 @@ The following table indicates the software maturity levels of the support for ea
         - Supported
         - Supported
         - Supported
-        - Experimental
+        - --
         - --
         - Supported
         - Supported
@@ -986,7 +987,7 @@ The following table indicates the software maturity levels of the support for ea
         - Supported
         - Supported
         - Supported
-        - Experimental
+        - --
         - --
         - Supported
         - Supported
@@ -1002,7 +1003,7 @@ The following table indicates the software maturity levels of the support for ea
         - Supported
         - Supported
         - Supported
-        - Experimental
+        - --
         - --
         - Supported
         - Supported
@@ -1018,7 +1019,7 @@ The following table indicates the software maturity levels of the support for ea
         - Supported
         - Supported
         - Supported
-        - Experimental
+        - --
         - --
         - Supported
         - Supported
@@ -1034,7 +1035,7 @@ The following table indicates the software maturity levels of the support for ea
         - Supported
         - Supported
         - Supported
-        - Experimental
+        - --
         - --
         - Supported
         - Supported
@@ -1050,7 +1051,7 @@ The following table indicates the software maturity levels of the support for ea
         - --
         - Supported
         - Supported
-        - Experimental
+        - --
         - --
         - Supported
         - Supported
@@ -1066,7 +1067,7 @@ The following table indicates the software maturity levels of the support for ea
         - --
         - Supported
         - Supported
-        - Experimental
+        - --
         - --
         - Supported
         - Supported
@@ -1098,7 +1099,7 @@ The following table indicates the software maturity levels of the support for ea
         - --
         - Supported
         - Supported
-        - Experimental
+        - --
         - --
         - Supported
         - Supported
@@ -1144,7 +1145,7 @@ The following table indicates the software maturity levels of the support for ea
         - --
         - Supported
         - Supported
-        - Experimental
+        - --
         - --
         - Supported
         - Supported
@@ -1160,7 +1161,7 @@ The following table indicates the software maturity levels of the support for ea
         - --
         - Supported
         - Supported
-        - Experimental
+        - --
         - --
         - Supported
         - Supported
@@ -1176,7 +1177,7 @@ The following table indicates the software maturity levels of the support for ea
         - --
         - Supported
         - Supported
-        - Experimental
+        - --
         - --
         - Supported
         - Supported
@@ -1192,7 +1193,7 @@ The following table indicates the software maturity levels of the support for ea
         - --
         - Supported
         - Supported
-        - Experimental
+        - --
         - --
         - Supported
         - Supported
@@ -1208,7 +1209,7 @@ The following table indicates the software maturity levels of the support for ea
         - --
         - Supported
         - Supported
-        - Experimental
+        - --
         - --
         - Supported
         - Supported
@@ -1224,7 +1225,7 @@ The following table indicates the software maturity levels of the support for ea
         - --
         - Supported
         - Supported
-        - Experimental
+        - --
         - --
         - Supported
         - Supported
@@ -1240,7 +1241,7 @@ The following table indicates the software maturity levels of the support for ea
         - --
         - --
         - Supported
-        - Experimental
+        - --
         - --
         - --
         - --
@@ -1256,7 +1257,7 @@ The following table indicates the software maturity levels of the support for ea
         - --
         - Supported
         - Supported
-        - Experimental
+        - --
         - --
         - Supported
         - Supported
@@ -1619,7 +1620,7 @@ The following table indicates the software maturity levels of the support for ea
         - --
         - --
         - --
-        - --
+        - Experimental\ :sup:`4`
         - --
         - --
         - --
@@ -1635,7 +1636,7 @@ The following table indicates the software maturity levels of the support for ea
         - --
         - --
         - --
-        - --
+        - Experimental\ :sup:`4`
         - --
         - --
         - --
@@ -1651,7 +1652,7 @@ The following table indicates the software maturity levels of the support for ea
         - Experimental\ :sup:`4`
         - --
         - --
-        - Experimental\ :sup:`5`
+        - Experimental\ :sup:`4`
         - --
         - --
         - --
@@ -1662,16 +1663,16 @@ The following table indicates the software maturity levels of the support for ea
         - --
         - --
         - --
-        - Experimental\ :sup:`6`
-        - Supported\ :sup:`7`
-        - --
-        - --
-        - --
-        - --
-        - --
+        - Experimental\ :sup:`5`
         - Supported\ :sup:`6`
-        - Supported\ :sup:`6`
-        - Supported\ :sup:`6`
+        - --
+        - --
+        - --
+        - --
+        - --
+        - Supported\ :sup:`5`
+        - Supported\ :sup:`5`
+        - Supported\ :sup:`5`
       * - **SoftAP Mode (for Wi-Fi provisioning)**
         - --
         - --
@@ -1683,7 +1684,7 @@ The following table indicates the software maturity levels of the support for ea
         - --
         - --
         - --
-        - --
+        - Experimental\ :sup:`4`
         - --
         - --
         - --
@@ -1699,7 +1700,7 @@ The following table indicates the software maturity levels of the support for ea
         - --
         - --
         - --
-        - --
+        - Experimental\ :sup:`4`
         - --
         - --
         - --
@@ -1724,10 +1725,9 @@ The following table indicates the software maturity levels of the support for ea
    | [1]: Only with nRF7002 DK, nRF7002 DK in nRF7001 emulation mode, nRF7002 EB, nRF7002 EK or nRF7002 EK in nRF7001 emulation mode
    | [2]: Only with nRF7002 DK, nRF7002 DK in nRF7001 emulation mode or nRF7002 EK
    | [3]: Only with nRF7002 EK or nRF7002 EK in nRF7001 emulation mode
-   | [4]: Only with nrf7002 EB and nRF7002 EB-interposer
-   | [5]: Only with nrf7002 EB and nRF7002 EB-interposer
-   | [6]: Only with nRF7002 EK, nRF7002 EK in nRF7000 emulation mode or nRF7002 EK in nRF7001 emulation mode
-   | [7]: Only with nRF7002 DK, nRF7002 EB, nRF7002 EK, nRF7002 EK in nRF7000 emulation mode or nRF7002 EK in nRF7001 emulation mode
+   | [4]: Only with nRF7002-EB II
+   | [5]: Only with nRF7002 EK, nRF7002 EK in nRF7000 emulation mode or nRF7002 EK in nRF7001 emulation mode
+   | [6]: Only with nRF7002 DK, nRF7002 EB, nRF7002 EK, nRF7002 EK in nRF7000 emulation mode or nRF7002 EK in nRF7001 emulation mode
 
 Ecosystem support
 *****************
@@ -1735,6 +1735,8 @@ Ecosystem support
 The following sections contain the tables indicating the software maturity levels of the support for the following ecosystems:
 
 * Google Fast Pair
+
+.. _software_maturity_fast_pair:
 
 Google Fast Pair
 ================
@@ -1910,6 +1912,8 @@ The following table indicates the software maturity levels of the support for ea
         - --
         - --
 
+.. _software_maturity_security_features:
+
 Security Feature Support
 ************************
 
@@ -1921,16 +1925,20 @@ The following sections contain the tables indicating the software maturity level
 * Hardware Unique Key
 * Trusted storage
 
+.. _software_maturity_security_features_tfm:
+
 Trusted Firmware-M support
 ==========================
 
 .. toggle::
 
+   .. tfm_ncs_profiles_support_table_start
+
    .. list-table::
       :widths: auto
       :header-rows: 1
 
-      * -
+      * - TF-M profile
         - nRF52810
         - nRF52811
         - nRF52820
@@ -1946,7 +1954,7 @@ Trusted Firmware-M support
         - nRF9151
         - nRF9160
         - nRF9161
-      * - **Full build**
+      * - :ref:`Configurable <ug_tfm_supported_services_profiles_configurable>`
         - --
         - --
         - --
@@ -1957,12 +1965,12 @@ Trusted Firmware-M support
         - --
         - --
         - --
-        - Experimental\ :sup:`1`
+        - Experimental
         - --
         - Experimental
         - Experimental
         - Experimental
-      * - **Minimal Build**
+      * - :ref:`Minimal <ug_tfm_supported_services_profiles_minimal>`
         - --
         - --
         - --
@@ -1979,7 +1987,11 @@ Trusted Firmware-M support
         - Supported
         - Supported
 
-   | [1]: The attestation service is not supported.
+   .. tfm_ncs_profiles_support_table_end
+
+   For more information about supported TF-M features in the |NCS|, see :ref:`ug_tfm_supported_services`.
+
+.. _software_maturity_security_features_psa:
 
 PSA Crypto support
 ==================
@@ -2006,19 +2018,51 @@ PSA Crypto support
         - nRF9151
         - nRF9160
         - nRF9161
-      * - **Oberon PSA core**
+      * - **Oberon PSA core - nrf_cc3xx driver**
         - --
         - --
         - --
-        - Supported
-        - Supported
-        - Supported
-        - Supported
+        - --
         - --
         - Supported
         - Supported
-        - Supported
+        - --
+        - --
+        - --
+        - --
         - Experimental
+        - Supported
+        - Supported
+        - Supported
+      * - **Oberon PSA core - cracen driver**
+        - --
+        - --
+        - --
+        - --
+        - --
+        - --
+        - --
+        - --
+        - Supported
+        - Supported
+        - Supported
+        - --
+        - --
+        - --
+        - --
+      * - **Oberon PSA core - nrf_oberon driver**
+        - --
+        - --
+        - --
+        - Supported
+        - Supported
+        - Supported
+        - Supported
+        - --
+        - Supported
+        - Supported
+        - Supported
+        - Supported
         - Supported
         - Supported
         - Supported
@@ -2054,6 +2098,8 @@ PSA Crypto support
         - --
         - --
         - --
+
+.. _software_maturity_security_features_nsib:
 
 |NSIB|
 ======
@@ -2097,6 +2143,8 @@ PSA Crypto support
          - Supported
          - Supported
 
+.. _software_maturity_security_features_huk:
+
 Hardware Unique Key
 ===================
 
@@ -2138,6 +2186,8 @@ Hardware Unique Key
         - Supported
         - Supported
         - Supported
+
+.. _software_maturity_security_features_ts:
 
 Trusted storage
 ===============
@@ -2333,6 +2383,22 @@ The following table indicates the software maturity levels of the support for ea
         - Experimental
         - Supported
         - Supported
+        - --
+      * - **nPM2100**
+        - --
+        - --
+        - --
+        - --
+        - --
+        - Supported
+        - Supported
+        - --
+        - --
+        - --
+        - Supported
+        - --
+        - --
+        - --
         - --
       * - **nPM6001**
         - --

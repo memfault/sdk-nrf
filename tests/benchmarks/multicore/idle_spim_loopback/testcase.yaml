@@ -34,6 +34,7 @@ tests:
     extra_args:
       - idle_spim_loopback_CONF_FILE=prj_s2ram.conf
       - idle_spim_loopback_CONFIG_TEST_SLEEP_DURATION_MS=500
+      - idle_spim_loopback_EXTRA_DTC_OVERLAY_FILE="${ZEPHYR_NRF_MODULE_DIR}/tests/benchmarks/multicore/common/workaround_idle.overlay"
     harness: pytest
     harness_config:
       fixture: spi_loopback
@@ -72,6 +73,7 @@ tests:
       - idle_spim_loopback_CONF_FILE=prj_s2ram.conf
       - idle_spim_loopback_CONFIG_TEST_SLEEP_DURATION_MS=500
       - idle_spim_loopback_DTC_OVERLAY_FILE="boards/nrf54h20dk_nrf54h20_cpuapp_fast.overlay"
+      - idle_spim_loopback_EXTRA_DTC_OVERLAY_FILE="${ZEPHYR_NRF_MODULE_DIR}/tests/benchmarks/multicore/common/workaround_idle.overlay"
     harness: pytest
     harness_config:
       fixture: spi_loopback
@@ -118,6 +120,20 @@ tests:
       pytest_root:
         - "${CUSTOM_ROOT_TEST_DIR}/test_measure_power_consumption.py::test_measure_and_data_dump_spim_and_s2ram"
 
+  benchmarks.multicore.idle_spim_loopback.4_bytes.s2ram_fast.remote_gd_freq_switching:
+    filter: not CONFIG_COVERAGE
+    tags: ppk_power_measure
+    extra_args:
+      - idle_spim_loopback_CONF_FILE=prj_s2ram.conf
+      - idle_spim_loopback_DTC_OVERLAY_FILE="boards/nrf54h20dk_nrf54h20_cpuapp_fast.overlay"
+      - idle_spim_loopback_CONFIG_DATA_FIELD=4
+      - SB_CONFIG_REMOTE_GLOBAL_DOMAIN_CLOCK_FREQUENCY_SWITCHING=y
+    harness: pytest
+    harness_config:
+      fixture: spi_loopback
+      pytest_root:
+        - "${CUSTOM_ROOT_TEST_DIR}/test_measure_power_consumption.py::test_measure_and_data_dump_spim_and_s2ram"
+
   benchmarks.multicore.idle_spim_loopback.4_bytes.gd_freq_64MHz.s2ram_fast:
     filter: not CONFIG_COVERAGE
     tags: ppk_power_measure
@@ -131,6 +147,20 @@ tests:
       fixture: spi_loopback
       pytest_root:
         - "${CUSTOM_ROOT_TEST_DIR}/test_measure_power_consumption.py::test_measure_and_data_dump_spim_and_s2ram"
+
+  benchmarks.multicore.idle_spim_loopback.4_bytes.gd_freq_switching.s2ram_fast:
+    filter: not CONFIG_COVERAGE
+    tags: ppk_power_measure
+    extra_args:
+      - idle_spim_loopback_CONF_FILE=prj_s2ram.conf
+      - idle_spim_loopback_DTC_OVERLAY_FILE="boards/nrf54h20dk_nrf54h20_cpuapp_fast.overlay"
+      - CONFIG_CLOCK_CONTROL=y
+      - CONFIG_GLOBAL_DOMAIN_CLOCK_FREQUENCY_SWITCHING=y
+    harness: pytest
+    harness_config:
+      fixture: spi_loopback
+      pytest_root:
+        - "${CUSTOM_ROOT_TEST_DIR}/test_measure_power_consumption.py::test_measure_and_data_dump_spim_and_s2ram_7s"
 
   #
   # 16 Bytes of data
@@ -157,6 +187,7 @@ tests:
       - idle_spim_loopback_CONF_FILE=prj_s2ram.conf
       - idle_spim_loopback_CONFIG_TEST_SLEEP_DURATION_MS=500
       - idle_spim_loopback_CONFIG_DATA_FIELD=16
+      - idle_spim_loopback_EXTRA_DTC_OVERLAY_FILE="${ZEPHYR_NRF_MODULE_DIR}/tests/benchmarks/multicore/common/workaround_idle.overlay"
     harness: pytest
     harness_config:
       fixture: spi_loopback
@@ -199,6 +230,7 @@ tests:
       - idle_spim_loopback_CONFIG_TEST_SLEEP_DURATION_MS=500
       - idle_spim_loopback_DTC_OVERLAY_FILE="boards/nrf54h20dk_nrf54h20_cpuapp_fast.overlay"
       - idle_spim_loopback_CONFIG_DATA_FIELD=16
+      - idle_spim_loopback_EXTRA_DTC_OVERLAY_FILE="${ZEPHYR_NRF_MODULE_DIR}/tests/benchmarks/multicore/common/workaround_idle.overlay"
     harness: pytest
     harness_config:
       fixture: spi_loopback
@@ -212,6 +244,20 @@ tests:
       - idle_spim_loopback_CONF_FILE=prj_s2ram.conf
       - idle_spim_loopback_DTC_OVERLAY_FILE="boards/nrf54h20dk_nrf54h20_cpuapp_fast.overlay"
       - idle_spim_loopback_CONFIG_DATA_FIELD=16
+    harness: pytest
+    harness_config:
+      fixture: spi_loopback
+      pytest_root:
+        - "${CUSTOM_ROOT_TEST_DIR}/test_measure_power_consumption.py::test_measure_and_data_dump_spim_and_s2ram"
+
+  benchmarks.multicore.idle_spim_loopback.16_bytes.s2ram_fast.remote_gd_freq_switching:
+    filter: not CONFIG_COVERAGE
+    tags: ppk_power_measure
+    extra_args:
+      - idle_spim_loopback_CONF_FILE=prj_s2ram.conf
+      - idle_spim_loopback_DTC_OVERLAY_FILE="boards/nrf54h20dk_nrf54h20_cpuapp_fast.overlay"
+      - idle_spim_loopback_CONFIG_DATA_FIELD=16
+      - SB_CONFIG_REMOTE_GLOBAL_DOMAIN_CLOCK_FREQUENCY_SWITCHING=y
     harness: pytest
     harness_config:
       fixture: spi_loopback
@@ -262,6 +308,21 @@ tests:
       fixture: spi_loopback
       pytest_root:
         - "${CUSTOM_ROOT_TEST_DIR}/test_measure_power_consumption.py::test_measure_and_data_dump_spim_and_s2ram"
+
+  benchmarks.multicore.idle_spim_loopback.16_bytes.gd_freq_switching.s2ram_fast:
+    filter: not CONFIG_COVERAGE
+    tags: ppk_power_measure
+    extra_args:
+      - idle_spim_loopback_CONF_FILE=prj_s2ram.conf
+      - idle_spim_loopback_DTC_OVERLAY_FILE="boards/nrf54h20dk_nrf54h20_cpuapp_fast.overlay"
+      - idle_spim_loopback_CONFIG_DATA_FIELD=16
+      - CONFIG_CLOCK_CONTROL=y
+      - CONFIG_GLOBAL_DOMAIN_CLOCK_FREQUENCY_SWITCHING=y
+    harness: pytest
+    harness_config:
+      fixture: spi_loopback
+      pytest_root:
+        - "${CUSTOM_ROOT_TEST_DIR}/test_measure_power_consumption.py::test_measure_and_data_dump_spim_and_s2ram_7s"
 
   #
   # 4 Bytes of data with SPI Chip Select Lock enabled
@@ -327,6 +388,7 @@ tests:
       - idle_spim_loopback_CONFIG_TEST_SPI_LOCK_ON=y
       - idle_spim_loopback_CONF_FILE=prj_s2ram.conf
       - idle_spim_loopback_CONFIG_TEST_SLEEP_DURATION_MS=500
+      - idle_spim_loopback_EXTRA_DTC_OVERLAY_FILE="${ZEPHYR_NRF_MODULE_DIR}/tests/benchmarks/multicore/common/workaround_idle.overlay"
     harness: pytest
     harness_config:
       fixture: spi_loopback
@@ -374,6 +436,7 @@ tests:
       - idle_spim_loopback_CONF_FILE=prj_s2ram.conf
       - idle_spim_loopback_CONFIG_TEST_SLEEP_DURATION_MS=500
       - idle_spim_loopback_DTC_OVERLAY_FILE="boards/nrf54h20dk_nrf54h20_cpuapp_fast.overlay"
+      - idle_spim_loopback_EXTRA_DTC_OVERLAY_FILE="${ZEPHYR_NRF_MODULE_DIR}/tests/benchmarks/multicore/common/workaround_idle.overlay"
     harness: pytest
     harness_config:
       fixture: spi_loopback
@@ -428,6 +491,7 @@ tests:
       - idle_spim_loopback_CONFIG_TEST_SPI_RELEASE_BEFORE_SLEEP=n
       - idle_spim_loopback_CONF_FILE=prj_s2ram.conf
       - idle_spim_loopback_CONFIG_TEST_SLEEP_DURATION_MS=500
+      - idle_spim_loopback_EXTRA_DTC_OVERLAY_FILE="${ZEPHYR_NRF_MODULE_DIR}/tests/benchmarks/multicore/common/workaround_idle.overlay"
     harness: pytest
     harness_config:
       fixture: spi_loopback
@@ -479,6 +543,7 @@ tests:
       - idle_spim_loopback_CONF_FILE=prj_s2ram.conf
       - idle_spim_loopback_CONFIG_TEST_SLEEP_DURATION_MS=500
       - idle_spim_loopback_DTC_OVERLAY_FILE="boards/nrf54h20dk_nrf54h20_cpuapp_fast.overlay"
+      - idle_spim_loopback_EXTRA_DTC_OVERLAY_FILE="${ZEPHYR_NRF_MODULE_DIR}/tests/benchmarks/multicore/common/workaround_idle.overlay"
     harness: pytest
     harness_config:
       fixture: spi_loopback

@@ -17,8 +17,8 @@ The sample supports any one of the following development kits:
 .. table-from-sample-yaml::
 
 .. note::
-   For the nRF5340 DK, this sample is only supported on the network core (``nrf5340dk_nrf5340_cpunet``), and the :ref:`nrf5340_empty_app_core` sample must be programmed to the application core.
-   For the nRF54H20 DK, this sample is only supported on the radio core (``nrf54h20dk_nrf4h20_cpurad``).
+   For the nRF5340 DK, this sample is only supported on the network core (``nrf5340dk/nrf5340/cpunet``), and the :ref:`nrf5340_empty_app_core` sample must be programmed to the application core.
+   For the nRF54H20 DK, this sample is only supported on the radio core (``nrf54h20dk/nrf4h20/cpurad``).
 
 Overview
 ********
@@ -39,6 +39,9 @@ The timeslot session is closed when any key is pressed in the terminal.
    For the nRF52 and nRF53 Series ``mpsl_timer0`` is the ``timer0`` instance.
    For the nRF54L Series ``mpsl_timer0`` is the ``timer10`` instance.
    For the nRF54H Series ``mpsl_timer0`` is the ``timer020`` instance.
+
+.. note::
+   For the nRF54H20, if you want to use ``MPSL_TIMESLOT_HFCLK_CFG_NO_GUARANTEE`` then you must request the HFXO earlier using the :c:func:`mpsl_clock_hfclk_request` function.
 
 Building and running
 ********************

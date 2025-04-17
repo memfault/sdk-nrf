@@ -29,9 +29,6 @@ Before using this feature, make sure that the following prerequisites are comple
  * The external memory must be large enough to store the firmware patches, taking into consideration also the patch upgrade requirement, for example, Device Firmware Update (DFU).
    The maximum size of all the firmware patches combined is 128 KB.
 
-.. note::
-   Currently, in Nordic Semiconductor SoCs, access to external memory and the Execute in Place (XIP) feature are available through the QSPI interface only.
-
 Supported platforms
 ===================
 
@@ -39,9 +36,7 @@ The following platforms are supported:
 
 * nRF5340 DK with nRF7002 EK as a shield
 * nRF52840 DK with nRF7002 EK as a shield
-
-.. note::
-   Due to limitations mentioned above, the nRF7002 DK is not supported as it needs access to external memory through the SPI interface.
+* nRF7002 DK (requires latest version of nRF Util tool)
 
 Available options
 *****************
@@ -49,7 +44,10 @@ Available options
 There are two supported options for offloading the firmware patches in the external memory feature:
 
 * Using XIP access
-* Using QSPI transfers to RAM
+* Using (Q)SPI transfers to RAM
+
+.. note::
+   The nRF7002 DK  does not support the XIP access option.
 
 Using XIP access
 ================
@@ -71,8 +69,8 @@ Following is a sample summary of the memory regions:
              RAM:      170636 B       448 KB     37.20%
         IDT_LIST:          0 GB         2 KB      0.00%
 
-Using QSPI transfers to RAM
-===========================
+Using (Q)SPI transfers to RAM
+=============================
 
 The nRF Wi-Fi driver supports the option for offloading the nRF70 firmware patch to external non-XIP memory.
 In this case the upload of the firmware patch from the external memory to the nRF70 device happens in two stages:
@@ -80,7 +78,11 @@ In this case the upload of the firmware patch from the external memory to the nR
 1. The firmware patch is loaded from the external memory onto internal RAM.
 #. The firmware patch is uploaded to the nRF70 device.
 
-This feature can be enabled using DTS or the :ref:`app_build_snippets` feature, or by using :ref:`partition_manager`.
+You can enable this feature using the :ref:`app_build_snippets` feature.
+
+.. note::
+
+   Storing the nRF70 firmware patches in external RAM memory requires the partition manager to be enabled.
 
 Configuration
 -------------
@@ -91,24 +93,7 @@ The following configuration options are available:
 * :kconfig:option:`CONFIG_NRF_WIFI_FW_FLASH_CHUNK_SIZE` - Defines the size of the chunks used to read the firmware patches from the external non-XIP memory.
   The default value is 8192 bytes.
 
-The external memory partition name must be defined in the devicetree or in the partition manager configuration file.
-
-* ``nrf70_fw_partition`` - Defines the name of the external memory partition that stores the firmware patches.
-  This must be defined in the devicetree, for example:
-
-.. code-block:: dts
-
-    &flash0 {
-        partitions {
-            compatible = "fixed-partitions";
-            #address-cells = <1>;
-            #size-cells = <1>;
-            nrf70_fw_partition: partition@0 {
-                label = "nrf70_fw_partition";
-                reg = <0x00000000 DT_SIZE_K(128)>;
-            };
-        };
-    };
+You must define the external memory partition name in the Partition Manager configuration file as follows:
 
 * ``nrf70_wifi_fw`` - Defines the name of the external memory partition that stores the firmware patches.
   This must be defined in the partition manager configuration file, for example:
@@ -126,8 +111,7 @@ Building
 
 See :ref:`nrf7002dk_nrf5340` for general instructions on building.
 
-Additionally, you can build the sample either with the ``nrf70-fw-patch-ext-flash`` snippet or with Partition Manager (``SB_CONFIG_PARTITION_MANAGER``).
-When using the ``nrf70-fw-patch-ext-flash`` snippet, set ``SB_CONFIG_WIFI_PATCHES_EXT_FLASH_STORE``, and disable ``SB_CONFIG_PARTITION_MANAGER``.
+Additionally, you can build the sample using the ``nrf70-fw-patch-ext-flash`` snippet and set the ``SB_CONFIG_WIFI_PATCHES_EXT_FLASH_STORE=y`` Kconfig option.
 
 For example, to build the :ref:`wifi_shell_sample` sample for the nRF5340 DK with the ``nrf70-fw-patch-ext-flash`` snippet enabled, run the following commands.
 
@@ -136,14 +120,14 @@ With west
 
 .. code-block:: console
 
-    west build -p -b nrf5340dk/nrf5340/cpuapp samples/wifi/shell -- -Dnrf_wifi_shell_SHIELD=nrf7002ek -Dnrf_wifi_shell_SNIPPET="nrf70-fw-patch-ext-flash" -DSB_CONFIG_WIFI_PATCHES_EXT_FLASH_STORE=y -DSB_CONFIG_PARTITION_MANAGER=n
+    west build -p -b nrf5340dk/nrf5340/cpuapp samples/wifi/shell -- -Dnrf_wifi_shell_SHIELD=nrf7002ek -Dnrf_wifi_shell_SNIPPET="nrf70-fw-patch-ext-flash"
 
 With CMake
 ^^^^^^^^^^
 
 .. code-block:: console
 
-    cmake -GNinja -Bbuild -DBOARD=nrf5340dk/nrf5340/cpuapp -Dnrf_wifi_shell_SHIELD=nrf7002ek -Dnrf_wifi_shell_SNIPPET="nrf70-fw-patch-ext-flash" -DSB_CONFIG_WIFI_PATCHES_EXT_FLASH_STORE=y -DSB_CONFIG_PARTITION_MANAGER=n samples/wifi/shell
+    cmake -GNinja -Bbuild -DBOARD=nrf5340dk/nrf5340/cpuapp -Dnrf_wifi_shell_SHIELD=nrf7002ek -Dnrf_wifi_shell_SNIPPET="nrf70-fw-patch-ext-flash"
     ninja -C build
 
 For example, to build the :ref:`wifi_shell_sample` sample for the nRF5340 DK with partition manager enabled, run the following commands:
@@ -153,14 +137,15 @@ With west
 
 .. code-block:: console
 
-    west build -p -b nrf5340dk/nrf5340/cpuapp samples/wifi/shell -- -Dnrf_wifi_shell_SHIELD=nrf7002ek -DSB_CONFIG_WIFI_PATCHES_EXT_FLASH_STORE=y
+    west build -p -b nrf5340dk/nrf5340/cpuapp samples/wifi/shell -- -Dnrf_wifi_shell_SHIELD=nrf7002ek --snippet=nrf70-fw-patch-ext-flash
 
 With CMake
 ^^^^^^^^^^
 
 .. code-block:: console
 
-    cmake -GNinja -Bbuild -DBOARD=nrf5340dk/nrf5340/cpuapp -Dnrf_wifi_shell_SHIELD=nrf7002ek -DSB_CONFIG_WIFI_PATCHES_EXT_FLASH_STORE=y samples/wifi/shell
+    cmake -GNinja -Bbuild -DBOARD=nrf5340dk/nrf5340/cpuapp -Dnrf_wifi_shell_SHIELD=nrf7002ek --snippet=nrf70-fw-patch-ext-flash
+    samples/wifi/shell
     ninja -C build
 
 Programming
@@ -182,14 +167,11 @@ With other tools
 
 You must use the :file:`merged.hex` file instead of the :file:`zephyr.hex` file to choose the program image explicitly.
 
-For example, for nrfjprog:
+For example, for nRF Util:
 
 .. code-block:: console
 
-   nrfjprog -f nrf53 -s 0 --program build/merged.hex ---sectorerase --qspisectorerase --verify --reset
-
-.. note::
-      |nrfjprog_deprecation_note|
+   nrfutil device program --x-family nrf53 --options chip_erase_mode=ERASE_RANGES_TOUCHED_BY_FIRMWARE,qspi_erase_mode=ERASE_ALL,verify=VERIFY_HASH,reset=RESET_SOFT --firmware build/merged.hex
 
 Updating firmware patches
 =========================

@@ -1,7 +1,7 @@
 .. _programming_thingy:
 
-Updating the Thingy:91 firmware using Programmer
-################################################
+Updating the Thingy:91 firmware using the Programmer app
+########################################################
 
 .. contents::
    :local:
@@ -39,11 +39,10 @@ Modem firmware
 
 The :file:`CONTENTS.txt` file in the extracted folder contains the location and names of the different firmware images.
 
-The instructions in this section show you how to program the :ref:`connectivity_bridge` and :ref:`asset_tracker_v2` applications, as well as the modem firmware.
-Connectivity bridge provides bridge functionality for the hardware, and Asset Tracker v2 simulates sensor data and transmits it to Nordic Semiconductor's cloud solution, `nRF Cloud`_.
+The instructions in this section show you how to program the :ref:`connectivity_bridge` application and the :ref:`at_client_sample` sample, as well as the modem firmware.
 
 The data is transmitted using either LTE-M or NB-IoT.
-Asset Tracker v2 first attempts to use LTE-M, then NB-IoT.
+The :ref:`at_client_sample` sample first attempts to use LTE-M, then NB-IoT.
 Check with your SIM card provider for the mode they support at your location.
 For the iBasis SIM card provided with the Thingy:91, see `iBasis IoT network coverage`_.
 
@@ -351,11 +350,7 @@ Program the nRF9160 SiP application
       #. Open the folder :file:`img_fota_dfu_hex` that contains the HEX files for updating over USB.
          See the :file:`CONTENTS.txt` file for information on which file you need.
 
-      #. Select the appropriate Asset Tracker v2 firmware file.
-
-         .. note::
-
-            If you are connecting over NB-IoT and your operator does not support extended Protocol Configuration Options (ePCO), select the file that has legacy Protocol Configuration Options (PCO) mode enabled.
+      #. Select the appropriate AT Client firmware file.
 
       #. Click :guilabel:`Open`.
 
@@ -397,11 +392,7 @@ Program the nRF9160 SiP application
       #. Open the folder :file:`img_app_bl` that contains the HEX files for updating using a debugger.
          See the :file:`CONTENTS.txt` file for information on which file you need.
 
-      #. Select the appropriate Asset Tracker v2 firmware file.
-
-         .. note::
-
-            If you are connecting over NB-IoT and your operator does not support extended Protocol Configuration Options (ePCO), select the file that has legacy Protocol Configuration Options (PCO) mode enabled.
+      #. Select the appropriate AT Client firmware file.
 
       #. Click :guilabel:`Open`.
       #. Scroll down in the menu on the left to the **DEVICE** section and click :guilabel:`Erase & write`.

@@ -18,8 +18,6 @@ The sample supports the following development kits:
 
 .. table-from-sample-yaml::
 
-.. include:: /includes/hci_ipc_overlay.txt
-
 Optionally, you can use the `Power Profiler Kit II (PPK2)`_ for power profiling and optimizing your configuration.
 You can use also your proprietary solution for measuring the power consumption.
 
@@ -226,12 +224,28 @@ CONFIG_BT_POWER_PROFILING_NON_CONNECTABLE_ADV_INTERVAL_MAX - Non-connectable adv
 CONFIG_BT_POWER_PROFILING_LED_DISABLED - Disable LEDs
    Disables the LEDs to reduce power consumption.
 
+.. _CONFIG_BT_POWER_PROFILING_NFC_DISABLED:
+
+CONFIG_BT_POWER_PROFILING_NFC_DISABLED - Disable NFC
+   Disables the NFC to reduce power consumption.
+
+You can also consider using the following global configuration options to disable the console and UART, reducing power consumption:
+
+* :kconfig:option:`CONFIG_SERIAL`
+* :kconfig:option:`CONFIG_CONSOLE`
+* :kconfig:option:`CONFIG_UART_CONSOLE`
+
 Building and running
 ********************
 
 .. |sample path| replace:: :file:`samples/bluetooth/peripheral_power_profiling`
 
 .. include:: /includes/build_and_run.txt
+
+.. |sample_or_app| replace:: sample
+.. |ipc_radio_dir| replace:: :file:`sysbuild/ipc_radio`
+
+.. include:: /includes/ipc_radio_conf.txt
 
 Testing
 =======

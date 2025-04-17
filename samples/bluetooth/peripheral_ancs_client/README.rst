@@ -124,9 +124,9 @@ Testing with Bluetooth Low Energy app
 #. Click :guilabel:`Apply to device`.
 #. Click the :guilabel:`CONNECTION MAP` tab.
    Click the dongle configuration and select :guilabel:`Security parameters`.
-   Check :guilabel:`Perform Bonding`, and click :guilabel:`Apply`.
+   Check :guilabel:`Perform Bonding` and :guilabel:`Enable LE Secure Connection pairing`, and click :guilabel:`Apply`.
 #. Connect to the device from the app.
-   The device is advertising as "ANCS".
+   The device is advertising as "Nordic_ANCS".
 #. Wait until the bond is established. Verify that the UART data is received as follows::
 
       Connected xx:xx:xx:xx:xx:xx (random)

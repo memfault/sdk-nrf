@@ -28,7 +28,7 @@ While ionospheric corrections can also be downloaded from the satellite broadcas
 Configuration
 *************
 
-Configure the following Kconfig options to enable or disable the use of this library:
+To enable this library, set the :kconfig:option:`CONFIG_NRF_CLOUD` Kconfig option and configure the following options:
 
 * :kconfig:option:`CONFIG_NRF_CLOUD_AGNSS`
 * :kconfig:option:`CONFIG_NRF_CLOUD_MQTT`, :kconfig:option:`CONFIG_NRF_CLOUD_REST`, or :kconfig:option:`CONFIG_NRF_CLOUD_COAP`
@@ -149,7 +149,7 @@ This library uses the following |NCS| libraries:
 
 It uses the following `sdk-nrfxlib`_ library:
 
-* :ref:`GNSS interface<nrfxlib:gnss_interface>`
+* :ref:`GNSS interface <gnss_interface>`
 
 API documentation
 *****************

@@ -60,9 +60,6 @@ Static partition requirement for DFU
 
 If you want to perform DFU, you must :ref:`define a static partition map <ug_pm_static>` to ensure compatibility across different builds.
 The dynamically generated partitions can change between builds.
-This is important also when you use a precompiled HEX file as a child image (sub-image) instead of building it.
-In such cases, the newly generated application images may no longer use a partition map that is compatible with the partition map used by the bootloader.
-As a result, the newly built application image may not be bootable by the bootloader.
 
 The memory partitions that must be defined in the static partition map depend on the selected bootloader chain.
 For details, see :ref:`ug_bootloader_flash`.
@@ -131,10 +128,9 @@ To enable external flash with MCUboot, complete the following steps:
 
 1. Follow the instructions in :ref:`pm_external_flash`, which enables external flash use in the nRF5340 DK's DTS file.
 
-#. Enable the :kconfig:option:`CONFIG_PM_EXTERNAL_FLASH_MCUBOOT_SECONDARY` Kconfig option.
-   (Depending on the build configuration, this option will be set to ``y`` automatically.)
+#. Enable the ``SB_CONFIG_PM_EXTERNAL_FLASH_MCUBOOT_SECONDARY`` sysbuild Kconfig option.
 
-#. Update the ``CONFIG_BOOT_MAX_IMG_SECTORS`` `MCUboot Kconfig option`_ accordingly for child images.
+#. Update the ``CONFIG_BOOT_MAX_IMG_SECTORS`` `MCUboot Kconfig option`_ accordingly.
    This option defines the maximum number of image sectors MCUboot can handle, as MCUboot typically increases slot sizes when external flash is enabled.
    Otherwise the ``CONFIG_BOOT_MAX_IMG_SECTORS`` Kconfig option defaults to the value used for internal flash, and the application may not boot if the value is set too low.
 
@@ -150,8 +146,7 @@ To enable external flash with MCUboot, complete the following steps:
 The Quad Serial Peripheral Interface (QSPI) NOR flash memory driver supports these features, and it can access the QSPI external flash memory of the nRF52840 DK and nRF5340 DK.
 
 See the test in :file:`tests/modules/mcuboot/external_flash` for reference.
-This test passes both devicetree overlay files and Kconfig fragments to the MCUboot child image through its :file:`child_image` folder.
-See also :ref:`ug_multi_image_variables` for more details on how to pass configuration files to a child image.
+This test passes both devicetree overlay files and Kconfig fragments to the MCUboot image through its :file:`sysbuild` folder.
 
 Troubleshooting
 ***************
@@ -194,7 +189,7 @@ The compilation could fail, reporting a linker error similar to following:
 
 This error could be caused by the following issues:
 
-  * :kconfig:option:`CONFIG_PM_OVERRIDE_EXTERNAL_DRIVER_CHECK` has been used to override the driver check for the external flash driver, but no driver is actually compiled for the region.
+  * ``SB_CONFIG_PM_OVERRIDE_EXTERNAL_DRIVER_CHECK`` sysbuild Kconfig has been used to override the driver check for the external flash driver, but no driver is actually compiled for the region.
     Disabling the option removes partitions without device drivers from the flash map, which may cause runtime failures.
     See :ref:`pm_external_flash` for details.
 

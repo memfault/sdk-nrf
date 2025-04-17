@@ -24,14 +24,21 @@
 typedef enum {
 	HRT_FE_COMMAND,
 	HRT_FE_ADDRESS,
+	HRT_FE_DUMMY_CYCLES,
 	HRT_FE_DATA,
 	HRT_FE_MAX
 } hrt_frame_element_t;
+
+typedef enum {
+	HRT_FUN_OUT_BYTE,
+	HRT_FUN_OUT_WORD,
+} hrt_fun_out_t;
 
 /** @brief Structure for holding bus width of different xfer parts */
 typedef struct {
 	uint8_t command;
 	uint8_t address;
+	uint8_t dummy_cycles;
 	uint8_t data;
 } hrt_xfer_bus_widths_t;
 
@@ -69,7 +76,7 @@ typedef struct {
 	uint32_t last_word;
 
 	/** @brief Function for writing to buffered out register. */
-	void (*vio_out_set)(uint32_t value);
+	hrt_fun_out_t fun_out;
 } hrt_xfer_data_t;
 
 /** @brief Hrt transfer parameters. */
@@ -78,7 +85,9 @@ typedef struct {
 	/** @brief Data for all transfer parts */
 	hrt_xfer_data_t xfer_data[HRT_FE_MAX];
 
-	/** @brief Bus widths for different transfer parts (command, address, and data). */
+	/** @brief Bus widths for different transfer parts (command, address, dummy_cycles, and
+	 * data).
+	 */
 	hrt_xfer_bus_widths_t bus_widths;
 
 	/** @brief Timer value, used for setting clock frequency
@@ -94,16 +103,14 @@ typedef struct {
 	/** @brief Chip enable pin polarity in enabled state. */
 	enum mspi_ce_polarity ce_polarity;
 
-	/** @brief When true clock signal makes 1 transition less.
-	 *         It is required for spi modes 1 and 3 due to hardware issue.
-	 */
-	bool eliminate_last_pulse;
-
 	/** @brief Tx mode mask for csr dir register  */
 	uint16_t tx_direction_mask;
 
 	/** @brief Rx mode mask for csr dir register  */
 	uint16_t rx_direction_mask;
+
+	/** @brief Due to hardware issues hrt module needs to know about selected spi mode */
+	enum mspi_cpp_mode cpp_mode;
 
 } hrt_xfer_t;
 
@@ -113,6 +120,14 @@ typedef struct {
  *
  *  @param[in] hrt_xfer_params Hrt transfer parameters and data.
  */
-void hrt_write(hrt_xfer_t *hrt_xfer_params);
+void hrt_write(volatile hrt_xfer_t *hrt_xfer_params);
+
+/** @brief Read.
+ *
+ *  Function to be used to read data from MSPI.
+ *
+ *  @param[in] hrt_xfer_params Hrt transfer parameters and data.
+ */
+void hrt_read(volatile hrt_xfer_t *hrt_xfer_params);
 
 #endif /* _HRT_H__ */

@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2024 Nordic Semiconductor
+# Copyright (c) 2025 Nordic Semiconductor
 #
 # SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
 #
@@ -34,6 +34,7 @@ extensions = [
     "zephyr.kconfig",
     "sphinx.ext.intersphinx",
     "recommonmark",
+    "sphinx_markdown_tables",
     "zephyr.external_content"
 ]
 source_suffix = [".rst", ".md"]
@@ -87,6 +88,8 @@ external_content_contents = [
     (MCUBOOT_BASE / "docs", "SECURITY.md"),
     (MCUBOOT_BASE / "docs", "signed_images.md"),
     (MCUBOOT_BASE / "docs", "SubmittingPatches.md"),
+    (MCUBOOT_BASE / "docs", "compression_format.md"),
+    (MCUBOOT_BASE / "docs", "images/decomp.png"),
 ]
 
 

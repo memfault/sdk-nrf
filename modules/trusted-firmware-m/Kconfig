@@ -132,6 +132,13 @@ config TFM_ATTEST_INCLUDE_OPTIONAL_CLAIMS
 	bool "Include optional claims in initial attestation token"
 	default y
 
+config TFM_ATTEST_VERIFICATION_SERVICE_URL
+	string "TF-M attestation verification service URL"
+	default ""
+	depends on TFM_ATTEST_INCLUDE_OPTIONAL_CLAIMS
+	help
+	  Optional claim of URL of the verification service in the TF-M attestation token.
+
 config TFM_ATTEST_INCLUDE_COSE_KEY_ID
 	bool "Include COSE key-id in initial attestation token"
 	default n
@@ -181,7 +188,7 @@ config TFM_ITS_VALIDATE_METADATA_FROM_FLASH
 	  Validate filesystem metadata every time it is read from flash
 
 config TFM_ITS_MAX_ASSET_SIZE
-	range 512 4096
+	range 256 4096
 	default 512
 	help
 	  The maximum asset size to be stored in the Internal Trusted Storage. The maximum value
@@ -319,6 +326,8 @@ endchoice
 
 config TFM_CPU_FREQ_MHZ
 	int
+	default $(div, $(dt_node_int_prop_int,/clocks/hfpll,clock-frequency), 1000000) \
+		if SOC_SERIES_NRF54LX
 	default $(div, $(dt_node_int_prop_int,/cpus/cpu@0,clock-frequency), 1000000) \
 		if $(dt_node_has_prop,/cpus/cpu@0,clock-frequency)
 	default $(div, $(dt_node_int_prop_int,/cpus/cpu@1,clock-frequency), 1000000) \

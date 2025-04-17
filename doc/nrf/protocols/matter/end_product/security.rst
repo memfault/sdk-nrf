@@ -56,44 +56,16 @@ You can find an overview of the cryptography layer configuration supported for e
 Trusted storage
 ***************
 
-:ref:`trusted_storage_in_ncs` is a security mechanism designed to securely store and manage sensitive data, such as cryptographic keys, device credentials, and configuration data.
-The mechanism is essential for IoT devices, as it allows the implementation of secure communication between devices.
-
-The Trusted Storage can utilize one of the following backends to implement PSA Certified Secure Storage API:
-
-* TF-M Platform Root of Trust (PRoT).
-  This can only be utilized if the `ARM TrustZone`_ technology and hardware-accelerated firmware isolation are supported by the platform in use.
-* The :ref:`trusted_storage_readme` |NCS| software library.
-
-Currently all :ref:`matter_samples` in the |NCS| use the trusted storage library as a Trusted Storage backend for all supported platforms.
-
-The trusted storage library provides confidentiality, integrity, and authenticity for the assets it operates on.
-It handles sensitive data in two contexts:
-
-* Volatile - Before data is forwarded to the non-volatile storage and after it is retrieved from the non-volatile storage.
-* Non-volatile - When data is written to the non-volatile memory in encrypted form.
-
-In the case of the volatile context, the trusted storage library leverages the Authenticated Encryption with Associated Data (AEAD) encryption backend (:kconfig:option:`CONFIG_TRUSTED_STORAGE_BACKEND_AEAD`).
-It is used to encrypt and decrypt the assets that are being securely stored in the non-volatile memory.
-AEAD can be configured with the set of Kconfig options described in the library's :ref:`trusted_storage_configuration` section.
-
-An important setting, that depends on the hardware platform in use, is the way of generating the AEAD keys.
-The recommended and the most secure option is to use :ref:`lib_hw_unique_key` (HUK) library.
-HUK support is automatically enabled with the :kconfig:option:`CONFIG_TRUSTED_STORAGE_BACKEND_AEAD_KEY_DERIVE_FROM_HUK` Kconfig option for compatible configurations.
-
-The HUK library is supported for the nRF52840, nRF5340, and nRF54L platforms, but for :ref:`matter_samples` in the |NCS|, it is only enabled for the nRF5340 and nRF54L platforms:
-
-* For the nRF5340, nRF54L platforms, the HUK is generated at first boot and stored in the Key Management Unit (KMU).
-  No changes to the existing partition layout are needed for products in the field.
-* For the nRF54L15 NS platform, the HUK generation and management is handled by the Trusted Firmware-M (TF-M) library.
-* For the nRF52840 platform, AEAD keys are derived with a SHA-256 hash (:kconfig:option:`CONFIG_TRUSTED_STORAGE_BACKEND_AEAD_KEY_HASH_UID`).
-  This approach is less secure than using the library for key derivation as it will only provide integrity of sensitive material.
-  It is also possible to implement a custom AEAD keys generation method when the :kconfig:option:`CONFIG_TRUSTED_STORAGE_BACKEND_AEAD_KEY_CUSTOM` Kconfig option is selected.
-
-  Using the HUK library with nRF52840 SoC is possible, but it requires employing the :ref:`bootloader` that would generate the AEAD key at first boot and store it in the dedicated HUK partition that can be accessed only by the CryptoCell peripheral.
-  Note that adding another partition in the FLASH layout implies breaking the firmware backward compatibility with already deployed devices.
-
+The :ref:`trusted_storage_in_ncs` is a security mechanism designed to securely store and manage sensitive data.
+Currently, all :ref:`matter_samples` in the |NCS| use the :ref:`trusted_storage_readme` library as the Trusted Storage backend for all supported platforms.
 You can find an overview of the Trusted Storage layer configuration supported for each |NCS| Matter-enabled platform in the :ref:`matter_platforms_security_support` section.
+
+.. note::
+   For the nRF52840 devices, in regards to :ref:`matter_samples` in |NCS|, AEAD keys are derived using hashes of entry UIDs (:kconfig:option:`CONFIG_TRUSTED_STORAGE_BACKEND_AEAD_KEY_HASH_UID`).
+   This approach is less secure than using the :ref:`lib_hw_unique_key` library for key derivation as it only provides integrity of sensitive material.
+   It is also possible to implement a custom AEAD key generation method when the :kconfig:option:`CONFIG_TRUSTED_STORAGE_BACKEND_AEAD_KEY_CUSTOM` Kconfig option is selected.
+
+For more details about AEAD key generation and backend configuration, see the :ref:`trusted_storage_readme` readme.
 
 .. _matter_platforms_security_support:
 
@@ -160,6 +132,135 @@ This is a reference configuration that can be modified in the production firmwar
        For all other operations not supported by CRACEN, the Oberon backend is used.
        To use the Oberon backend for specific cryptographic operations supported by both drivers, disable those operations in the CRACEN driver, as it takes priority when both are enabled.
        See the :ref:`nrf_security_drivers` documentation for more information.
+
+.. _matter_platforms_security_kmu:
+
+nRF54L Key Management Unit (KMU)
+================================
+
+nRF54L Series devices include :ref:`ug_nrf54l_crypto_kmu_cracen_peripherals` that can be used to store cryptographic keys in Matter.
+In this solution, the keys are stored within the available slots in the :ref:`ug_nrf54l_crypto_kmu_slots` range that are not reserved for current and future |NCS| use cases.
+
+The default slots range used for Matter is from ``100`` to ``180``, excluding the DAC private key.
+For details on the DAC private key configuration, see :ref:`matter_platforms_security_dac_priv_key_kmu`.
+To change the slots range, set the :kconfig:option:`CONFIG_CHIP_KMU_SLOT_RANGE_START` and :kconfig:option:`CONFIG_CHIP_KMU_SLOT_RANGE_END` Kconfig options.
+The Raw usage scheme defined in the :ref:`ug_nrf54l_crypto_kmu_key_usage_schemes` section is used for all Matter keys.
+
+To use this feature, set the :kconfig:option:`CONFIG_CHIP_STORE_KEYS_IN_KMU` Kconfig option to ``y``, and switch to the ``KMUKeyAllocator`` by calling the ``chip::Crypto::SetPSAKeyAllocator`` method in your code during the Matter stack initialization.
+
+For example:
+
+.. code-block:: cpp
+
+    #include <platform/nrfconnect/KMUKeyAllocator.h>
+
+    static KMUKeyAllocator kmuAllocator;
+    Crypto::SetPSAKeyAllocator(&kmuAllocator);
+
+See the :file:`samples/matter/common/src/app/matter_init.cpp` file for a usage example.
+
+Due to limited slots available in the KMU, the maximum number of Matter fabric is limited.
+The following table shows the all crypto materials used in Matter, the number of slots needed for each key and a Kconfig option that can be used to adjust the number of each key type:
+
+.. list-table:: KMU slots used by Matter crypto materials
+   :widths: auto
+   :header-rows: 1
+
+   * - Crypto material in Matter
+     - Key type
+     - Number of slots needed for a key
+     - Multiplication
+     - Minimum number of keys
+     - Kconfig option
+   * - Node Operational Certificate (NOC) private key
+     - ECC secp256r1 key pair
+     - 2
+     - For each Matter fabric
+     - 5 (5 Matter fabrics for each device)
+     - :kconfig:option:`CONFIG_CHIP_MAX_FABRICS`
+   * - Intermittently Connected Device (ICD) Token
+     - HMAC SHA-256 128-bit keys
+     - 1
+     - For each ICD user
+     - 10 (2 ICD users for each Matter fabric)
+     - :kconfig:option:`CONFIG_CHIP_ICD_CLIENTS_PER_FABRIC`
+   * - Intermittently Connected Device (ICD) symmetric Key
+     - AES 128-bit keys
+     - 1
+     - For each ICD user
+     - 10 (2 ICD users for each Matter fabric)
+     - :kconfig:option:`CONFIG_CHIP_ICD_CLIENTS_PER_FABRIC`
+   * - Group key [3]_
+     - AES 128-bit keys
+     - 1
+     - For each group
+     - 15 (3 groups for each Matter fabric)
+     - Not a Kconfig option, see ``CHIP_CONFIG_MAX_GROUP_ENDPOINTS_PER_FABRIC`` Matter config.
+   * - Device Attestation Certificate (DAC) private key
+     - ECC secp256r1 key pair
+     - 2
+     - For each device
+     - 1
+     - Not configurable
+
+.. [3] Group keys are not stored in the KMU yet, but the slots are reserved for the future usage.
+       A key may be shared between multiple groups, so the number of slots needed for group keys may be lower than the number of groups.
+       Three group keys are assumed for each Matter fabric.
+
+The default slots range allows storing more cryptographic materials than the minimum required according to the Matter specification.
+A minimum of 46 slots is required for cryptographic materials, including the DAC private key to support five fabrics (minimum required by the specification).
+A single Matter fabric requires at least nine KMU slots.
+
+The default range has been chosen to support up to eight Matter fabrics, 32 ICD keys (16 ICD users), and 24 group keys.
+You can change the default Kconfig option for each crypto material to adjust the number of slots, but you must ensure that the total number of slots fits within the defined range.
+If you overlap the slots range, the appropriate compilation error will be shown:
+
+.. code-block:: console
+
+    error: "The number of slots exceeds the range of the KMU defined in CONFIG_CHIP_KMU_SLOT_RANGE_START and CONFIG_CHIP_KMU_SLOT_RANGE_END"
+
+For example, to fill the default slots range and support eight Matter fabrics, three group keys per fabric, and two ICD users for each fabric, set the :kconfig:option:`CONFIG_CHIP_MAX_FABRICS` Kconfig option to ``8``.
+
+Slots arrangement within the slot range defined by :kconfig:option:`CONFIG_CHIP_KMU_SLOT_RANGE_START` and :kconfig:option:`CONFIG_CHIP_KMU_SLOT_RANGE_END` Kconfig options is calculated automatically in the code in the following way:
+
+.. list-table:: KMU slots arrangement for Matter crypto materials
+  :widths: auto
+  :header-rows: 1
+
+  * - Crypto material
+    - Slot range start
+    - Slot range end
+    - Default slot range for eight Matter fabrics to fit the default range (100-180)
+  * - Node Operational Certificate (NOC) private key
+    - :kconfig:option:`CONFIG_CHIP_KMU_SLOT_RANGE_START`
+    - :kconfig:option:`CONFIG_CHIP_KMU_SLOT_RANGE_START` + (:kconfig:option:`CONFIG_CHIP_MAX_FABRICS` * 2)
+    - 100 - 115
+  * - Intermittently Connected Device (ICD) Token + ICD symmetric Key
+    - End of NOC slots
+    - End of NOC slots + (:kconfig:option:`CONFIG_CHIP_ICD_CLIENTS_PER_FABRIC` * :kconfig:option:`CONFIG_CHIP_MAX_FABRICS` * 2)
+    - 116 - 147
+  * - Group keys
+    - End of ICD slots
+    - End of ICD slots + (3 * :kconfig:option:`CONFIG_CHIP_MAX_FABRICS`)
+    - 148 - 171
+  * - Device Attestation Certificate (DAC) private key
+    - Configurable with :kconfig:option:`CONFIG_CHIP_CRYPTO_PSA_DAC_PRIV_KEY_KMU_SLOT_ID`
+    - DAC private key start slot + 1 (non-encrypted) or + 3 (encrypted)
+    - 176 - 179 (encrypted) or 178 - 179 (non-encrypted)
+
+.. important::
+
+  Once a slot range is defined, it should not be changed during the firmware update process.
+  Changing the slot range will result in loss of all cryptographic materials stored in the KMU.
+  You can safely change slot ranges only when the device is in the factory state and no cryptographic materials are stored in the KMU.
+  Otherwise, to extend the slot range beyond the previously defined range and keep the existing cryptographic materials stored in the KMU, complete the following steps:
+
+  1. Locate the :file:`src/platform/nrfconnect/KMUKeyAllocator.h` file in the Matter repository, or create a new one with the same functionality.
+  #. Modify the file content to redirect the keys to the new slot range by implementing the ``GetDacKeyId``, ``GetOpKeyId``, and ``AllocateICDKeyId`` functions.
+  #. If you want to use your own implementation of the KMUKeyAllocator, assign it in your application code by calling the ``Crypto::SetPSAKeyAllocator`` method.
+  #. Ensure that you have chosen an available slot range that does not overlap with any existing one.
+  #. Build your application with the new configuration.
+  #. Perform a firmware update on the device.
 
 .. _matter_platforms_security_dac_priv_key:
 

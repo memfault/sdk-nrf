@@ -19,13 +19,19 @@
 #include <nrf_rpc_cbor.h>
 
 #include <zephyr/kernel.h>
+#include <zephyr/sys_clock.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/logging/log_backend.h>
 #include <zephyr/logging/log_backend_std.h>
+#include <zephyr/logging/log_ctrl.h>
 #include <zephyr/logging/log_output.h>
 #include <zephyr/retention/retention.h>
 
 #include <string.h>
+
+LOG_MODULE_REGISTER(log_rpc);
+
+#define USEC_PER_TICK (1000000 / CONFIG_SYS_CLOCK_TICKS_PER_SEC)
 
 /*
  * Drop messages coming from nRF RPC to avoid the avalanche of logs:
@@ -46,9 +52,12 @@ static const uint32_t common_output_flags =
 static bool panic_mode;
 static uint32_t log_format = LOG_OUTPUT_TEXT;
 static enum log_rpc_level stream_level = LOG_RPC_LEVEL_NONE;
+static log_timestamp_t log_timestamp_delta;
 
 #ifdef CONFIG_LOG_BACKEND_RPC_HISTORY
 static enum log_rpc_level history_level = LOG_RPC_LEVEL_NONE;
+static uint8_t history_threshold;
+static bool history_threshold_active;
 static void history_transfer_task(struct k_work *work);
 static K_MUTEX_DEFINE(history_transfer_mtx);
 static uint32_t history_transfer_id;
@@ -361,6 +370,15 @@ static void process(const struct log_backend *const backend, union log_msg_gener
 
 	if (max_level != LOG_RPC_LEVEL_NONE && level <= max_level) {
 		log_rpc_history_push(msg_generic);
+
+		if (history_threshold_active && log_rpc_history_get_usage() > history_threshold) {
+			struct nrf_rpc_cbor_ctx ctx;
+
+			NRF_RPC_CBOR_ALLOC(&log_rpc_group, ctx, 0);
+			nrf_rpc_cbor_evt_no_err(&log_rpc_group,
+						LOG_RPC_EVT_HISTORY_THRESHOLD_REACHED, &ctx);
+			history_threshold_active = false;
+		}
 	}
 #endif
 }
@@ -477,6 +495,13 @@ static void history_transfer_task(struct k_work *work)
 	NRF_RPC_CBOR_ALLOC(&log_rpc_group, ctx, CONFIG_LOG_BACKEND_RPC_HISTORY_UPLOAD_CHUNK_SIZE);
 
 	k_mutex_lock(&history_transfer_mtx, K_FOREVER);
+
+	if (history_transfer_id == 0) {
+		/* History transfer has been stopped */
+		k_mutex_unlock(&history_transfer_mtx);
+		return;
+	}
+
 	nrf_rpc_encode_uint(&ctx, history_transfer_id);
 
 	while (true) {
@@ -519,6 +544,7 @@ static void history_transfer_task(struct k_work *work)
 		log_rpc_history_free(history_cur_msg);
 		history_cur_msg = NULL;
 		log_rpc_history_set_overwriting(true);
+		history_threshold_active = history_threshold > 0;
 	}
 
 	k_mutex_unlock(&history_transfer_mtx);
@@ -552,4 +578,138 @@ static void log_rpc_fetch_history_handler(const struct nrf_rpc_group *group,
 NRF_RPC_CBOR_CMD_DECODER(log_rpc_group, log_rpc_fetch_history_handler, LOG_RPC_CMD_FETCH_HISTORY,
 			 log_rpc_fetch_history_handler, NULL);
 
+static void log_rpc_stop_fetch_history_handler(const struct nrf_rpc_group *group,
+					       struct nrf_rpc_cbor_ctx *ctx, void *handler_data)
+{
+	bool pause;
+
+	pause = nrf_rpc_decode_bool(ctx);
+
+	if (!nrf_rpc_decoding_done_and_check(group, ctx)) {
+		nrf_rpc_err(-EBADMSG, NRF_RPC_ERR_SRC_RECV, group, LOG_RPC_CMD_STOP_FETCH_HISTORY,
+			    NRF_RPC_PACKET_TYPE_CMD);
+		return;
+	}
+
+	k_mutex_lock(&history_transfer_mtx, K_FOREVER);
+	history_transfer_id = 0;
+	log_rpc_history_set_overwriting(!pause);
+	history_threshold_active = history_threshold > 0;
+	k_mutex_unlock(&history_transfer_mtx);
+
+	nrf_rpc_rsp_send_void(group);
+}
+
+NRF_RPC_CBOR_CMD_DECODER(log_rpc_group, log_rpc_stop_fetch_history_handler,
+			 LOG_RPC_CMD_STOP_FETCH_HISTORY, log_rpc_stop_fetch_history_handler, NULL);
+
+static void log_rpc_get_history_usage_threshold_handler(const struct nrf_rpc_group *group,
+							struct nrf_rpc_cbor_ctx *ctx,
+							void *handler_data)
+{
+	nrf_rpc_cbor_decoding_done(group, ctx);
+	nrf_rpc_rsp_send_uint(group, history_threshold);
+}
+
+NRF_RPC_CBOR_CMD_DECODER(log_rpc_group, log_rpc_get_history_usage_threshold_handler,
+			 LOG_RPC_CMD_GET_HISTORY_USAGE_THRESHOLD,
+			 log_rpc_get_history_usage_threshold_handler, NULL);
+
+static void log_rpc_set_history_usage_threshold_handler(const struct nrf_rpc_group *group,
+							struct nrf_rpc_cbor_ctx *ctx,
+							void *handler_data)
+{
+	uint8_t threshold = nrf_rpc_decode_uint(ctx);
+
+	if (!nrf_rpc_decoding_done_and_check(group, ctx)) {
+		nrf_rpc_err(-EBADMSG, NRF_RPC_ERR_SRC_RECV, group,
+			    LOG_RPC_CMD_SET_HISTORY_USAGE_THRESHOLD, NRF_RPC_PACKET_TYPE_CMD);
+		return;
+	}
+
+	history_threshold = threshold;
+	history_threshold_active = threshold > 0;
+
+	nrf_rpc_rsp_send_void(group);
+}
+
+NRF_RPC_CBOR_CMD_DECODER(log_rpc_group, log_rpc_set_history_usage_threshold_handler,
+			 LOG_RPC_CMD_SET_HISTORY_USAGE_THRESHOLD,
+			 log_rpc_set_history_usage_threshold_handler, NULL);
+
 #endif
+
+#ifdef CONFIG_LOG_BACKEND_RPC_ECHO
+
+static void put_log(enum log_rpc_level level, const char *fmt, ...)
+{
+	va_list ap;
+
+	va_start(ap, fmt);
+	log_generic(level, fmt, ap);
+	va_end(ap);
+}
+
+static void log_rpc_echo_handler(const struct nrf_rpc_group *group, struct nrf_rpc_cbor_ctx *ctx,
+				 void *handler_data)
+{
+	enum log_rpc_level level;
+	const char *log_msg;
+	size_t log_len;
+
+	level = nrf_rpc_decode_uint(ctx);
+	log_msg = nrf_rpc_decode_str_ptr_and_len(ctx, &log_len);
+
+	if (log_msg) {
+		put_log(level, "%.*s", log_len, log_msg);
+	}
+
+	if (!nrf_rpc_decoding_done_and_check(group, ctx)) {
+		nrf_rpc_err(-EBADMSG, NRF_RPC_ERR_SRC_RECV, group, LOG_RPC_CMD_ECHO,
+			    NRF_RPC_PACKET_TYPE_CMD);
+		return;
+	}
+
+	nrf_rpc_rsp_send_void(group);
+}
+
+NRF_RPC_CBOR_CMD_DECODER(log_rpc_group, log_rpc_echo_handler, LOG_RPC_CMD_ECHO,
+			 log_rpc_echo_handler, NULL);
+
+#endif
+
+static log_timestamp_t log_rpc_timestamp(void)
+{
+	return sys_clock_tick_get() + log_timestamp_delta;
+}
+
+static void log_rpc_set_time_handler(const struct nrf_rpc_group *group,
+				     struct nrf_rpc_cbor_ctx *ctx, void *handler_data)
+{
+	log_timestamp_t log_time;
+	log_timestamp_t local_time;
+	log_timestamp_t old_delta;
+
+	log_time = (log_timestamp_t)k_us_to_ticks_near64(nrf_rpc_decode_uint64(ctx));
+	local_time = (log_timestamp_t)sys_clock_tick_get();
+
+	if (!nrf_rpc_decoding_done_and_check(group, ctx)) {
+		nrf_rpc_err(-EBADMSG, NRF_RPC_ERR_SRC_RECV, group, LOG_RPC_CMD_SET_TIME,
+			    NRF_RPC_PACKET_TYPE_CMD);
+		return;
+	}
+
+	k_sched_lock();
+	old_delta = log_timestamp_delta;
+	log_timestamp_delta = log_time - local_time;
+	log_set_timestamp_func(log_rpc_timestamp, CONFIG_SYS_CLOCK_TICKS_PER_SEC);
+	k_sched_unlock();
+
+	LOG_WRN("Log time shifted by %" PRId64 " us",
+		((int64_t)log_timestamp_delta - (int64_t)old_delta) * USEC_PER_TICK);
+
+	nrf_rpc_rsp_send_void(group);
+}
+
+NRF_RPC_CBOR_CMD_DECODER(log_rpc_group, log_rpc_set_time_handler, LOG_RPC_CMD_SET_TIME,
+			 log_rpc_set_time_handler, NULL);

@@ -22,11 +22,12 @@
 #include <silexpk/ik.h>
 #include <silexpk/sxops/eccweierstrass.h>
 #include <stddef.h>
-#include <sxsymcrypt/sha1.h>
-#include <sxsymcrypt/sha2.h>
-#include <sxsymcrypt/sha3.h>
+#include <sxsymcrypt/hashdefs.h>
+#include <zephyr/logging/log.h>
 #include <zephyr/sys/util.h>
 #include <psa/nrf_platform_key_ids.h>
+
+LOG_MODULE_DECLARE(cracen, CONFIG_CRACEN_LOG_LEVEL);
 
 #define NOT_ENABLED_CURVE    (0)
 #define NOT_ENABLED_HASH_ALG (0)
@@ -42,6 +43,10 @@ static const uint8_t RSA_ALGORITHM_IDENTIFIER[] = {0x06, 0x09, 0x2a, 0x86, 0x48,
 
 psa_status_t silex_statuscodes_to_psa(int ret)
 {
+	if (ret != SX_OK) {
+		LOG_DBG("SX_ERR %d", ret);
+	}
+
 	switch (ret) {
 	case SX_OK:
 	case SX_ERR_READY:
@@ -333,7 +338,6 @@ psa_status_t cracen_ecc_check_public_key(const struct sx_pk_ecurve *curve,
 					 const sx_pk_affine_point *in_pnt)
 {
 	int sx_status;
-	int psa_status;
 	char char_x[CRACEN_MAC_ECC_PRIVKEY_BYTES];
 	char char_y[CRACEN_MAC_ECC_PRIVKEY_BYTES];
 
@@ -345,29 +349,22 @@ psa_status_t cracen_ecc_check_public_key(const struct sx_pk_ecurve *curve,
 					  .y = {.sz = n.sz, .bytes = char_y}};
 
 	/* This function checks if the point is on the curve, it also checks
-	 * that both x and y are <= p - 1. So it gives us coverage for 1,2,3.
+	 * that both x and y are <= p - 1. So it gives us coverage for steps 1, 2 and 3.
 	 */
 	sx_status = sx_ec_ptoncurve(curve, in_pnt);
 	if (sx_status != SX_OK) {
 		return silex_statuscodes_to_psa(sx_status);
 	}
 
-	/* Step 4 of the checks, we do (order * pnt) and we expect to get the
-	 * point of infinity as a result. The Cracen returns
-	 * SX_ERR_NOT_INVERTIBLE and not SX_ERR_POINT_AT_INFINITY as expected
+	/* Skip step 4.
+	 * Only do partial key validation as we only support NIST curves and X25519.
+	 * See DLT-3834 for more information.
 	 */
-	sx_status = sx_ecp_ptmult(curve, &n, in_pnt, &scratch_pnt);
-	if (sx_status == SX_ERR_NOT_INVERTIBLE) {
-		psa_status = PSA_SUCCESS;
-	} else {
-		psa_status = (sx_status == SX_OK) ? PSA_ERROR_INVALID_ARGUMENT
-						  : silex_statuscodes_to_psa(sx_status);
-	}
 
 	safe_memzero(scratch_pnt.x.bytes, scratch_pnt.x.sz);
 	safe_memzero(scratch_pnt.x.bytes, scratch_pnt.x.sz);
 
-	return psa_status;
+	return PSA_SUCCESS;
 }
 
 psa_status_t rnd_in_range(uint8_t *n, size_t sz, const uint8_t *upperlimit, size_t retry_limit)
@@ -852,4 +849,86 @@ psa_status_t cracen_get_opaque_size(const psa_key_attributes_t *attributes, size
 	}
 
 	return PSA_ERROR_INVALID_ARGUMENT;
+}
+
+void be_add(unsigned char *v, size_t sz, size_t summand)
+{
+	while (sz > 0) {
+		sz--;
+		summand += v[sz];
+		v[sz] = summand & 0xFF;
+		summand >>= 8;
+	}
+}
+
+int be_cmp(const unsigned char *a, const unsigned char *b, size_t sz, int carry)
+{
+	unsigned int neq = 0;
+	unsigned int gt = 0;
+	unsigned int ucarry;
+	unsigned int d;
+	unsigned int lt;
+
+	/* transform carry to work with unsigned numbers */
+	ucarry = 0x100 + carry;
+
+	for (int i = sz - 1; i >= 0; i--) {
+		d = ucarry + a[i] - b[i];
+		ucarry = 0xFF + (d >> 8);
+		neq |= d & 0xFF;
+	}
+
+	neq |= ucarry & 0xFF;
+	lt = ucarry < 0x100;
+	gt = neq && !lt;
+
+	return (gt ? 1 : 0) - (lt ? 1 : 0);
+}
+
+int hash_all_inputs_with_context(struct sxhash *hashopctx, const char *inputs[],
+				 const size_t inputs_lengths[], size_t input_count,
+				 const struct sxhashalg *hashalg, char *digest)
+{
+	int status;
+
+	status = sx_hash_create(hashopctx, hashalg, sizeof(*hashopctx));
+	if (status != SX_OK) {
+		return status;
+	}
+
+	for (size_t i = 0; i < input_count; i++) {
+		status = sx_hash_feed(hashopctx, inputs[i], inputs_lengths[i]);
+		if (status != SX_OK) {
+			return status;
+		}
+	}
+	status = sx_hash_digest(hashopctx, digest);
+	if (status != SX_OK) {
+		return status;
+	}
+
+	status = sx_hash_wait(hashopctx);
+
+	return status;
+}
+
+int hash_all_inputs(const char *inputs[], const size_t inputs_lengths[], size_t input_count,
+		    const struct sxhashalg *hashalg, char *digest)
+{
+	struct sxhash hashopctx;
+
+	return hash_all_inputs_with_context(&hashopctx, inputs, inputs_lengths, input_count,
+					    hashalg, digest);
+}
+
+int hash_input(const char *input, const size_t input_length, const struct sxhashalg *hashalg,
+	       char *digest)
+{
+	return hash_all_inputs(&input, &input_length, 1, hashalg, digest);
+}
+
+int hash_input_with_context(struct sxhash *hashopctx, const char *input, const size_t input_length,
+			    const struct sxhashalg *hashalg, char *digest)
+{
+	return hash_all_inputs_with_context(hashopctx, &input, &input_length, 1, hashalg, digest);
 }

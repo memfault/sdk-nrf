@@ -46,6 +46,13 @@ You can reduce the memory usage of your Matter application by enabling Link Time
 
 LTO is an advanced compilation technique that performs optimization across all compiled units of an application at the link stage, rather than within each unit separately.
 
+LTO is enabled by default for the following:
+
+* The :ref:`matter_bridge_app` application.
+* The ``release`` configuration of the :ref:`matter_samples` and the :ref:`matter_weather_station_app`.
+* The ``nrf7002dk/nrf5340/cpuapp`` build target in the :ref:`matter_samples`.
+
+
 To enable LTO, set the :kconfig:option:`CONFIG_LTO` and :kconfig:option:`CONFIG_ISR_TABLES_LOCAL_DECLARATION` Kconfig options to ``y``.
 
 .. _ug_matter_device_memory_profiling:
@@ -319,7 +326,7 @@ Settings usage
     The data used within this partition may increase with updates to Matter and the |NCS|.
 
 To adjust the settings usage, you need to modify the :file:`pm_static` file related to your target board.
-For example, to modify the ``settings_storage`` partition in the :ref:`Matter Template <matter_template_sample>` sample for the ``nrf52840dk_nrf52840`` target, complete the following steps:
+For example, to modify the ``settings_storage`` partition in the :ref:`Matter Template <matter_template_sample>` sample for the ``nrf52840dk/nrf52840`` target, complete the following steps:
 
 1. Locate the :file:`pm_static_nrf52840dk_nrf52840.yml` in the sample directory
 #. Locate the ``settings_storage`` partition within the ``pm_static`` file.

@@ -29,8 +29,8 @@
 
 #include "multithreading_lock.h"
 #include "hci_internal.h"
-#include "ecdh.h"
 #include "radio_nrf5_txp.h"
+#include "cs_antenna_switch.h"
 
 #define DT_DRV_COMPAT nordic_bt_hci_sdc
 
@@ -983,7 +983,12 @@ static int configure_supported_features(void)
 		if (err) {
 			return -ENOTSUP;
 		}
-		err = sdc_support_channel_sounding();
+#if defined(CONFIG_BT_CTLR_SDC_CS_MULTIPLE_ANTENNA_SUPPORT)
+		err = sdc_support_channel_sounding(cs_antenna_switch_func);
+		cs_antenna_switch_init();
+#else
+		err = sdc_support_channel_sounding(NULL);
+#endif
 		if (err) {
 			return -ENOTSUP;
 		}
@@ -1302,10 +1307,6 @@ static int hci_driver_open(const struct device *dev, bt_hci_recv_t recv_func)
 
 	k_work_init(&receive_work, receive_work_handler);
 
-	if (IS_ENABLED(CONFIG_BT_CTLR_ECDH)) {
-		hci_ecdh_init();
-	}
-
 	uint8_t build_revision[SDC_BUILD_REVISION_SIZE];
 
 	sdc_build_revision_get(build_revision);
@@ -1461,8 +1462,8 @@ static int hci_driver_close(const struct device *dev)
 {
 	int err;
 
-	if (IS_ENABLED(CONFIG_BT_CTLR_ECDH)) {
-		hci_ecdh_uninit();
+	if (IS_ENABLED(CONFIG_BT_CTLR_SDC_CS_MULTIPLE_ANTENNA_SUPPORT)) {
+		cs_antenna_switch_clear();
 	}
 
 	err = MULTITHREADING_LOCK_ACQUIRE();
@@ -1509,6 +1510,9 @@ static int hci_driver_init(const struct device *dev)
 	int err = 0;
 
 	err = sdc_init(sdc_assertion_handler);
+	if (err) {
+		return err;
+	}
 
 	err = configure_supported_features();
 	if (err) {
@@ -1523,10 +1527,15 @@ static int hci_driver_init(const struct device *dev)
 	return err;
 }
 
+#if defined(CONFIG_MPSL_USE_EXTERNAL_CLOCK_CONTROL)
+BUILD_ASSERT(CONFIG_BT_LL_SOFTDEVICE_INIT_PRIORITY > CONFIG_MPSL_INIT_PRIORITY,
+			 "MPSL must be initialized before SoftDevice Controller");
+#endif /* CONFIG_MPSL_USE_EXTERNAL_CLOCK_CONTROL */
+
 #define BT_HCI_CONTROLLER_INIT(inst) \
 	static struct hci_driver_data data_##inst; \
 	DEVICE_DT_INST_DEFINE(inst, hci_driver_init, NULL, &data_##inst, NULL, POST_KERNEL, \
-			      CONFIG_KERNEL_INIT_PRIORITY_DEVICE, &hci_driver_api)
+			      CONFIG_BT_LL_SOFTDEVICE_INIT_PRIORITY, &hci_driver_api)
 
 /* Only a single instance is supported */
 BT_HCI_CONTROLLER_INIT(0)

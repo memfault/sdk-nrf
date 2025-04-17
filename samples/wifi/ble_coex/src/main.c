@@ -13,7 +13,7 @@
 #include <string.h>
 
 #include <zephyr/logging/log.h>
-LOG_MODULE_REGISTER(coex, CONFIG_LOG_DEFAULT_LEVEL);
+LOG_MODULE_REGISTER(ble_coex, CONFIG_LOG_DEFAULT_LEVEL);
 
 #include <zephyr/kernel.h>
 #if NRFX_CLOCK_ENABLED && (defined(CLOCK_FEATURE_HFCLK_DIVIDE_PRESENT) || NRF_CLOCK_HAS_HFCLK192M)
@@ -34,7 +34,6 @@ LOG_MODULE_REGISTER(coex, CONFIG_LOG_DEFAULT_LEVEL);
 #include <zephyr/net/net_event.h>
 #include <zephyr/net/socket.h>
 
-#include <net/wifi_mgmt_ext.h>
 
 /* For net_sprint_ll_addr_buf */
 #include "net_private.h"
@@ -335,8 +334,8 @@ int main(void)
 #ifdef CONFIG_NRF70_SR_COEX
 	enum nrf_wifi_pta_wlan_op_band wlan_band;
 	bool separate_antennas = IS_ENABLED(CONFIG_COEX_SEP_ANTENNAS);
-#endif /* CONFIG_NRF70_SR_COEX */
 	bool is_sr_protocol_ble = IS_ENABLED(CONFIG_SR_PROTOCOL_BLE);
+#endif /* CONFIG_NRF70_SR_COEX */
 
 #if !defined(CONFIG_COEX_SEP_ANTENNAS) && \
 	!(defined(CONFIG_BOARD_NRF7002DK_NRF7001_NRF5340_CPUAPP) || \
@@ -482,10 +481,12 @@ int main(void)
 		bt_throughput_test_exit();
 	}
 
+#ifdef CONFIG_NRF70_SR_COEX
 	/* Disable coexistence hardware */
 	nrf_wifi_coex_hw_reset();
 
 	LOG_INF("\nCoexistence test complete\n");
+#endif /* CONFIG_NRF70_SR_COEX */
 
 	return 0;
 err:

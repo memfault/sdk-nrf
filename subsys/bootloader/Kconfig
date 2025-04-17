@@ -57,7 +57,8 @@ endif # SECURE_BOOT
 
 config PM_PARTITION_SIZE_PROVISION
 	hex
-	default 0x280 if SOC_SERIES_NRF91X || SOC_NRF5340_CPUAPP || SOC_NRF54L15_CPUAPP # Stored in OTP region
+	default 0x280 if SOC_SERIES_NRF91X || SOC_NRF5340_CPUAPP # Stored in OTP region
+	default 0x460 if SOC_NRF54L15_CPUAPP # Monotonic counter slot takes 4 bytes
 	default 0x280 if SOC_NRF5340_CPUNET # Second instance stored in internal flash of NET
 	default FPROTECT_BLOCK_SIZE
 	prompt "Flash space reserved for PROVISION" if !(SOC_NRF9160 || SOC_NRF5340_CPUAPP || SOC_NRF54L15_CPUAPP)
@@ -102,6 +103,13 @@ config SB_CLEANUP_RAM
 	depends on CPU_CORTEX_M4 || CPU_CORTEX_M33
 	help
 	  Sets contents of memory to 0 before jumping to application.
+
+config SB_DISABLE_SELF_RWX
+	bool "Disable read and execution on self NVM"
+	depends on SOC_NRF54L15_CPUAPP && !FPROTECT_ALLOW_COMBINED_REGIONS
+	help
+	  Sets RRAMC's BOOTCONF region protection before jumping to application.
+	  It disables reads writes and execution memory area which holds NSIB.
 
 endif # IS_SECURE_BOOTLOADER
 

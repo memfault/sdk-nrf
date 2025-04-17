@@ -40,6 +40,8 @@ The configuration overlay file :file:`overlay-dfu.conf` and the :ref:`sysbuild <
 * nrf52840dk/nrf52840
 * nrf21540dk/nrf52840
 * nrf54l15dk/nrf54l15/cpuapp
+* nrf5340dk/nrf5340/cpuapp
+* nrf5340dk/nrf5340/cpuapp/ns
 
 While this overlay configuration is only applicable for the mentioned platforms in this sample, DFU over Bluetooth Low Energy may be used on other platforms as well.
 
@@ -176,6 +178,11 @@ Building and running
 .. |sample path| replace:: :file:`samples/bluetooth/mesh/light`
 
 .. include:: /includes/build_and_run_ns.txt
+
+.. |sample_or_app| replace:: sample
+.. |ipc_radio_dir| replace:: :file:`sysbuild/ipc_radio`
+
+.. include:: /includes/ipc_radio_conf.txt
 
 .. _bluetooth_mesh_light_testing:
 

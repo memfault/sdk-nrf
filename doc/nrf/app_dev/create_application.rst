@@ -149,6 +149,9 @@ Using the |nRFVSC| is the recommended method.
 Creating application in the |nRFVSC|
 ====================================
 
+.. note::
+   If you prefer, you can `start VS Code walkthrough`_ and create applications and build configurations from there.
+
 Use the following steps depending on the application placement:
 
 .. tabs::
@@ -165,6 +168,7 @@ Use the following steps depending on the application placement:
 
          * :guilabel:`Create a blank application` - This will create an application with a code structure that you need to populate from scratch.
          * :guilabel:`Copy a sample` - This will create an application from an |NCS| sample or an |NCS| application.
+           If you have more than one version of the |NCS| installed, you have to choose the version from which you copy the sample or the application from.
 
       #. Enter the location and the name for the application.
          The location will be the *<west-workspace>/* directory mentioned in the :ref:`workspace application structure <create_application_types_workspace>`.
@@ -179,7 +183,7 @@ Use the following steps depending on the application placement:
             A quick pick menu appears.
          #. Click :guilabel:`Manage West Workspace...`.
          #. In the :guilabel:`Manage West Workspace...` action menu, click :guilabel:`Create West Workspace`.
-         #. Enter a location for the :file:`west.yml` file that matches the location provided in step 4.
+         #. Enter a location for the :file:`west.yml` file that matches the location provided when you were creating the application.
          #. Select the SDK version for the west workspace.
             The west workspace is initialized.
          #. Click :guilabel:`Manage SDKs` > :guilabel:`Manage West Workspace` > :guilabel:`West Update` to update the workspace modules.

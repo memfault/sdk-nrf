@@ -13,6 +13,7 @@ add_subdirectory_ifdef(CONFIG_SECURE_BOOT_STORAGE bootloader/bl_storage)
 
 add_subdirectory_ifdef(CONFIG_NRF_SECURITY nrf_security)
 add_subdirectory_ifdef(CONFIG_TRUSTED_STORAGE trusted_storage)
+add_subdirectory_ifdef(CONFIG_SECURE_STORAGE secure_storage)
 
 add_subdirectory(net)
 add_subdirectory_ifdef(CONFIG_ESB		esb)
@@ -28,7 +29,6 @@ endif()
 
 add_subdirectory(mpsl)
 
-add_subdirectory_ifdef(CONFIG_ZIGBEE zigbee)
 add_subdirectory_ifdef(CONFIG_MGMT_FMFU mgmt/fmfu)
 add_subdirectory_ifdef(CONFIG_GAZELL gazell)
 
@@ -68,3 +68,4 @@ add_subdirectory_ifdef(CONFIG_MGMT_SUITFU mgmt/suitfu)
 add_subdirectory_ifdef(CONFIG_DULT dult)
 add_subdirectory_ifdef(CONFIG_NRF_COMPRESS nrf_compress)
 add_subdirectory(mgmt/mcumgr)
+add_subdirectory_ifdef(CONFIG_SETTINGS settings)

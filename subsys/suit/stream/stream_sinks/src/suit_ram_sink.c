@@ -10,6 +10,7 @@
 #include <string.h>
 #include <suit_ram_sink.h>
 #include <suit_memory_layout.h>
+#include <zephyr/cache.h>
 
 /* Set to more than one to allow multiple contexts in case of parallel execution */
 #define SUIT_MAX_RAM_COMPONENTS 1
@@ -49,9 +50,19 @@ static struct ram_ctx *get_new_ctx(void)
 
 bool suit_ram_sink_is_address_supported(uint8_t *address)
 {
+	const size_t cache_line_size = sys_cache_data_line_size_get();
+
 	if ((address == NULL) || !suit_memory_global_address_is_in_ram((uintptr_t)address)) {
 		LOG_INF("Failed to find RAM area corresponding to address: %p", address);
 		return false;
+	}
+
+	if (cache_line_size > 0) {
+		if ((((uintptr_t)address) % cache_line_size) != 0) {
+			LOG_ERR("Requested memory area (%p) must be aligned with cache lines (%p)",
+				(void *)address, (void *)cache_line_size);
+			return SUIT_PLAT_ERR_INVAL;
+		}
 	}
 
 	return true;
@@ -99,7 +110,7 @@ static suit_plat_err_t write(void *ctx, const uint8_t *buf, size_t size)
 	if ((ctx != NULL) && (buf != NULL) && (size > 0)) {
 		struct ram_ctx *ram_ctx = (struct ram_ctx *)ctx;
 
-		if ((ram_ctx->offset_limit - (size_t)ram_ctx->ptr) >= size) {
+		if ((ram_ctx->offset_limit - (size_t)ram_ctx->ptr + ram_ctx->offset) >= size) {
 			uint8_t *dst = (uint8_t *)suit_memory_global_address_to_ram_address(
 				(uintptr_t)(ram_ctx->ptr + ram_ctx->offset));
 
@@ -109,6 +120,22 @@ static suit_plat_err_t write(void *ctx, const uint8_t *buf, size_t size)
 
 			memcpy(dst, buf, size);
 			ram_ctx->offset += size;
+
+			/* It is guaranteed by the suit_ram_sink_is_address_supported() that
+			 * the ram_ctx->ptr is aligned with the cache lines,
+			 * so a simple address alignment implemented inside the cache driver
+			 * causes cache flush within the sink memory.
+			 * In case of RAM sink usage for copying data using streamers,
+			 * the destination address points to the local stack,
+			 * so flushing should not have negative effects on the system.
+			 */
+			int ret = sys_cache_data_flush_range(dst, size);
+
+			if (ret != 0 && ret != -EAGAIN && ret != -ENOTSUP) {
+				LOG_ERR("Failed to flush cache buffer range (%p, 0x%x): %d",
+					(void *)dst, size, ret);
+				return SUIT_PLAT_ERR_INVAL;
+			}
 
 			if (ram_ctx->offset > ram_ctx->size_used) {
 				ram_ctx->size_used = ram_ctx->offset;
@@ -166,6 +193,46 @@ static suit_plat_err_t release(void *ctx)
 		ram_ctx->in_use = false;
 
 		return SUIT_PLAT_SUCCESS;
+	}
+
+	LOG_ERR("Invalid arguments.");
+	return SUIT_PLAT_ERR_INVAL;
+}
+
+suit_plat_err_t suit_ram_sink_readback(void *sink_ctx, size_t offset, uint8_t *buf, size_t size)
+{
+	if ((sink_ctx != NULL) && (buf != NULL)) {
+		struct ram_ctx *ram_ctx = (struct ram_ctx *)sink_ctx;
+
+		bool ctx_found = false;
+
+		for (int i = 0; i < SUIT_MAX_RAM_COMPONENTS; i++) {
+			if (ram_ctx == &ctx[i]) {
+				ctx_found = true;
+				break;
+			}
+		}
+
+		if (ctx_found == false) {
+			LOG_ERR("Readback with invalid sink_ctx called.");
+			return SUIT_PLAT_ERR_INVAL;
+		}
+
+		if ((ram_ctx->offset_limit - (size_t)ram_ctx->ptr + offset) >= size) {
+			uint8_t *dst = (uint8_t *)suit_memory_global_address_to_ram_address(
+				(uintptr_t)(ram_ctx->ptr + offset));
+
+			if (dst == NULL) {
+				return SUIT_PLAT_ERR_INVAL;
+			}
+
+			memcpy(buf, dst, size);
+
+			return SUIT_PLAT_SUCCESS;
+		}
+
+		LOG_ERR("Read out of bounds.");
+		return SUIT_PLAT_ERR_OUT_OF_BOUNDS;
 	}
 
 	LOG_ERR("Invalid arguments.");

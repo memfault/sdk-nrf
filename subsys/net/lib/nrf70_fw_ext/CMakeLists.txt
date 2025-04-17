@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
 #
 
-if(CONFIG_NRF_WIFI_BUILD_ONLY_MODE)
+if(CONFIG_BUILD_ONLY_NO_BLOBS)
   return()
 endif()
 
@@ -18,6 +18,8 @@ else()
     zephyr_code_relocate(FILES ext_fw_load.c LOCATION EXTFLASH_RODATA NOCOPY)
   endif()
 endif()
+
+zephyr_library_link_libraries(nrf70-buslib nrf-wifi-shim)
 
 if(DEFINED CONFIG_NRF_WIFI_PATCHES_EXT_FLASH_DISABLED OR
    DEFINED CONFIG_NRF_WIFI_PATCHES_EXT_FLASH_XIP)

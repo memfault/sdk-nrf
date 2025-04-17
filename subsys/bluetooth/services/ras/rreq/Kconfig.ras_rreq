@@ -5,8 +5,7 @@
 #
 
 menuconfig BT_RAS_RREQ
-	bool "GATT Ranging Requester Client [EXPERIMENTAL]"
-	select EXPERIMENTAL
+	bool "GATT Ranging Requester Client"
 	select BT_GATT_DM
 	select BT_GATT_CLIENT
 
@@ -21,6 +20,6 @@ config BT_RAS_RREQ_MAX_ACTIVE_CONN
 	default BT_MAX_CONN
 	range 1 BT_MAX_CONN
 	help
-	  The number of simultaneous connections with an instance of RAS RREQ
+	  The number of simultaneous connections with an instance of RAS RREQ.
 
 endif # BT_RAS_RREQ

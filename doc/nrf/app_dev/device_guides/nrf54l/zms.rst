@@ -7,7 +7,7 @@ Enabling Zephyr Memory Storage
    :local:
    :depth: 2
 
-For nRF54L Series, you should use the :ref:`Zephyr Memory Storage (ZMS) <zephyr:zms_api>`.
+For the nRF54L and nRF54H Series, use the :ref:`Zephyr Memory Storage (ZMS) <zephyr:zms_api>`.
 ZMS utilizes a flexible data management system that reduces write and erase cycles, extending the lifespan of non-volatile memory.
 
 .. note::
@@ -39,8 +39,6 @@ Additionally, you can optimize the application performance using caching mechani
         a. Enable the :kconfig:option:`CONFIG_ZMS_LOOKUP_CACHE` Kconfig option.
         #. Set the lookup cache size in :kconfig:option:`CONFIG_ZMS_LOOKUP_CACHE_SIZE` depending on your application needs.
         #. Ensure the lookup cache is configured to support the Setting subsystem by enabling the :kconfig:option:`CONFIG_ZMS_LOOKUP_CACHE_FOR_SETTINGS` Kconfig option.
-
-      #. To further enhance the performance, enable the :kconfig:option:`CONFIG_SETTINGS_ZMS_NAME_CACHE` Kconfig option, and configure its size with :kconfig:option:`CONFIG_SETTINGS_ZMS_NAME_CACHE_SIZE` according to your application needs.
 
 Optimizing ZMS in your application
 **********************************

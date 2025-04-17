@@ -35,9 +35,11 @@ LOG_MODULE_REGISTER(memfault_ncs, CONFIG_MEMFAULT_NCS_LOG_LEVEL);
 #define MEMFAULT_URL	"https://goto.memfault.com/create-key/nrf"
 #endif
 
+#if defined(CONFIG_BT_MDS) || defined(CONFIG_MEMFAULT_HTTP_ENABLE)
 /* Project key check */
 BUILD_ASSERT(sizeof(CONFIG_MEMFAULT_NCS_PROJECT_KEY) > 1,
 	"Memfault Project Key not configured. Please visit " MEMFAULT_URL " ");
+#endif
 
 /* Firmware type check */
 BUILD_ASSERT(sizeof(CONFIG_MEMFAULT_NCS_FW_TYPE) > 1, "Firmware type must be configured");
@@ -179,7 +181,7 @@ NRF_MODEM_LIB_ON_INIT(memfault_ncs_init_hook, on_modem_lib_init, NULL);
 static void on_modem_lib_init(int ret, void *ctx)
 {
 	if (ret != 0) {
-		/* Return if modem initialization failed */
+		LOG_ERR("Modem library did not initialize: %d", ret);
 		return;
 	}
 

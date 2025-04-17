@@ -146,6 +146,14 @@
 "Vary: Accept-Encoding\r\n" \
 "X-Cache: HIT\r\n\r\n"
 
+#define HTTP_HDR_REDIRECT "HTTP/1.1 308 Permanent Redirect\r\n" \
+"Date: Wed, 29 Jan 2025 11:16:09 GMT\r\n" \
+"Content-Type: text/html\r\n" \
+"Content-Length: 164\r\n" \
+"Connection: keep-alive\r\n" \
+"Location: https://server.com/path/to/file.end\r\n" \
+"\r\n\r\n"
+
 #define PAYLOAD "This is the payload!"
 
 #define FD 0
@@ -218,7 +226,6 @@ FAKE_VALUE_FUNC(ssize_t, z_impl_zsock_sendto, int, const void *, size_t, int,
 		const struct sockaddr *, socklen_t);
 FAKE_VALUE_FUNC(ssize_t, z_impl_zsock_recvfrom, int, void *, size_t, int, struct sockaddr *,
 		socklen_t *);
-FAKE_VOID_FUNC(z_impl_sys_rand_get, void *, size_t);
 
 FAKE_VALUE_FUNC(int, coap_get_option_int, const struct coap_packet *, uint16_t);
 FAKE_VALUE_FUNC(int, coap_block_transfer_init, struct coap_block_context *, enum coap_block_size,
@@ -284,7 +291,7 @@ int zsock_getaddrinfo_server_ok(const char *host, const char *service,
 	}
 
 	errno = ENOPROTOOPT;
-	return EAI_SYSTEM;
+	return DNS_EAI_SYSTEM;
 }
 
 int zsock_getaddrinfo_server2_ok(const char *host, const char *service,
@@ -302,7 +309,7 @@ int zsock_getaddrinfo_server2_ok(const char *host, const char *service,
 	}
 
 	errno = ENOPROTOOPT;
-	return EAI_SYSTEM;
+	return DNS_EAI_SYSTEM;
 }
 
 
@@ -313,7 +320,7 @@ int zsock_getaddrinfo_server_ipv6_fail_ipv4_ok(const char *host, const char *ser
 	if (hints->ai_family == AF_INET6) {
 		/* Fail on IPv6 to retry IPv4 */
 		errno = ENOPROTOOPT;
-		return EAI_SYSTEM;
+		return DNS_EAI_SYSTEM;
 	}
 
 	TEST_ASSERT_EQUAL_STRING(HOSTNAME, host);
@@ -328,7 +335,7 @@ int zsock_getaddrinfo_server_enetunreach(const char *host, const char *service,
 				struct zsock_addrinfo **res)
 {
 	errno = ENETUNREACH;
-	return EAI_SYSTEM;
+	return DNS_EAI_SYSTEM;
 }
 
 void zsock_freeaddrinfo_server_ipv4(struct zsock_addrinfo *addr)
@@ -939,6 +946,44 @@ static ssize_t z_impl_zsock_recvfrom_partial_then_econnreset(
 	return -ECONNRESET;
 }
 
+static ssize_t z_impl_zsock_recvfrom_http_redirect_and_close(
+	int sock, void *buf, size_t max_len, int flags, struct sockaddr *src_addr,
+	socklen_t *addrlen)
+{
+	switch (z_impl_zsock_recvfrom_fake.call_count) {
+	case 1:
+		memcpy(buf, HTTP_HDR_REDIRECT, strlen(HTTP_HDR_REDIRECT));
+		return strlen(HTTP_HDR_REDIRECT);
+	case 2:
+		/* connection closed */
+		return 0;
+	}
+
+	memcpy(buf, HTTP_HDR_REDIRECT, strlen(HTTP_HDR_REDIRECT));
+	return strlen(HTTP_HDR_REDIRECT);
+}
+
+int z_impl_zsock_socket_http_then_https(int family, int type, int proto)
+{
+	switch (z_impl_zsock_socket_fake.call_count) {
+	case 1:
+		TEST_ASSERT_EQUAL(SOCK_STREAM, type);
+		TEST_ASSERT_EQUAL(IPPROTO_TCP, proto);
+		break;
+	case 2:
+	default:
+		TEST_ASSERT_EQUAL(SOCK_STREAM, type);
+		TEST_ASSERT_EQUAL(IPPROTO_TLS_1_2, proto);
+		RESET_FAKE(z_impl_zsock_setsockopt);
+		RESET_FAKE(z_impl_zsock_recvfrom);
+		z_impl_zsock_setsockopt_fake.custom_fake = z_impl_zsock_setsockopt_https_ok;
+		z_impl_zsock_recvfrom_fake.custom_fake =
+			z_impl_zsock_recvfrom_http_header_then_data;
+	}
+
+	return FD;
+}
+
 static ssize_t z_impl_zsock_recvfrom_coap(
 	int sock, void *buf, size_t max_len, int flags, struct sockaddr *src_addr,
 	socklen_t *addrlen)
@@ -1346,6 +1391,32 @@ void test_downloader_get_https_partial_content_partial_2nd_header(void)
 	TEST_ASSERT_EQUAL(0, err);
 
 	evt = dl_wait_for_event(DOWNLOADER_EVT_DONE, K_SECONDS(3));
+
+	downloader_deinit(&dl);
+	dl_wait_for_event(DOWNLOADER_EVT_DEINITIALIZED, K_SECONDS(1));
+}
+
+void test_downloader_https_unlimited_redirect(void)
+{
+	int err;
+	struct downloader_evt evt;
+
+	err = downloader_init(&dl, &dl_cfg);
+	TEST_ASSERT_EQUAL(0, err);
+
+	zsock_getaddrinfo_fake.custom_fake = zsock_getaddrinfo_server_ok;
+	zsock_freeaddrinfo_fake.custom_fake = zsock_freeaddrinfo_server_ipv6;
+	z_impl_zsock_socket_fake.custom_fake = z_impl_zsock_socket_https_ipv6_ok;
+	z_impl_zsock_connect_fake.custom_fake = z_impl_zsock_connect_ipv6_ok;
+	z_impl_zsock_setsockopt_fake.custom_fake = z_impl_zsock_setsockopt_https_ok;
+	z_impl_zsock_sendto_fake.custom_fake = z_impl_zsock_sendto_ok;
+	z_impl_zsock_recvfrom_fake.custom_fake = z_impl_zsock_recvfrom_http_redirect_and_close;
+
+
+	err = downloader_get(&dl, &dl_host_conf_w_sec_tags, HTTPS_URL, 0);
+	TEST_ASSERT_EQUAL(0, err);
+
+	evt = dl_wait_for_event(DOWNLOADER_EVT_ERROR, K_SECONDS(3));
 
 	downloader_deinit(&dl);
 	dl_wait_for_event(DOWNLOADER_EVT_DEINITIALIZED, K_SECONDS(1));
@@ -2323,6 +2394,33 @@ void test_downloader_downloaded_size_get(void)
 	dl_wait_for_event(DOWNLOADER_EVT_DEINITIALIZED, K_SECONDS(1));
 }
 
+void test_downloader_http_redirect_to_https(void)
+{
+	int err;
+	struct downloader_evt evt;
+
+	err = downloader_init(&dl, &dl_cfg);
+	TEST_ASSERT_EQUAL(0, err);
+
+	zsock_getaddrinfo_fake.custom_fake = zsock_getaddrinfo_server_ok;
+	zsock_freeaddrinfo_fake.custom_fake = zsock_freeaddrinfo_server_ipv6;
+	z_impl_zsock_socket_fake.custom_fake = z_impl_zsock_socket_http_then_https;
+	z_impl_zsock_connect_fake.custom_fake = z_impl_zsock_connect_ipv6_ok;
+	z_impl_zsock_setsockopt_fake.custom_fake = z_impl_zsock_setsockopt_http_ok;
+	z_impl_zsock_sendto_fake.custom_fake = z_impl_zsock_sendto_ok;
+	z_impl_zsock_recvfrom_fake.custom_fake = z_impl_zsock_recvfrom_http_redirect_and_close;
+
+
+	err = downloader_get(&dl, &dl_host_conf_w_sec_tags, HTTP_URL, 0);
+	TEST_ASSERT_EQUAL(0, err);
+
+	evt = dl_wait_for_event(DOWNLOADER_EVT_DONE, K_SECONDS(3));
+
+	downloader_deinit(&dl);
+	dl_wait_for_event(DOWNLOADER_EVT_DEINITIALIZED, K_SECONDS(1));
+
+}
+
 void setUp(void)
 {
 	RESET_FAKE(z_impl_zsock_setsockopt);
@@ -2337,7 +2435,6 @@ void setUp(void)
 	RESET_FAKE(z_impl_net_addr_ntop);
 	RESET_FAKE(z_impl_zsock_sendto);
 	RESET_FAKE(z_impl_zsock_recvfrom);
-	RESET_FAKE(z_impl_sys_rand_get);
 
 	RESET_FAKE(coap_get_option_int);
 	RESET_FAKE(coap_block_transfer_init);

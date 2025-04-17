@@ -15,7 +15,7 @@ This page contains guidelines for configuring the MCUboot bootloader in Matter p
 Adding MCUboot to application
 *****************************
 
-Read :ref:`ug_bootloader_adding_immutable_mcuboot` to learn how to add MCUboot to an |NCS| application.
+Read :ref:`ug_bootloader_adding_sysbuild_immutable_mcuboot` to learn how to add MCUboot to an |NCS| application.
 Some Matter samples include :term:`Device Firmware Update (DFU)` support out of the box, as listed in the :ref:`sample feature matrix table <matter_samples>`.
 
 MCUboot minimal configuration
@@ -123,7 +123,7 @@ If the signature check fails, MCUboot rejects the image and either:
    As the key pair is publicly known, it provides no protection against the image forgery.
    For this reason, when making a real product, it is of the greatest importance to replace it with a unique key pair, known only to the device maker.
 
-   Read :ref:`ug_bootloader_adding_immutable_mcuboot_keys` to learn how to configure MCUboot to use a custom key pair.
+   Read :ref:`ug_bootloader_adding_sysbuild_immutable_mcuboot_keys` to learn how to configure MCUboot to use a custom key pair.
 
 Downgrade protection
 ********************
@@ -131,3 +131,24 @@ Downgrade protection
 The :ref:`downgrade protection <ug_fw_update_image_versions_mcuboot_downgrade>` mechanism makes it impossible for an attacker to trick a user to install a firmware image older than the currently installed one.
 The attacker might want to do this to reintroduce old security vulnerabilities that have already been fixed in newer firmware revisions.
 You should enable the downgrade protection mechanism if you choose to enable MCUboot's ``SB_CONFIG_MCUBOOT_MODE_OVERWRITE_ONLY`` Kconfig option, which disables the fallback recovery in case of a faulty upgrade.
+
+.. _ug_matter_device_bootloader_image_compression:
+
+Image compression
+*****************
+
+The :ref:`MCUboot image compression <mcuboot_image_compression>` feature allows you to reduce the size of the firmware image that is being installed.
+This is done by compressing the image before it is written to the secondary slot.
+
+Thanks to the compression, the secondary slot can be smaller than the primary one.
+This is especially useful when you do not want to use external flash for the secondary slot, and you need to place the new image in the internal memory.
+
+You can enable this feature by setting the following Kconfig options in your application's sysbuild configuration file:
+
+* :kconfig:option:`SB_CONFIG_MCUBOOT_MODE_OVERWRITE_ONLY` to ``y``
+* :kconfig:option:`SB_CONFIG_MCUBOOT_COMPRESSED_IMAGE_SUPPORT` to ``y``
+
+If your application has used external flash for the secondary slot and you want to stop using it, disable the following Kconfig options in your application's sysbuild configuration file:
+
+* :kconfig:option:`SB_CONFIG_PM_OVERRIDE_EXTERNAL_DRIVER_CHECK` to ``n``
+* :kconfig:option:`SB_CONFIG_PM_EXTERNAL_FLASH_MCUBOOT_SECONDARY` to ``n``

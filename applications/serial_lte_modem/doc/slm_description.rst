@@ -310,6 +310,9 @@ The following configuration files are provided:
 
 * :file:`overlay-carrier.conf` - Configuration file that adds |NCS| :ref:`liblwm2m_carrier_readme` support.
   See :ref:`slm_carrier_library_support` for more information on how to connect to an operator's device management platform.
+  With the ``thingy91/nrf9160/ns`` board target, you must additionally pass the sysbuild option ``-DSB_CONFIG_THINGY91_STATIC_PARTITIONS_LWM2M_CARRIER=y`` to fit the application in the flash memory.
+  This means that you will need an external debug probe to program the application.
+  See the :ref:`programming_thingy` for more information.
 
 * :file:`overlay-carrier-softbank.conf` and :file:`sysbuild-softbank.conf` - Configuration files that add SoftBank configurations needed by the carrier library.
   Used in conjunction with :file:`overlay-carrier.conf`.
@@ -328,15 +331,16 @@ The following configuration files are provided:
   This disables most of the IP-based protocols available through AT commands (such as FTP and MQTT) as it is expected that the controlling chip's own IP stack is used instead.
   See :ref:`CONFIG_SLM_PPP <CONFIG_SLM_PPP>` and :ref:`SLM_AT_PPP` for more information.
 
-* :file:`overlay-ppp-without-cmux.conf` - Kconfig fragment that configures the UART to be used by PPP.
-  This configuration file should be included when building SLM with PPP and without CMUX.
-
 * :file:`overlay-ppp-without-cmux.overlay` - Devicetree overlay that configures the UART to be used by PPP.
   This configuration file should be included when building SLM with PPP and without CMUX, in addition to :file:`overlay-ppp.conf`.
   It can be customized to fit your configuration (UART, baud rate, and so on).
   By default, it sets the baud rate of the PPP UART to 1 000 000.
 
-* :file:`overlay-zephyr-modem.conf`, :file:`overlay-zephyr-modem-external-mcu.conf`, :file:`overlay-zephyr-modem-nrf9160dk-nrf52840.conf`, :file:`overlay-external-mcu.overlay`,  and :file:`overlay-zephyr-modem-nrf9160dk-nrf52840.overlay` - These configuration files are used when compiling SLM to turn an nRF91 Series SiP into a Zephyr-compatible standalone modem.
+* :file:`overlay-memfault.conf` - Configuration file that enables `Memfault`_.
+  For more information about Memfault features in |NCS|, see :ref:`mod_memfault`.
+
+* :file:`overlay-zephyr-modem.conf`, :file:`overlay-zephyr-modem-nrf9160dk-nrf52840.conf`, :file:`overlay-external-mcu.overlay`,  and :file:`overlay-zephyr-modem-nrf9160dk-nrf52840.overlay` - These configuration files are used when compiling SLM to turn an nRF91 Series SiP into a Zephyr-compatible standalone modem.
+  Also set :kconfig:option:`CONFIG_SLM_POWER_PIN` Kconfig option.
   See :ref:`slm_as_zephyr_modem` for more information.
 
 * :file:`boards/nrf9160dk_nrf9160_ns.conf` - Configuration file specific for the nRF9160 DK.
@@ -452,17 +456,11 @@ To connect with an external MCU using UART_2, change the configuration files for
 
       * In the :file:`nrf9151dk_nrf9151_ns.conf` file::
 
-          # Use UART_0 (when working with PC terminal)
-          # unmask the following config
-          #CONFIG_UART_0_NRF_HW_ASYNC_TIMER=2
-          #CONFIG_UART_0_NRF_HW_ASYNC=y
+          # When working with PC terminal, unmask the following config.
           #CONFIG_SLM_POWER_PIN=8
           #CONFIG_SLM_INDICATE_PIN=0
 
-          # Use UART_2 (when working with external MCU)
-          # unmask the following config
-          CONFIG_UART_2_NRF_HW_ASYNC_TIMER=2
-          CONFIG_UART_2_NRF_HW_ASYNC=y
+          # When working with external MCU, unmask the following config.
           CONFIG_SLM_POWER_PIN=31
           CONFIG_SLM_INDICATE_PIN=30
 
@@ -493,17 +491,11 @@ To connect with an external MCU using UART_2, change the configuration files for
 
       * In the :file:`nrf9161dk_nrf9161_ns.conf` file::
 
-          # Use UART_0 (when working with PC terminal)
-          # unmask the following config
-          #CONFIG_UART_0_NRF_HW_ASYNC_TIMER=2
-          #CONFIG_UART_0_NRF_HW_ASYNC=y
+          # When working with PC terminal, unmask the following config.
           #CONFIG_SLM_POWER_PIN=8
           #CONFIG_SLM_INDICATE_PIN=0
 
-          # Use UART_2 (when working with external MCU)
-          # unmask the following config
-          CONFIG_UART_2_NRF_HW_ASYNC_TIMER=2
-          CONFIG_UART_2_NRF_HW_ASYNC=y
+          # When working with external MCU, unmask the following config.
           CONFIG_SLM_POWER_PIN=31
           CONFIG_SLM_INDICATE_PIN=30
 
@@ -535,17 +527,11 @@ To connect with an external MCU using UART_2, change the configuration files for
 
       * In the :file:`nrf9160dk_nrf9160_ns.conf` file::
 
-          # Use UART_0 (when working with PC terminal)
-          # unmask the following config
-          #CONFIG_UART_0_NRF_HW_ASYNC_TIMER=2
-          #CONFIG_UART_0_NRF_HW_ASYNC=y
+          # When working with PC terminal, unmask the following config.
           #CONFIG_SLM_POWER_PIN=6
           #CONFIG_SLM_INDICATE_PIN=2
 
-          # Use UART_2 (when working with external MCU)
-          # unmask the following config
-          CONFIG_UART_2_NRF_HW_ASYNC_TIMER=2
-          CONFIG_UART_2_NRF_HW_ASYNC=y
+          # When working with external MCU, unmask the following config.
           CONFIG_SLM_POWER_PIN=31
           CONFIG_SLM_INDICATE_PIN=30
 
@@ -573,31 +559,58 @@ To connect with an external MCU using UART_2, change the configuration files for
              pinctrl-names = "default", "sleep";
           };
 
-The following table shows how to connect an nRF52 Series development kit to an nRF91 Series development kit to be able to communicate through UART:
+The following table shows how to connect selected development kit to an nRF91 Series development kit to be able to communicate through UART:
 
-.. list-table::
-   :align: center
-   :header-rows: 1
+.. tabs::
 
-   * - nRF52 Series DK
-     - nRF91 Series DK
-   * - UART TX P0.6
-     - UART RX P0.11
-   * - UART RX P0.8
-     - UART TX P0.10
-   * - UART CTS P0.7
-     - UART RTS P0.12
-   * - UART RTS P0.5
-     - UART CTS P0.13
-   * - GPIO OUT P0.27
-     - GPIO IN P0.31
-   * - GPIO IN P0.26
-     - GPIO OUT P0.30
+   .. group-tab:: nRF52 DK
+
+      .. list-table::
+         :header-rows: 1
+
+         * - nRF52 Series DK
+           - nRF91 Series DK
+         * - UART TX P1.02
+           - UART RX P0.11
+         * - UART RX P1.01
+           - UART TX P0.10
+         * - UART CTS P1.06
+           - UART RTS P0.12
+         * - UART RTS P1.07
+           - UART CTS P0.13
+         * - GPIO OUT P0.11
+           - GPIO IN P0.31
+         * - GPIO IN P0.13
+           - GPIO OUT P0.30
+         * - GPIO GND
+           - GPIO GND
+
+   .. group-tab:: nRF53 DK
+
+      .. list-table::
+         :header-rows: 1
+
+         * - nRF53 Series DK
+           - nRF91 Series DK
+         * - UART TX P1.04
+           - UART RX P0.11
+         * - UART RX P1.05
+           - UART TX P0.10
+         * - UART CTS P1.06
+           - UART RTS P0.12
+         * - UART RTS P1.07
+           - UART CTS P0.13
+         * - GPIO OUT P0.23
+           - GPIO IN P0.31
+         * - GPIO IN P0.28
+           - GPIO OUT P0.30
+         * - GPIO GND
+           - GPIO GND
 
 Use the following UART devices:
 
-* nRF52840 or nRF52832 - UART0
-* nRF9160 or nRF91x1 - UART2
+* nRF52 or nRF53 Series DK - UART0
+* nRF91 Series DK - UART2
 
 Use the following UART configuration:
 
@@ -608,8 +621,10 @@ Use the following UART configuration:
 
 .. note::
    The GPIO output level on the nRF91 Series device side must be 3 V.
-   You can set the VDD voltage with the **VDD IO** switch (**SW9**).
-   See the `VDD supply rail section in the nRF9160 DK User Guide`_ for more information related to nRF9160 DK.
+
+   * For nRF91x1 DK, you can set the VDD voltage with the `Board Configurator app`_.
+   * For nRF9160 DK, you can set the VDD voltage with the **VDD IO** switch (**SW9**).
+     See the `VDD supply rail section in the nRF9160 DK User Guide`_ for more information related to nRF9160 DK.
 
 .. _slm_connecting_thingy91:
 

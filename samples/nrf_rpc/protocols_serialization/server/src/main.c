@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
  */
 
+#include <zephyr/drivers/gpio.h>
 #include <zephyr/logging/log.h>
 
 #include <nrf_rpc.h>
@@ -14,6 +15,32 @@ static void err_handler(const struct nrf_rpc_err_report *report)
 {
 	LOG_ERR("nRF RPC error %d ocurred. See nRF RPC logs for more details", report->code);
 }
+
+#ifdef CONFIG_NRF_PS_SERVER_RPC_ALIVE_LED
+void nrf_rpc_uart_initialized_hook(const struct device *uart_dev)
+{
+	const struct gpio_dt_spec alive_gpio = GPIO_DT_SPEC_GET(DT_ALIAS(rpc_alive_led), gpios);
+	int ret;
+
+	__ASSERT_NO_MSG(uart_dev == DEVICE_DT_GET(DT_CHOSEN(nordic_rpc_uart)));
+	ret = gpio_pin_configure_dt(&alive_gpio, GPIO_OUTPUT_ACTIVE);
+
+	if (ret) {
+		LOG_ERR("Failed to configure RPC alive GPIO: %d", ret);
+	}
+}
+
+void __real_z_fatal_error(unsigned int reason, const struct arch_esf *esf);
+
+void __wrap_z_fatal_error(unsigned int reason, const struct arch_esf *esf)
+{
+	const struct gpio_dt_spec alive_gpio = GPIO_DT_SPEC_GET(DT_ALIAS(rpc_alive_led), gpios);
+
+	(void)gpio_pin_configure_dt(&alive_gpio, GPIO_OUTPUT_INACTIVE);
+
+	__real_z_fatal_error(reason, esf);
+}
+#endif
 
 int main(void)
 {

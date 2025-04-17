@@ -16,9 +16,7 @@ Trying to change them directly in an image will result in the new value being ov
 +-------------------------------------------------------------------------+---------------------------------------------------------------------------+                         |
 | :kconfig:option:`CONFIG_BUILD_OUTPUT_HEX`                               +               ``SB_CONFIG_BUILD_OUTPUT_HEX``                              |                         |
 +-------------------------------------------------------------------------+---------------------------------------------------------------------------+-------------------------+
-| :kconfig:option:`CONFIG_BT_FAST_PAIR`                                   +               ``SB_CONFIG_BT_FAST_PAIR``                                  | Main application        |
-+-------------------------------------------------------------------------+---------------------------------------------------------------------------+                         |
-| :kconfig:option:`CONFIG_WIFI_NRF70`                                     +               ``SB_CONFIG_WIFI_NRF70``                                    |                         |
+| :kconfig:option:`CONFIG_WIFI_NRF70`                                     +               ``SB_CONFIG_WIFI_NRF70``                                    | Main application        |
 +-------------------------------------------------------------------------+---------------------------------------------------------------------------+                         |
 | :kconfig:option:`CONFIG_NRF_WIFI_PATCHES_EXT_FLASH_DISABLED`            +               ``SB_CONFIG_WIFI_PATCHES_EXT_FLASH_DISABLED``               |                         |
 +-------------------------------------------------------------------------+---------------------------------------------------------------------------+                         |
@@ -56,7 +54,7 @@ Trying to change them directly in an image will result in the new value being ov
 +-------------------------------------------------------------------------+---------------------------------------------------------------------------+                         |
 | :kconfig:option:`CONFIG_MCUBOOT_HW_DOWNGRADE_PREVENTION_COUNTER_VALUE`  +               ``SB_CONFIG_MCUBOOT_HW_DOWNGRADE_PREVENTION_COUNTER_VALUE`` |                         |
 +-------------------------------------------------------------------------+---------------------------------------------------------------------------+                         |
-| :kconfig:option:`CONFIG_UPDATEABLE_IMAGE_NUMBER`                        +               ``SB_CONFIG_SB_CONFIG_MCUBOOT_UPDATEABLE_IMAGES`` if        |                         |
+| :kconfig:option:`CONFIG_UPDATEABLE_IMAGE_NUMBER`                        +               ``SB_CONFIG_MCUBOOT_UPDATEABLE_IMAGES`` if                  |                         |
 |                                                                         +               ``SB_CONFIG_MCUBOOT_APP_SYNC_UPDATEABLE_IMAGES`` is enabled |                         |
 +-------------------------------------------------------------------------+---------------------------------------------------------------------------+                         |
 | :kconfig:option:`CONFIG_CHIP`                                           +               ``SB_CONFIG_MATTER``                                        |                         |
@@ -81,7 +79,7 @@ Trying to change them directly in an image will result in the new value being ov
 +-------------------------------------------------------------------------+---------------------------------------------------------------------------+                         |
 | :kconfig:option:`CONFIG_PCD_APP`                                        +               ``SB_CONFIG_NETCORE_APP_UPDATE``                            |                         |
 +-------------------------------------------------------------------------+---------------------------------------------------------------------------+                         |
-| :kconfig:option:`CONFIG_UPDATEABLE_IMAGE_NUMBER`                        +               ``SB_CONFIG_SB_CONFIG_MCUBOOT_UPDATEABLE_IMAGES``           |                         |
+| :kconfig:option:`CONFIG_UPDATEABLE_IMAGE_NUMBER`                        +               ``SB_CONFIG_MCUBOOT_UPDATEABLE_IMAGES``                     |                         |
 +-------------------------------------------------------------------------+---------------------------------------------------------------------------+-------------------------+
 | :kconfig:option:`CONFIG_MCUBOOT_HW_DOWNGRADE_PREVENTION`                +               ``SB_CONFIG_MCUBOOT_HARDWARE_DOWNGRADE_PREVENTION``         |                         |
 +-------------------------------------------------------------------------+                                                                           |                         |

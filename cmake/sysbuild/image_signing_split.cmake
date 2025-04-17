@@ -74,23 +74,8 @@ function(zephyr_mcuboot_tasks)
     endif()
   endforeach()
 
-  # Find imgtool. Even though west is installed, imgtool might not be.
-  # The user may also have a custom manifest which doesn't include
-  # MCUboot.
-  #
-  # Therefore, go with an explicitly installed imgtool first, falling
-  # back on mcuboot/scripts/imgtool.py.
-  if(IMGTOOL)
-    set(imgtool_path "${IMGTOOL}")
-  elseif(DEFINED ZEPHYR_MCUBOOT_MODULE_DIR)
-    set(IMGTOOL_PY "${ZEPHYR_MCUBOOT_MODULE_DIR}/scripts/imgtool.py")
-    if(EXISTS "${IMGTOOL_PY}")
-      set(imgtool_path "${IMGTOOL_PY}")
-    endif()
-  endif()
-
   # No imgtool, no signed binaries.
-  if(NOT DEFINED imgtool_path)
+  if(NOT DEFINED IMGTOOL)
     message(FATAL_ERROR "Can't sign images for MCUboot: can't find imgtool. To fix, install imgtool with pip3, or add the mcuboot repository to the west manifest and ensure it has a scripts/imgtool.py file.")
     return()
   endif()
@@ -127,8 +112,8 @@ function(zephyr_mcuboot_tasks)
   # invalid if a static PM file is updated without pristine build
   set(imgtool_internal_sign_sysbuild --slot-size @PM_MCUBOOT_PRIMARY_SIZE@ --pad-header --header-size @PM_MCUBOOT_PAD_SIZE@ ${imgtool_internal_rom_command} CACHE STRING "imgtool sign (internal flash) sysbuild replacement")
   set(imgtool_external_sign_sysbuild --slot-size @PM_MCUBOOT_PRIMARY_${qspi_xip_image_number}_SIZE@ --pad-header --header-size @PM_MCUBOOT_PAD_SIZE@ ${imgtool_external_rom_command} CACHE STRING "imgtool sign (external flash) sysbuild replacement")
-  set(imgtool_internal_sign ${PYTHON_EXECUTABLE} ${imgtool_path} sign --version ${CONFIG_MCUBOOT_IMGTOOL_SIGN_VERSION} --align ${write_block_size} ${imgtool_internal_sign_sysbuild})
-  set(imgtool_external_sign ${PYTHON_EXECUTABLE} ${imgtool_path} sign --version ${CONFIG_MCUBOOT_IMGTOOL_SIGN_VERSION} --align ${write_block_size} ${imgtool_external_sign_sysbuild})
+  set(imgtool_internal_sign ${PYTHON_EXECUTABLE} ${IMGTOOL} sign --version ${CONFIG_MCUBOOT_IMGTOOL_SIGN_VERSION} --align ${write_block_size} ${imgtool_internal_sign_sysbuild})
+  set(imgtool_external_sign ${PYTHON_EXECUTABLE} ${IMGTOOL} sign --version ${CONFIG_MCUBOOT_IMGTOOL_SIGN_VERSION} --align ${write_block_size} ${imgtool_external_sign_sysbuild})
 
   # Arguments to imgtool.
   if(NOT CONFIG_MCUBOOT_EXTRA_IMGTOOL_ARGS STREQUAL "")
@@ -158,12 +143,11 @@ function(zephyr_mcuboot_tasks)
   set(output_merged ${ZEPHYR_BINARY_DIR}/${KERNEL_NAME}.signed)
 
   if(CONFIG_BUILD_WITH_TFM)
-#    set(input ${APPLICATION_BINARY_DIR}/zephyr/tfm_merged)
-    message(FATAL_ERROR "TFM is not currently supported with QSPI XIP")
-  else()
-    set(input_internal ${ZEPHYR_BINARY_DIR}/${KERNEL_NAME}.internal)
-    set(input_external ${ZEPHYR_BINARY_DIR}/${KERNEL_NAME}.external)
+    set(input_tfm_s ${ZEPHYR_BINARY_DIR}/../tfm/bin/tfm_s)
   endif()
+
+  set(input_internal ${ZEPHYR_BINARY_DIR}/${KERNEL_NAME}.internal)
+  set(input_external ${ZEPHYR_BINARY_DIR}/${KERNEL_NAME}.external)
 
   # List of additional build byproducts.
   set(byproducts)
@@ -183,7 +167,14 @@ function(zephyr_mcuboot_tasks)
 
   # Set up .hex outputs.
   if(CONFIG_BUILD_OUTPUT_HEX)
-    set(unconfirmed_internal_args ${input_internal}.hex ${output_internal}.hex)
+    if(CONFIG_BUILD_WITH_TFM)
+      # Merge the TFM secure hex file with the internal hex file
+      set_property(GLOBAL APPEND PROPERTY extra_post_build_commands COMMAND ${PYTHON_EXECUTABLE} ${ZEPHYR_BASE}/scripts/build/mergehex.py -o ${input_internal}.tfm.hex ${input_internal}.hex ${input_tfm_s}.hex)
+      set(unconfirmed_internal_args ${input_internal}.tfm.hex ${output_internal}.hex)
+    else()
+      set(unconfirmed_internal_args ${input_internal}.hex ${output_internal}.hex)
+    endif()
+
     set(unconfirmed_external_args ${input_external}.hex ${output_external}.hex)
     list(APPEND byproducts ${output_internal}.hex ${output_external}.hex)
 
@@ -214,7 +205,12 @@ function(zephyr_mcuboot_tasks)
       ${PYTHON_EXECUTABLE} ${ZEPHYR_BASE}/scripts/build/mergehex.py -o ${output_merged}.hex ${output_internal}.hex ${output_external}.hex)
 
     if(NOT "${keyfile_enc}" STREQUAL "")
-      set(unconfirmed_internal_args ${input_internal}.hex ${output_internal}.encrypted.hex)
+      if(CONFIG_BUILD_WITH_TFM)
+        set(unconfirmed_internal_args ${input_internal}.tfm.hex ${output_internal}.encrypted.hex)
+      else()
+        set(unconfirmed_internal_args ${input_internal}.hex ${output_internal}.encrypted.hex)
+      endif()
+
       set(unconfirmed_external_args ${input_external}.hex ${output_external}.encrypted.hex)
       list(APPEND byproducts ${output_internal}.encrypted.hex ${output_external}.encrypted.hex)
       set(BYPRODUCT_KERNEL_SIGNED_ENCRYPTED_HEX_NAME "${output_merged}.encrypted.hex"

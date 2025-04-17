@@ -96,6 +96,7 @@ static struct ras_rd_buffer *rd_buffer_alloc(struct bt_conn *conn, uint16_t rang
 {
 	uint16_t conn_buffer_count = 0;
 	uint16_t oldest_ranging_counter = UINT16_MAX;
+	uint16_t oldest_ranging_counter_age = 0;
 	struct ras_rd_buffer *available_free_buffer = NULL;
 	struct ras_rd_buffer *available_oldest_buffer = NULL;
 
@@ -103,13 +104,17 @@ static struct ras_rd_buffer *rd_buffer_alloc(struct bt_conn *conn, uint16_t rang
 		if (rd_buffer_pool[i].conn == conn) {
 			conn_buffer_count++;
 
+			const uint16_t ranging_counter_age = ranging_counter
+				- rd_buffer_pool[i].ranging_counter;
+
 			/* Only overwrite buffers that have ranging data stored
 			 * and are not being read.
 			 */
 			if (rd_buffer_pool[i].ready && !rd_buffer_pool[i].busy &&
 			    atomic_get(&rd_buffer_pool[i].refcount) == 0 &&
-			    rd_buffer_pool[i].ranging_counter < oldest_ranging_counter) {
+			    ranging_counter_age > oldest_ranging_counter_age) {
 				oldest_ranging_counter = rd_buffer_pool[i].ranging_counter;
+				oldest_ranging_counter_age = ranging_counter_age;
 				available_oldest_buffer = &rd_buffer_pool[i];
 			}
 		}
@@ -145,15 +150,18 @@ static struct ras_rd_buffer *rd_buffer_alloc(struct bt_conn *conn, uint16_t rang
 	return NULL;
 }
 
-static void cs_procedure_enabled(struct bt_conn *conn,
-				 struct bt_conn_le_cs_procedure_enable_complete *params)
+static void cs_procedure_enable(struct bt_conn *conn,
+				uint8_t status,
+				struct bt_conn_le_cs_procedure_enable_complete *params)
 {
 	uint8_t conn_index = bt_conn_index(conn);
 
 	__ASSERT_NO_MSG(conn_index < ARRAY_SIZE(tx_power_cache));
 
-	tx_power_cache[conn_index] = params->selected_tx_power;
-	drop_procedure_counter[conn_index] = DROP_PROCEDURE_COUNTER_EMPTY;
+	if (status == BT_HCI_ERR_SUCCESS) {
+		tx_power_cache[conn_index] = params->selected_tx_power;
+		drop_procedure_counter[conn_index] = DROP_PROCEDURE_COUNTER_EMPTY;
+	}
 }
 
 static bool process_step_data(struct bt_le_cs_subevent_step *step, void *user_data)
@@ -195,14 +203,14 @@ static void subevent_data_available(struct bt_conn *conn,
 	__ASSERT_NO_MSG(conn_index < ARRAY_SIZE(tx_power_cache));
 	__ASSERT_NO_MSG(conn_index < ARRAY_SIZE(drop_procedure_counter));
 
-	if (result->header.subevent_done_status == BT_CONN_LE_CS_SUBEVENT_ABORTED) {
-		/* If this subevent was aborted, drop the entire procedure for now. */
+	if (result->header.procedure_done_status == BT_CONN_LE_CS_PROCEDURE_ABORTED) {
+		LOG_DBG("Procedure was aborted.");
 		drop_procedure_counter[conn_index] = result->header.procedure_counter;
 	}
 
 	if (drop_procedure_counter[conn_index] == result->header.procedure_counter) {
 		/* This procedure will not be sent to the peer, so ignore all data. */
-		LOG_WRN("Dropping subevent data for procedure %u",
+		LOG_DBG("Dropping subevent data for procedure %u",
 			result->header.procedure_counter);
 
 		if (buf) {
@@ -256,10 +264,17 @@ static void subevent_data_available(struct bt_conn *conn,
 	hdr->ranging_abort_reason = result->header.procedure_abort_reason;
 	hdr->subevent_abort_reason = result->header.subevent_abort_reason;
 	hdr->ref_power_level = result->header.reference_power_level;
-	hdr->num_steps_reported = result->header.num_steps_reported;
 
-	if (result->step_data_buf) {
-		bt_le_cs_step_data_parse(result->step_data_buf, process_step_data, buf);
+	if (result->header.subevent_done_status == BT_CONN_LE_CS_SUBEVENT_ABORTED) {
+		hdr->num_steps_reported = 0;
+		LOG_DBG("Discarding %u steps in aborted subevent",
+			result->header.num_steps_reported);
+	} else {
+		hdr->num_steps_reported = result->header.num_steps_reported;
+
+		if (result->step_data_buf) {
+			bt_le_cs_step_data_parse(result->step_data_buf, process_step_data, buf);
+		}
 	}
 
 	/* process_step_data might have requested dropping this procedure. */
@@ -270,7 +285,8 @@ static void subevent_data_available(struct bt_conn *conn,
 		return;
 	}
 
-	if (hdr->ranging_done_status == BT_CONN_LE_CS_PROCEDURE_COMPLETE) {
+	if (hdr->ranging_done_status == BT_CONN_LE_CS_PROCEDURE_COMPLETE ||
+	    hdr->ranging_done_status == BT_CONN_LE_CS_PROCEDURE_ABORTED) {
 		buf->ready = true;
 		buf->busy = false;
 		notify_new_rd_stored(conn, result->header.procedure_counter);
@@ -289,7 +305,7 @@ static void disconnected(struct bt_conn *conn, uint8_t reason)
 }
 
 BT_CONN_CB_DEFINE(conn_callbacks) = {
-	.le_cs_procedure_enabled = cs_procedure_enabled,
+	.le_cs_procedure_enable_complete = cs_procedure_enable,
 	.le_cs_subevent_data_available = subevent_data_available,
 	.disconnected = disconnected,
 };
