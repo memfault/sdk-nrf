@@ -16,12 +16,17 @@
 #include <modem/nrf_modem_lib.h>
 #include <nrf_modem_at.h>
 #endif
+#if defined(CONFIG_MEMFAULT_NCS_PROJECT_KEY_SETTINGS)
+#include <zephyr/settings/settings.h>
+#endif
 
 #include <memfault/core/build_info.h>
 #include <memfault/core/compiler.h>
 #include <memfault/core/platform/device_info.h>
 #include <memfault/http/http_client.h>
 #include <memfault/ports/zephyr/http.h>
+
+#include <memfault_integration.h>
 
 #include <zephyr/logging/log.h>
 
@@ -35,7 +40,8 @@ LOG_MODULE_REGISTER(memfault_ncs, CONFIG_MEMFAULT_NCS_LOG_LEVEL);
 #define MEMFAULT_URL	"https://goto.memfault.com/create-key/nrf"
 #endif
 
-#if defined(CONFIG_BT_MDS) || defined(CONFIG_MEMFAULT_HTTP_ENABLE)
+#if defined(CONFIG_MEMFAULT_NCS_PROJECT_KEY_STATIC) && \
+	(defined(CONFIG_BT_MDS) || defined(CONFIG_MEMFAULT_HTTP_ENABLE))
 /* Project key check */
 BUILD_ASSERT(sizeof(CONFIG_MEMFAULT_NCS_PROJECT_KEY) > 1,
 	"Memfault Project Key not configured. Please visit " MEMFAULT_URL " ");
@@ -48,9 +54,48 @@ extern void memfault_ncs_metrics_init(void);
  * This symbol has public scope- it's used by the Memfault SDK when executing
  * HTTP requests
  */
+
+char s_memfault_project_key[MEMFAULT_PROJECT_KEY_LEN + 1] = {0};
 sMfltHttpClientConfig g_mflt_http_client_config = {
+#if defined(CONFIG_MEMFAULT_NCS_PROJECT_KEY_STATIC)
 	.api_key = CONFIG_MEMFAULT_NCS_PROJECT_KEY,
+#elif defined(CONFIG_MEMFAULT_NCS_PROJECT_KEY_RUNTIME)
+	.api_key = s_memfault_project_key,
+#endif
 };
+
+#if defined(CONFIG_MEMFAULT_NCS_PROJECT_KEY_SETTINGS)
+const char *memfault_ncs_get_project_key(void)
+{
+	return (const char *)s_memfault_project_key;
+}
+
+static int memfault_settings_set(const char *key, size_t len, settings_read_cb read_cb,
+				 void *cb_arg)
+{
+	if (!strcmp(key, "project_key")) {
+		ssize_t len = read_cb(cb_arg, &s_memfault_project_key,
+				      sizeof(s_memfault_project_key) - 1);
+		if (len < 0) {
+			LOG_ERR("Failed to read Memfault project key from settings (err %zd)", len);
+			return len;
+		} else {
+			if (len != MEMFAULT_PROJECT_KEY_LEN) {
+				LOG_WRN("Memfault project key length mismatch: expected %d, got "
+					"%zd",
+					MEMFAULT_PROJECT_KEY_LEN, len);
+			}
+			s_memfault_project_key[len] = '\0';
+
+			LOG_DBG("Project Key set to %s", s_memfault_project_key);
+		}
+	}
+
+	return 0;
+}
+
+SETTINGS_STATIC_HANDLER_DEFINE(memfault, "memfault", NULL, memfault_settings_set, NULL, NULL);
+#endif  /* defined(CONFIG_MEMFAULT_NCS_PROJECT_KEY_SETTINGS) */
 
 #if defined(CONFIG_MEMFAULT_DEVICE_INFO_BUILTIN)
 /* Firmware type check */
@@ -176,6 +221,19 @@ static int init(void)
 	if (IS_ENABLED(CONFIG_MEMFAULT_NCS_USE_DEFAULT_METRICS)) {
 		memfault_ncs_metrics_init();
 	}
+
+#if defined(CONFIG_MEMFAULT_NCS_PROJECT_KEY_SETTINGS)
+	/* Load Memfault NCS settings values */
+	settings_subsys_init();
+	err = settings_load_subtree("memfault");
+	if (err) {
+		LOG_ERR("Failed to load Memfault settings subtree, error: %d", err);
+	}
+	err = settings_get_val_len("memfault/project_key");
+	if (err <= 0) {
+		LOG_ERR("Memfault project key not found in settings");
+	}
+#endif /* defined(CONFIG_MEMFAULT_NCS_PROJECT_KEY_SETTINGS) */
 
 	return err;
 }

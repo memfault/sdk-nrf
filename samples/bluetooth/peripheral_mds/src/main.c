@@ -255,12 +255,122 @@ static void bas_work_handler(struct k_work *work)
 	k_work_reschedule((struct k_work_delayable *)work, K_SECONDS(1));
 }
 
+#include <zephyr/settings/settings.h>
+#include <memfault_ncs.h>
+#include <hw_id.h>
+
+#define SERIAL_NUMBER_SETTING_KEY "bt/dis/serial"
+
+static void serial_number_init(void)
+{
+	int err = settings_get_val_len(SERIAL_NUMBER_SETTING_KEY);
+
+	printk("Checked for existing serial number in settings, length %d\n", err);
+
+	/* Check if the serial number is already set */
+	char serial_buf[64];
+	int retval = settings_load_one(SERIAL_NUMBER_SETTING_KEY, serial_buf, sizeof(serial_buf));
+
+	if (retval == 0) {
+		printk("📥 Writing new device serial number to " SERIAL_NUMBER_SETTING_KEY
+		       " from HW info\n");
+		char device_serial[64] = {0};
+		int ret = hw_id_get(device_serial, sizeof(device_serial));
+
+		if (ret) {
+			printk("Failed to get device ID from HW ID (err %d)\n", ret);
+			return;
+		}
+		settings_save_one(SERIAL_NUMBER_SETTING_KEY, device_serial, strlen(device_serial));
+		settings_runtime_set(SERIAL_NUMBER_SETTING_KEY, device_serial,
+				     strlen(device_serial));
+	}
+
+	/* Now load serial number to store into NCS Memfault port */
+	retval = settings_load_one(SERIAL_NUMBER_SETTING_KEY, serial_buf, sizeof(serial_buf));
+
+	if (retval > 0) {
+		printk("📤 Loaded serial number from settings: %.*s\n", (int)retval, serial_buf);
+		(void)memfault_ncs_device_id_set(serial_buf, retval);
+	} else {
+		printk("Failed to get device serial number from settings (err %d)\n", retval);
+	}
+}
+
+/* Add a single shell command that writes the memfault/project_key setting string */
+#include <memfault_integration.h>
+#include <zephyr/shell/shell.h>
+static int cmd_set_memfault_project_key(const struct shell *shell_ptr, size_t argc, char *argv[])
+{
+	if (argc == 1) {
+		/* No args, just print current value */
+		shell_print(shell_ptr, "Memfault project key: %s", memfault_ncs_get_project_key());
+		return 0;
+	}
+
+	if (argc != 2) {
+		shell_print(shell_ptr, "Usage: set-memfault-project-key <project_key>");
+		return -EINVAL;
+	}
+
+	const char *project_key = argv[1];
+	if (strlen(project_key) != MEMFAULT_PROJECT_KEY_LEN) {
+		shell_print(shell_ptr, "Error: project_key must be %d characters long",
+			    MEMFAULT_PROJECT_KEY_LEN);
+		return -EINVAL;
+	}
+
+	int ret = settings_save_one("memfault/project_key", project_key, strlen(project_key));
+	if (ret) {
+		shell_print(shell_ptr, "Error: Failed to save project key to settings (err %d)",
+			    ret);
+		return ret;
+	}
+	settings_runtime_set("memfault/project_key", project_key, strlen(project_key));
+
+	shell_print(shell_ptr, "Memfault project key saved to settings successfully");
+	return 0;
+}
+
+static int cmd_set_bt_serial(const struct shell *shell_ptr, size_t argc, char *argv[])
+{
+	if (argc != 2) {
+		shell_print(shell_ptr, "Usage: set-bt-serial <serial_number>");
+		return -EINVAL;
+	}
+
+	const char *serial_number = argv[1];
+
+	int ret = settings_save_one(SERIAL_NUMBER_SETTING_KEY, serial_number,
+				    strlen(serial_number));
+	if (ret) {
+		shell_print(shell_ptr, "Error: Failed to save serial number to settings (err %d)",
+			    ret);
+		return ret;
+	}
+	settings_runtime_set(SERIAL_NUMBER_SETTING_KEY, serial_number, strlen(serial_number));
+
+	shell_print(shell_ptr, "Bluetooth serial number saved to settings successfully");
+	return 0;
+}
+
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_config, SHELL_CMD_ARG(set_project_key, NULL,
+						       "Set Memfault project key in settings",
+						       cmd_set_memfault_project_key, 0, 1),
+			       SHELL_CMD_ARG(set_bt_serial, NULL,
+					     "Set Bluetooth serial number in settings",
+					     cmd_set_bt_serial, 2, 0),
+			       SHELL_SUBCMD_SET_END);
+SHELL_CMD_REGISTER(config, &sub_config, "Configure the example", NULL);
+
+#include "memfault/components.h"
+
 int main(void)
 {
 	uint32_t blink_status = 0;
 	int err;
 
-	printk("Starting Bluetooth Memfault sample\n");
+	printk(MEMFAULT_BANNER_COLORIZED "\n");
 
 	err = dk_leds_init();
 	if (err) {
@@ -306,6 +416,7 @@ int main(void)
 			printk("Failed to load settings (err %d)\n", err);
 			return 0;
 		}
+		serial_number_init();
 	}
 
 	k_work_init(&adv_work, adv_work_handler);
