@@ -23,6 +23,8 @@
 #include <memfault/core/platform/device_info.h>
 #include <memfault/core/data_packetizer.h>
 
+#include <memfault_integration.h>
+
 LOG_MODULE_REGISTER(mds, CONFIG_BT_MDS_LOG_LEVEL);
 
 #ifndef CONFIG_BT_MDS_PERM_RW
@@ -51,8 +53,6 @@ LOG_MODULE_REGISTER(mds, CONFIG_BT_MDS_LOG_LEVEL);
 
 #define MDS_URI_BASE \
 	MEMFAULT_HTTP_APIS_DEFAULT_SCHEME "://" MEMFAULT_HTTP_CHUNKS_API_HOST "/api/v0/chunks/"
-
-#define MDS_AUTH_KEY "Memfault-Project-Key:" CONFIG_MEMFAULT_NCS_PROJECT_KEY
 
 #define DATA_POLL_INTERVAL CONFIG_BT_MDS_DATA_POLL_INTERVAL
 
@@ -177,7 +177,15 @@ static ssize_t data_uri_read(struct bt_conn *conn, const struct bt_gatt_attr *at
 static ssize_t authorization_read(struct bt_conn *conn, const struct bt_gatt_attr *attr,
 				  void *buf, uint16_t len, uint16_t offset)
 {
+#define MDS_AUTH_KEY_PREFIX "Memfault-Project-Key:"
+#define MDS_AUTH_KEY CONFIG_MEMFAULT_NCS_PROJECT_KEY
+	#if defined(CONFIG_MEMFAULT_NCS_PROJECT_KEY_STATIC)
 	static const char *auth_key = MDS_AUTH_KEY;
+	#else
+	static char auth_key[sizeof(MDS_AUTH_KEY_PREFIX) + MEMFAULT_PROJECT_KEY_LEN];
+
+	snprintf(auth_key, sizeof(auth_key), MDS_AUTH_KEY_PREFIX "%s", memfault_ncs_get_project_key());
+	#endif
 	size_t auth_key_len = strlen(auth_key);
 
 	LOG_DBG("MDS Authorization characteristic read, handle: %u, conn: %p",

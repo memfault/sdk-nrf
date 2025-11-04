@@ -10,8 +10,25 @@ config MEMFAULT_HTTP_USES_MBEDTLS
 	bool
 	default n if NRF_MODEM_LIB
 
+choice
+	prompt "Memfault Project Key configuration"
+	default MEMFAULT_NCS_PROJECT_KEY_STATIC
+
+config MEMFAULT_NCS_PROJECT_KEY_STATIC
+	bool "Static Memfault Project Key"
+	help
+	  Use compile-time configured Memfault Project Key
+
+config MEMFAULT_NCS_PROJECT_KEY_SETTINGS
+	bool "Memfault Project Key from Settings subsystem"
+	depends on SETTINGS
+	help
+	  Use Memfault Project Key stored in Settings subsystem at runtime
+endchoice
+
 config MEMFAULT_NCS_PROJECT_KEY
 	string "Memfault API key"
+	depends on MEMFAULT_NCS_PROJECT_KEY_STATIC
 	help
 	  Memfault project key
 
