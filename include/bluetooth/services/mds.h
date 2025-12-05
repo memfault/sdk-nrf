@@ -84,6 +84,29 @@ struct bt_mds_cb {
  */
 int bt_mds_cb_register(const struct bt_mds_cb *cb);
 
+#ifdef CONFIG_BT_GATT_DYNAMIC_DB
+/** @brief Initialize and register the Memfault Diagnostic service.
+ *
+ * This function registers the MDS service with the Bluetooth stack when using
+ * dynamic GATT database (CONFIG_BT_GATT_DYNAMIC_DB enabled).
+ *
+ * @retval 0 If the operation was successful.
+ *         Otherwise, a negative error code is returned.
+ */
+int bt_mds_init(void);
+
+/** @brief Unregister the Memfault Diagnostic service.
+ *
+ * This function unregisters the MDS service from the Bluetooth stack when using
+ * dynamic GATT database (CONFIG_BT_GATT_DYNAMIC_DB enabled).
+ * Any active streaming will be disabled before unregistration.
+ *
+ * @retval 0 If the operation was successful.
+ *         Otherwise, a negative error code is returned.
+ */
+int bt_mds_uninit(void);
+#endif /* CONFIG_BT_GATT_DYNAMIC_DB */
+
 #ifdef __cplusplus
 }
 #endif

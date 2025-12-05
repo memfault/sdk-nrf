@@ -10,6 +10,7 @@
 #include <zephyr/bluetooth/conn.h>
 #include <zephyr/bluetooth/hci.h>
 #include <zephyr/bluetooth/services/bas.h>
+#include <zephyr/shell/shell.h>
 
 #include <bluetooth/services/mds.h>
 
@@ -255,6 +256,44 @@ static void bas_work_handler(struct k_work *work)
 	k_work_reschedule((struct k_work_delayable *)work, K_SECONDS(1));
 }
 
+// Add shell commands to init and deinit Memfault MDS service if needed
+static int init_mds(const struct shell *shell, size_t argc, char **argv)
+{
+#if defined(CONFIG_BT_GATT_DYNAMIC_DB)
+	int err = bt_mds_init();
+	if (err) {
+		shell_print(shell, "Failed to initialize MDS service (err %d)", err);
+		return err;
+	}
+	shell_print(shell, "MDS service initialized");
+	return 0;
+#else
+	shell_print(shell, "MDS dynamic DB support not enabled");
+	return -ENOTSUP;
+#endif
+}
+static int deinit_mds(const struct shell *shell, size_t argc, char **argv)
+{
+#if defined(CONFIG_BT_GATT_DYNAMIC_DB)
+	int err = bt_mds_uninit();
+	if (err) {
+		shell_print(shell, "Failed to uninitialize MDS service (err %d)", err);
+		return err;
+	}
+	shell_print(shell, "MDS service uninitialized");
+	return 0;
+#else
+	shell_print(shell, "MDS dynamic DB support not enabled");
+	return -ENOTSUP;
+#endif
+}
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_mds,
+	SHELL_CMD(init, NULL, "Initialize Memfault Diagnostic Service", init_mds),
+	SHELL_CMD(deinit, NULL, "Deinitialize Memfault Diagnostic Service", deinit_mds),
+	SHELL_SUBCMD_SET_END
+);
+SHELL_CMD_REGISTER(mds, &sub_mds, "Memfault Diagnostic Service commands", NULL);
+
 int main(void)
 {
 	uint32_t blink_status = 0;
@@ -307,6 +346,10 @@ int main(void)
 			return 0;
 		}
 	}
+
+	#if defined(CONFIG_BT_GATT_DYNAMIC_DB)
+	bt_mds_init();
+	#endif
 
 	k_work_init(&adv_work, adv_work_handler);
 	advertising_start();

@@ -35,21 +35,20 @@ LOG_MODULE_REGISTER(mds, CONFIG_BT_MDS_LOG_LEVEL);
 #define CONFIG_BT_MDS_PERM_RW_AUTHEN 0
 #endif
 
-#define MDS_GATT_PERM_READ (                                                \
-	CONFIG_BT_MDS_PERM_RW_AUTHEN ?                                      \
-		BT_GATT_PERM_READ_AUTHEN : (CONFIG_BT_MDS_PERM_RW_ENCRYPT ? \
-			BT_GATT_PERM_READ_ENCRYPT : BT_GATT_PERM_READ)      \
-	)
+#define MDS_GATT_PERM_READ                                                                         \
+	(CONFIG_BT_MDS_PERM_RW_AUTHEN ? BT_GATT_PERM_READ_AUTHEN                                   \
+				      : (CONFIG_BT_MDS_PERM_RW_ENCRYPT ? BT_GATT_PERM_READ_ENCRYPT \
+								       : BT_GATT_PERM_READ))
 
-#define MDS_GATT_PERM_WRITE (                                                \
-	CONFIG_BT_MDS_PERM_RW_AUTHEN ?                                       \
-		BT_GATT_PERM_WRITE_AUTHEN : (CONFIG_BT_MDS_PERM_RW_ENCRYPT ? \
-			BT_GATT_PERM_WRITE_ENCRYPT : BT_GATT_PERM_WRITE)     \
-	)
+#define MDS_GATT_PERM_WRITE                                                                        \
+	(CONFIG_BT_MDS_PERM_RW_AUTHEN                                                              \
+		 ? BT_GATT_PERM_WRITE_AUTHEN                                                       \
+		 : (CONFIG_BT_MDS_PERM_RW_ENCRYPT ? BT_GATT_PERM_WRITE_ENCRYPT                     \
+						  : BT_GATT_PERM_WRITE))
 
 #define MDS_MAX_URI_LENGTH CONFIG_BT_MDS_MAX_URI_LENGTH
 
-#define MDS_URI_BASE \
+#define MDS_URI_BASE                                                                               \
 	MEMFAULT_HTTP_APIS_DEFAULT_SCHEME "://" MEMFAULT_HTTP_CHUNKS_API_HOST "/api/v0/chunks/"
 
 #define MDS_AUTH_KEY "Memfault-Project-Key:" CONFIG_MEMFAULT_NCS_PROJECT_KEY
@@ -68,12 +67,12 @@ LOG_MODULE_REGISTER(mds, CONFIG_BT_MDS_LOG_LEVEL);
  */
 enum mds_att_error {
 	MDS_ATT_ERROR_CLIENT_ALREADY_SUBSCRIBED = 0x80,
-	MDS_ATT_ERROR_CLIENT_NOT_SUBSCRIBED     = 0x81
+	MDS_ATT_ERROR_CLIENT_NOT_SUBSCRIBED = 0x81
 };
 
 enum data_export_mode {
 	DATA_EXPORT_MODE_STREAMING_DISABLE = 0x00,
-	DATA_EXPORT_MODE_STREAMING_ENABLE  = 0x01
+	DATA_EXPORT_MODE_STREAMING_ENABLE = 0x01
 };
 
 enum mds_read_char {
@@ -91,8 +90,8 @@ struct mds {
 };
 
 struct mds_data_export_nfy {
-	uint8_t chunk_number:5;
-	uint8_t rfu:3;
+	uint8_t chunk_number: 5;
+	uint8_t rfu: 3;
 	uint8_t data[];
 };
 
@@ -102,9 +101,7 @@ struct mds_subscription {
 	const struct bt_gatt_attr *attr;
 };
 
-static struct mds mds_instance = {
-	.send_cnt = ATOMIC_INIT(MAX_PIPELINE)
-};
+static struct mds mds_instance = {.send_cnt = ATOMIC_INIT(MAX_PIPELINE)};
 
 static void mds_work_handler(struct k_work *work);
 
@@ -114,7 +111,6 @@ K_WORK_DELAYABLE_DEFINE(mds_work, mds_work_handler);
  * Make sure here that system workqueue is a cooperative thread.
  */
 BUILD_ASSERT(CONFIG_SYSTEM_WORKQUEUE_PRIORITY < 0);
-
 
 static ssize_t supported_feature_read(struct bt_conn *conn, const struct bt_gatt_attr *attr,
 				      void *buf, uint16_t len, uint16_t offset)
@@ -145,8 +141,8 @@ static ssize_t device_identifier_read(struct bt_conn *conn, const struct bt_gatt
 				 device_identifier_length);
 }
 
-static ssize_t data_uri_read(struct bt_conn *conn, const struct bt_gatt_attr *attr,
-			     void *buf, uint16_t len, uint16_t offset)
+static ssize_t data_uri_read(struct bt_conn *conn, const struct bt_gatt_attr *attr, void *buf,
+			     uint16_t len, uint16_t offset)
 {
 	sMemfaultDeviceInfo info;
 	char uri[MDS_MAX_URI_LENGTH];
@@ -170,12 +166,11 @@ static ssize_t data_uri_read(struct bt_conn *conn, const struct bt_gatt_attr *at
 	memcpy(uri, MDS_URI_BASE, uri_base_length);
 	memcpy(&uri[uri_base_length], info.device_serial, uri_sn_length);
 
-	return bt_gatt_attr_read(conn, attr, buf, len, offset, uri,
-				 uri_length);
+	return bt_gatt_attr_read(conn, attr, buf, len, offset, uri, uri_length);
 }
 
-static ssize_t authorization_read(struct bt_conn *conn, const struct bt_gatt_attr *attr,
-				  void *buf, uint16_t len, uint16_t offset)
+static ssize_t authorization_read(struct bt_conn *conn, const struct bt_gatt_attr *attr, void *buf,
+				  uint16_t len, uint16_t offset)
 {
 	static const char *auth_key = MDS_AUTH_KEY;
 	size_t auth_key_len = strlen(auth_key);
@@ -323,12 +318,10 @@ static void conn_subscription_check(struct bt_conn *conn, void *user_data)
 	}
 }
 
-static ssize_t data_export_ccc_write(struct bt_conn *conn,
-				     const struct bt_gatt_attr *attr, uint16_t value)
+static ssize_t data_export_ccc_write(struct bt_conn *conn, const struct bt_gatt_attr *attr,
+				     uint16_t value)
 {
-	struct mds_subscription mds_subscription = {
-		.attr = attr
-	};
+	struct mds_subscription mds_subscription = {.attr = attr};
 
 	if ((value != BT_GATT_CCC_NOTIFY) && (value != 0)) {
 		return BT_GATT_ERR(BT_ATT_ERR_VALUE_NOT_ALLOWED);
@@ -356,28 +349,36 @@ static ssize_t data_export_ccc_write(struct bt_conn *conn,
 }
 
 static struct bt_gatt_ccc_managed_user_data mds_data_export_ccc =
-	BT_GATT_CCC_MANAGED_USER_DATA_INIT(data_export_ccc_changed,
-					   data_export_ccc_write,
-					   NULL);
+	BT_GATT_CCC_MANAGED_USER_DATA_INIT(data_export_ccc_changed, data_export_ccc_write, NULL);
 
-BT_GATT_SERVICE_DEFINE(mds_svc,
-BT_GATT_PRIMARY_SERVICE(BT_UUID_MEMFAULT_DIAG),
-	BT_GATT_CHARACTERISTIC(BT_UUID_MDS_SUPPORTED_FEATURES, BT_GATT_CHRC_READ,
-			       MDS_GATT_PERM_READ, mds_read, NULL,
-			       (void *)MDS_READ_CHAR_SUPPORTED_FEATURES),
-	BT_GATT_CHARACTERISTIC(BT_UUID_MDS_DEVICE_IDENTIFIER, BT_GATT_CHRC_READ,
-			       MDS_GATT_PERM_READ, mds_read, NULL,
-			       (void *)MDS_READ_CHAR_DEVICE_IDENTIFIER),
-	BT_GATT_CHARACTERISTIC(BT_UUID_MDS_DATA_URI, BT_GATT_CHRC_READ,
-			       MDS_GATT_PERM_READ, mds_read, NULL, (void *)MDS_READ_CHAR_DATA_URI),
-	BT_GATT_CHARACTERISTIC(BT_UUID_MDS_AUTHORIZATION, BT_GATT_CHRC_READ,
-			       MDS_GATT_PERM_READ, mds_read, NULL,
-			       (void *)MDS_READ_CHAR_AUTHORIZATION),
-	BT_GATT_CHARACTERISTIC(BT_UUID_MDS_DATA_EXPORT, BT_GATT_CHRC_NOTIFY | BT_GATT_CHRC_WRITE,
-			       MDS_GATT_PERM_WRITE, NULL, data_export_write,
-			       NULL),
-	BT_GATT_CCC_MANAGED(&mds_data_export_ccc, (MDS_GATT_PERM_READ | MDS_GATT_PERM_WRITE))
-);
+#define MDS_GATT_ATTR_TABLE                                                                        \
+	BT_GATT_PRIMARY_SERVICE(BT_UUID_MEMFAULT_DIAG),                                            \
+		BT_GATT_CHARACTERISTIC(BT_UUID_MDS_SUPPORTED_FEATURES, BT_GATT_CHRC_READ,          \
+				       MDS_GATT_PERM_READ, mds_read, NULL,                         \
+				       (void *)MDS_READ_CHAR_SUPPORTED_FEATURES),                  \
+		BT_GATT_CHARACTERISTIC(BT_UUID_MDS_DEVICE_IDENTIFIER, BT_GATT_CHRC_READ,           \
+				       MDS_GATT_PERM_READ, mds_read, NULL,                         \
+				       (void *)MDS_READ_CHAR_DEVICE_IDENTIFIER),                   \
+		BT_GATT_CHARACTERISTIC(BT_UUID_MDS_DATA_URI, BT_GATT_CHRC_READ,                    \
+				       MDS_GATT_PERM_READ, mds_read, NULL,                         \
+				       (void *)MDS_READ_CHAR_DATA_URI),                            \
+		BT_GATT_CHARACTERISTIC(BT_UUID_MDS_AUTHORIZATION, BT_GATT_CHRC_READ,               \
+				       MDS_GATT_PERM_READ, mds_read, NULL,                         \
+				       (void *)MDS_READ_CHAR_AUTHORIZATION),                       \
+		BT_GATT_CHARACTERISTIC(BT_UUID_MDS_DATA_EXPORT,                                    \
+				       BT_GATT_CHRC_NOTIFY | BT_GATT_CHRC_WRITE,                   \
+				       MDS_GATT_PERM_WRITE, NULL, data_export_write, NULL),        \
+		BT_GATT_CCC_MANAGED(&mds_data_export_ccc,                                          \
+				    (MDS_GATT_PERM_READ | MDS_GATT_PERM_WRITE))
+
+#ifdef CONFIG_BT_GATT_DYNAMIC_DB
+/* Static service attributes for dynamic registration */
+static struct bt_gatt_attr mds_svc_attrs[] = {MDS_GATT_ATTR_TABLE};
+
+static struct bt_gatt_service mds_svc = BT_GATT_SERVICE(mds_svc_attrs);
+#else
+BT_GATT_SERVICE_DEFINE(mds_svc, MDS_GATT_ATTR_TABLE);
+#endif /* CONFIG_BT_GATT_DYNAMIC_DB */
 
 static void disconnected(struct bt_conn *conn, uint8_t reason)
 {
@@ -441,8 +442,13 @@ static int chunk_send(struct bt_conn *conn, struct net_buf_simple *buf)
 	__ASSERT(buf, "Invalid parameters");
 
 	if (!attr) {
+#ifdef CONFIG_BT_GATT_DYNAMIC_DB
+		attr = bt_gatt_find_by_uuid(mds_svc_attrs, ARRAY_SIZE(mds_svc_attrs),
+					    BT_UUID_MDS_DATA_EXPORT);
+#else
 		attr = bt_gatt_find_by_uuid(mds_svc.attrs, mds_svc.attr_count,
 					    BT_UUID_MDS_DATA_EXPORT);
+#endif
 	}
 
 	__ASSERT_NO_MSG(attr);
@@ -470,8 +476,8 @@ static int mds_data_send(struct bt_conn *conn)
 
 	NET_BUF_SIMPLE_DEFINE(buf, (sizeof(struct mds_data_export_nfy) + chunk_max_size));
 
-	data_export_nfy = net_buf_simple_add(&buf,
-					sizeof(struct mds_data_export_nfy) + chunk_max_size);
+	data_export_nfy =
+		net_buf_simple_add(&buf, sizeof(struct mds_data_export_nfy) + chunk_max_size);
 	if (!data_export_nfy) {
 		LOG_ERR("Cannot allocate place for memfault chunk data");
 		return -ENOMEM;
@@ -543,3 +549,43 @@ int bt_mds_cb_register(const struct bt_mds_cb *cb)
 
 	return 0;
 }
+
+#ifdef CONFIG_BT_GATT_DYNAMIC_DB
+int bt_mds_init(void)
+{
+	int err;
+
+	err = bt_gatt_service_register(&mds_svc);
+	if (err) {
+		LOG_ERR("Failed to register MDS service (err %d)", err);
+		return err;
+	}
+
+	LOG_DBG("MDS service registered");
+	return 0;
+}
+
+int bt_mds_uninit(void)
+{
+	int err;
+
+	/* Disable streaming if active */
+	if (mds_instance.conn) {
+		stream_disable(mds_instance.conn);
+	}
+
+	err = bt_gatt_service_unregister(&mds_svc);
+	if (err) {
+		LOG_ERR("Failed to unregister MDS service (err %d)", err);
+		return err;
+	}
+
+	/* Reset instance state */
+	mds_instance.conn = NULL;
+	mds_instance.chunk_number = 0;
+	atomic_set(&mds_instance.send_cnt, MAX_PIPELINE);
+
+	LOG_DBG("MDS service unregistered");
+	return 0;
+}
+#endif /* CONFIG_BT_GATT_DYNAMIC_DB */
