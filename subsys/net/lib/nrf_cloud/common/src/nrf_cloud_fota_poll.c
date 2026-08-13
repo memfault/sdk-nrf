@@ -15,6 +15,10 @@
 #include "nrf_cloud_download.h"
 #include "nrf_cloud_fota.h"
 
+#if defined(CONFIG_SYS_HEAP_RUNTIME_STATS)
+#include <zephyr/sys/sys_heap.h>
+#endif
+
 LOG_MODULE_REGISTER(nrf_cloud_fota_poll, CONFIG_NRF_CLOUD_FOTA_POLL_LOG_LEVEL);
 
 #define JOB_WAIT_S 30
@@ -129,6 +133,32 @@ static void on_download_evt_finished(struct nrf_cloud_fota_poll_ctx *ctx,
 	k_sem_give(&fota_download_sem);
 }
 
+#if defined(CONFIG_SYS_HEAP_RUNTIME_STATS)
+extern struct sys_heap _system_heap;
+
+/* Temporary debug helper: dump kernel heap stats on every job check-in, to
+ * verify that CONFIG_NRF_CLOUD_FOTA_POLL_JOB_CHECK_PROGRESS_THRESHOLD checks
+ * are no longer leaking memory.
+ */
+static void log_heap_stats(const char *tag)
+{
+	struct sys_memory_stats stats;
+
+	if (sys_heap_runtime_stats_get(&_system_heap, &stats)) {
+		LOG_WRN("Failed to read kernel heap statistics");
+		return;
+	}
+
+	LOG_INF("[%s] heap: free=%u allocated=%u max_allocated=%u",
+		tag, stats.free_bytes, stats.allocated_bytes, stats.max_allocated_bytes);
+}
+#else
+static void log_heap_stats(const char *tag)
+{
+	ARG_UNUSED(tag);
+}
+#endif
+
 static void cancel_if_job_is_not_valid(struct nrf_cloud_fota_poll_ctx *ctx, uint32_t progress,
 				       uint32_t threshold)
 {
@@ -157,6 +187,8 @@ static void cancel_if_job_is_not_valid(struct nrf_cloud_fota_poll_ctx *ctx, uint
 		}
 
 		nrf_cloud_coap_fota_job_free(&job_current);
+
+		log_heap_stats("fota job check-in");
 	}
 }
 
